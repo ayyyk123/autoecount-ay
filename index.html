@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.5</title>
+<title>아도라블 매출 자동화 v2.6</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -39,7 +39,7 @@ window.FIREBASE_CONFIG = {
 <div class="wrap">
   <div class="head">
     <div><h1>매출 자동화 프로그램</h1><div class="sub">매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>거래처·품목 기준정보와 수동 매칭/VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다.<br>장끼·일별정산 원본과 생성된 매출자료는 Firebase에 저장하지 않습니다.</div></div>
-    <div class="badge">v2.5 · Firebase 다중 PC</div>
+    <div class="badge">v2.6 · Firebase 다중 PC</div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -198,6 +198,7 @@ function keyTicket(loc,date,no,cust){return [loc,date,String(no),norm(cust)].joi
 function safeId(s){return encodeURIComponent(norm(s)).slice(0,1400)}
 function isSampleCustomer(customer){return /s\s*[\/.]?\s*p\s*$/i.test(norm(customer))}
 function getVatRule(customer){const c=norm(customer); if(cloud.vatRules.has(c))return cloud.vatRules.get(c); if(LEARNED_VAT_RULES[c])return LEARNED_VAT_RULES[c]; if(c.startsWith('신상마켓-'))return 'separate'; return null}
+function normalizeMemo(v){const s=norm(v); return s==='샘플'?'SAMPLE':s}
 function aoaFromSheet(wb,sheetName){return XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true,blankrows:false})}
 async function readWb(file){const buf=await file.arrayBuffer(); return XLSX.read(buf,{type:'array',cellDates:false,cellText:false})}
 function findHeader(rows,need){for(let i=0;i<Math.min(rows.length,30);i++){const h=rows[i].map(norm); if(need.every(x=>h.includes(x)))return i} return -1}
@@ -270,7 +271,44 @@ async function importItems(){try{
 function classifyFile(file,wb){const sh=wb.SheetNames[0],a=aoaFromSheet(wb,sh); const hd=findHeader(a,['일자','No.','구분','상품명']); const hs=findHeader(a,['판매처','No.','현금액','장기비고']); let kind=hd>=0?'detail':hs>=0?'settlement':'unknown'; let loc=null; const fn=file.name; if(fn.includes('매장')||fn.includes('#Ub9e4#Uc7a5'))loc='store'; else if(fn.includes('창고')||fn.includes('#Ucc3d#Uace0'))loc='warehouse'; if(kind==='detail'&&!loc){const objs=objectsFromRows(a,hd); const giver=norm((objs.find(x=>norm(x['주는곳']))||{})['주는곳']); if(giver.includes('아도라진'))loc='store'; else if(giver.includes('아도라블'))loc='warehouse';} return {file,wb,a,kind,loc,header:kind==='detail'?hd:hs};}
 function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust); memo.set(k,norm(o['장기비고'])); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({type:'현금 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),value:cust,detail:cm.values?cm.values.join(', '):date+' No.'+no}); cashTmp.push({date,loc:f.loc,no:Number(no)||0,row:[date,null,'1019','1089',cm.ok?cm.value:'[미매칭] '+cust,null,amt,null,null]});}}} cashTmp.sort((a,b)=>a.date.localeCompare(b.date)||((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.no-b.no); return {memo,cash:cashTmp.map(x=>x.row)};}
 function groupDetails(details){const tickets=new Map(),sampleKeys=new Set(); let sampleExcludedRows=0; for(const f of details){if(!f.loc)continue; const objs=objectsFromRows(f.a,f.header); for(const o of objs){const date=ymd(o['일자']); const cust=norm(o['받는곳']); const no=o['No.']; if(!date||!cust||no==null)continue; if(isSampleCustomer(cust)){if(['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세')sampleExcludedRows++; sampleKeys.add(keyTicket(f.loc,date,no,cust)); continue;} const k=keyTicket(f.loc,date,no,cust); if(!tickets.has(k))tickets.set(k,{key:k,loc:f.loc,date,no,cust,rows:[],hasVat:false}); const t=tickets.get(k); const item=norm(o['상품명']); if(item==='부가세')t.hasVat=true; t.rows.push(o);}} return {tickets,sampleExcludedRows,sampleExcludedTickets:sampleKeys.size};}
-function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){const out=[],pending=[]; let sourceProductCount=0; const ordered=[...tickets.values()].sort((a,b)=>((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.date.localeCompare(b.date)||(Number(a.no)||0)-(Number(b.no)||0)); for(const t of ordered){const productRows=t.rows.filter(o=>['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세'); sourceProductCount+=productRows.length; if(!productRows.length)continue; let mode='separate'; if(t.loc==='store'&&!t.hasVat){mode=ticketOverrides[t.key]||getVatRule(t.cust); if(!mode){pending.push(t);continue;}} const cm=resolveCustomer(customerMaps,t.cust); if(!cm.ok)issues.push({type:'판매 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),value:t.cust,detail:(cm.values?cm.values.join(', '):'')+' '+t.date+' No.'+t.no}); for(const o of productRows){const rawItem=norm(o['상품명']),im=resolveItem(itemMap,rawItem); if(!im.ok)issues.push({type:'품목 '+(im.type==='ambiguous'?'중복':'미매칭'),value:rawItem,detail:im.values?im.values.join(', '):t.date+' No.'+t.no}); const qty=num(o['수량']),rawUnit=num(o['단가']); let unit=rawUnit,supply,tax; if(t.loc==='store'&&mode==='included'){unit=roundUnitIncluded(rawUnit); supply=unit*qty; tax=num(o['금액'])-supply;} else {supply=unit*qty; tax=roundAway(supply*0.1);} const note=memo.get(t.key)||null; out.push([t.date,t.no,cm.ok?cm.value:'[미매칭] '+t.cust,null,'100','11',null,null,im.ok?im.value:'[미매칭] '+rawItem,null,norm(o['치수']),qty,unit,null,supply,tax,note,null]);}} return {out,pending,sourceProductCount};}
+function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){
+  const out=[],pending=[]; let sourceProductCount=0;
+  const ordered=[...tickets.values()].sort((a,b)=>((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.date.localeCompare(b.date)||(Number(a.no)||0)-(Number(b.no)||0));
+  for(const t of ordered){
+    const productRows=t.rows.filter(o=>['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세');
+    sourceProductCount+=productRows.length;
+    if(!productRows.length)continue;
+    let mode='separate';
+    if(t.loc==='store'&&!t.hasVat){
+      mode=ticketOverrides[t.key]||getVatRule(t.cust);
+      if(!mode){pending.push(t);continue;}
+    }
+    const cm=resolveCustomer(customerMaps,t.cust);
+    if(!cm.ok)issues.push({type:'판매 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),value:t.cust,detail:(cm.values?cm.values.join(', '):'')+' '+t.date+' No.'+t.no});
+
+    const ticketMemo=normalizeMemo(memo.get(t.key)||'');
+    let firstProductRow=true;
+
+    for(const o of productRows){
+      const rawItem=norm(o['상품명']),im=resolveItem(itemMap,rawItem);
+      if(!im.ok)issues.push({type:'품목 '+(im.type==='ambiguous'?'중복':'미매칭'),value:rawItem,detail:im.values?im.values.join(', '):t.date+' No.'+t.no});
+      const qty=num(o['수량']),rawUnit=num(o['단가']);
+      let unit=rawUnit,supply,tax;
+      if(t.loc==='store'&&mode==='included'){
+        unit=roundUnitIncluded(rawUnit);
+        supply=unit*qty;
+        tax=num(o['금액'])-supply;
+      }else{
+        supply=unit*qty;
+        tax=roundAway(supply*0.1);
+      }
+      const note=firstProductRow&&ticketMemo?ticketMemo:null;
+      out.push([t.date,t.no,cm.ok?cm.value:'[미매칭] '+t.cust,null,'100','11',null,null,im.ok?im.value:'[미매칭] '+rawItem,null,norm(o['치수']),qty,unit,null,supply,tax,note,null]);
+      firstProductRow=false;
+    }
+  }
+  return {out,pending,sourceProductCount};
+}
 function dedupeIssues(items){const m=new Map(); for(const x of items){const k=x.type+'|'+x.value; if(!m.has(k))m.set(k,{...x,count:1}); else m.get(k).count++;} return [...m.values()]}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))} function escAttr(s){return esc(s)}
 function renderIssues(issues,meta){const d=dedupeIssues(issues),box=$('issueBox'); if(!d.length&&!(meta.unclassifiedFiles||[]).length){box.innerHTML='<span class="ok">✓ 매칭/파일 오류 없음</span>';return;} let html=''; if(meta.unclassifiedFiles?.length)html+='<p class="bad"><b>판별 못한 파일:</b> '+meta.unclassifiedFiles.map(esc).join(', ')+'</p>'; if(d.length){html+='<table><thead><tr><th>구분</th><th>값</th><th>건수</th><th>처리/상세</th></tr></thead><tbody>'; for(let i=0;i<d.length;i++){const x=d[i]; let action=esc(x.detail||''); if(x.type==='품목 미매칭')action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`; html+=`<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${x.count}</td><td>${action}</td></tr>`;} html+='</tbody></table>';} box.innerHTML=html; window._dedupIssues=d;}
