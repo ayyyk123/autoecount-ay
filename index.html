@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.17</title>
+<title>아도라블 매출 자동화 v2.22</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -91,6 +91,70 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .jobCloseBtn{appearance:none;border:0;background:transparent;font-size:18px;cursor:pointer;color:#64748b}
   .jobListNote{font-size:12px;color:#64748b;margin-bottom:9px;line-height:1.5}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .headMain{min-width:0;flex:1}
+  .headTitleRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .headTitleRow h1{margin:0}
+  .noticeWrap{position:relative;display:inline-flex;align-items:center}
+  .noticeBtn{appearance:none;border:0;background:transparent;padding:2px 4px;font-size:18px;cursor:pointer;line-height:1}
+  .noticePop{position:absolute;left:0;top:29px;z-index:40;width:min(620px,calc(100vw - 44px));padding:11px 12px;border:1px solid #dbe2ea;border-radius:10px;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.13);font-size:12px;line-height:1.55;color:#475569}
+  .noticePop.hidden{display:none}
+  .compactLoginBar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .compactLoginBar input{height:32px;min-width:150px;max-width:210px;padding:6px 9px;font-size:12px}
+  .compactLoginBar #password{max-width:150px}
+  .compactLoginBar .btn{padding:7px 10px;font-size:11px;min-height:32px}
+  .compactLoginBar #authStatus{font-size:11px}
+  .compactLoginBar.isLoggedIn .loginOnly{display:none!important}
+  .compactLoginBar:not(.isLoggedIn) #logoutBtn{display:none!important}
+  .topFixedGrid{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(280px,1fr))!important;
+    gap:14px!important;
+    overflow-x:auto;
+    align-items:stretch;
+    padding-bottom:2px;
+  }
+  .topFixedGrid>.card{height:100%;display:flex;flex-direction:column;box-sizing:border-box}
+  .topFixedGrid>.card>.dropzone{min-height:66px}
+  .baseDataGroup{margin:12px 0 14px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.035);overflow:hidden}
+  .baseDataGroupHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;font-size:17px;font-weight:800;cursor:pointer;user-select:none;background:#fff;border-bottom:1px solid var(--line)}
+  .baseDataGroupHeader:hover{background:#fafbff}
+  .baseDataGroupCaret{font-size:13px;color:#64748b}
+  .baseDataGroupBody{padding:14px}
+  .baseDataGroup.isCollapsed>.baseDataGroupBody{display:none}
+  .baseDataGroup.isCollapsed>.baseDataGroupHeader{border-bottom-color:transparent}
+  .baseDataGroup.isCollapsed .baseDataGroupCaret{transform:rotate(-90deg)}
+  .baseDataActions{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0;padding-top:14px;border-top:1px solid #e5e7eb}
+  .explainText{display:none!important}
+  .explainText.isOpen{display:block!important;margin-top:8px!important}
+  .explainBtn{
+    appearance:none;border:0;background:transparent;color:#64748b;cursor:pointer;
+    font-size:15px;line-height:1;padding:2px 4px;border-radius:6px;flex:0 0 auto
+  }
+  .explainBtn:hover{background:#f1f5f9;color:#334155}
+  .explainBtn.isOpen{background:#eef2ff;color:#4338ca}
+  .menuHeader .explainBtn{margin-left:2px}
+  .topFixedGrid .card>h2 .explainBtn{margin-left:auto}
+  details>summary .explainBtn{margin-left:6px;display:inline-flex;vertical-align:middle}
+  .footerExplainWrap{margin-top:18px;display:flex;align-items:flex-start;gap:6px}
+  .footerExplainWrap .footer{margin-top:0;flex:1}
+
+  .legacyOutputButtons{display:none!important}
+
+  .topFixedGrid .card{overflow:hidden}
+  .topFixedGrid .card>h2{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;margin:-2px -2px 10px;padding:2px 2px 9px}
+  .topFixedGrid .card>h2:hover{color:#334155}
+  .topFixedGrid .card>h2::after{content:"▾";font-size:13px;color:#64748b;flex:0 0 auto}
+  .topFixedGrid .card.fixedCollapsed>h2{margin-bottom:-2px;padding-bottom:2px}
+  .topFixedGrid .card.fixedCollapsed>h2::after{content:"▸"}
+  .topFixedGrid .card.fixedCollapsed>h2~*{display:none!important}
+  @media(max-width:850px){.topFixedGrid{grid-template-columns:repeat(3,minmax(280px,1fr))!important}}
+
+  @media(max-width:850px){
+    .head{display:flex!important;flex-direction:column;align-items:stretch;gap:10px}
+    .headRight{align-items:flex-start}
+    .compactLoginBar input{min-width:135px}
+  }
+
   .autosaveStatus{font-size:11px;color:#64748b;white-space:nowrap}
   .autosaveStatus.saving{color:#d97706;font-weight:700}
   .autosaveStatus.saved{color:#16a34a;font-weight:700}
@@ -106,42 +170,61 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
   .pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#f3f4f6}.pill.warn{background:#fff7ed;color:#9a3412}.pill.ok{background:#ecfdf5;color:#065f46}
   .hidden{display:none}.footer{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.6}.mono{font-family:Consolas,monospace}.small{font-size:12px;color:var(--muted)}
-  @media(max-width:850px){.grid,.stats{grid-template-columns:1fr}.head{display:block}.badge{display:inline-block;margin-top:10px}}
+  @media(max-width:850px){.grid:not(.topFixedGrid),.stats{grid-template-columns:1fr}.badge{display:inline-block}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
-    <div><h1>매출 자동화 프로그램</h1><div class="sub">매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>품목 기준정보와 수동 매칭/VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다. 거래처리스트는 매 실행 최신 파일을 직접 사용합니다.<br>장끼·일별정산 원본과 생성된 매출자료는 Firebase에 저장하지 않습니다.</div></div>
-    <div class="headRight"><div class="badge">v2.17 · Firebase 작업동기화</div><div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div></div>
-  </div>
-
-  <div class="card" style="margin-bottom:14px">
-    <h2>① 로그인</h2>
-    <div class="hint">같은 계정으로 로그인하면 어느 PC에서든 동일한 거래처·품목·매칭규칙을 사용합니다.</div>
-    <div class="loginrow">
-      <input id="email" type="email" placeholder="이메일">
-      <input id="password" type="password" placeholder="비밀번호">
-      <button class="btn" id="loginBtn">로그인</button>
-      <button class="btn light" id="signupBtn">최초 계정 만들기</button>
-      <button class="btn secondary hidden" id="logoutBtn">로그아웃</button>
-      <span id="authStatus" class="small">Firebase 설정 및 로그인이 필요합니다.</span>
+    <div class="headMain">
+      <div class="headTitleRow">
+        <h1>매출 자동화 프로그램</h1>
+        <span class="noticeWrap">
+          <button type="button" id="noticeBtn" class="noticeBtn" title="프로그램 안내">📢</button>
+          <div id="noticePop" class="noticePop hidden">
+            매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>
+            품목 기준정보·수동 매칭·VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다.<br>
+            매출변환 작업의 장끼/일별정산 원본, 해당 작업의 거래처리스트와 검수 진행상태도 Firebase에 자동저장되어 다른 PC에서 이어서 작업할 수 있습니다.
+          </div>
+        </span>
+      </div>
+      <div id="compactLoginBar" class="compactLoginBar">
+        <input class="loginOnly" id="email" type="email" placeholder="아이디(이메일)">
+        <input class="loginOnly" id="password" type="password" placeholder="비밀번호">
+        <button class="btn loginOnly" id="loginBtn">로그인</button>
+        <button class="btn light loginOnly" id="signupBtn">계정 만들기</button>
+        <button class="btn secondary hidden" id="logoutBtn">로그아웃</button>
+        <span id="authStatus" class="small">Firebase 설정 및 로그인이 필요합니다.</span>
+      </div>
+    </div>
+    <div class="headRight">
+      <div class="badge">v2.22 · Firebase 작업동기화</div>
+      <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card"><h2>② 장끼 엑셀</h2><div class="hint">매장·창고의 <b>판매내역(생성)</b>과 날짜별 <b>일별정산</b> 파일을 모두 넣으세요. 클릭 선택 또는 여러 파일 드래그앤드롭이 가능합니다.</div><input class="file hidden" id="jangkiFiles" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="jangkiDrop"><div class="dztext"><b>파일 선택</b> 또는 여기로 여러 엑셀 파일을 끌어다 놓으세요.</div></div><div class="filechips" id="jangkiChips"></div></div>
+  <div id="baseDataGroup" class="baseDataGroup">
+    <div id="baseDataGroupHeader" class="baseDataGroupHeader">
+      <span>매출변환 기초자료</span>
+      <span class="baseDataGroupCaret">▾</span>
+    </div>
+    <div class="baseDataGroupBody">
+  <div class="grid topFixedGrid" id="topFixedGrid">
+    <div class="card"><h2>장끼 엑셀</h2><div class="hint">매장·창고의 <b>판매내역(생성)</b>과 날짜별 <b>일별정산</b> 파일을 모두 넣으세요. 클릭 선택 또는 여러 파일 드래그앤드롭이 가능합니다.</div><input class="file hidden" id="jangkiFiles" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="jangkiDrop"><div class="dztext"><b>파일 선택</b> 또는 여기로 여러 엑셀 파일을 끌어다 놓으세요.</div></div><div class="filechips" id="jangkiChips"></div></div>
     <div class="card"><h2>거래처리스트 · 매번 필수</h2><div class="hint">프로그램을 사용할 때마다 이카운트에서 <b>최신 전체 거래처리스트</b>를 내려받아 넣으세요. Firebase에 거래처를 누적 저장하지 않고, 이번 실행에서는 이 파일만 정답으로 사용합니다. 새 파일을 넣으면 이전 선택 파일은 자동 교체됩니다.</div><input class="file hidden" id="customerFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="customerDrop"><div class="dztext"><b>최신 거래처리스트 선택</b> 또는 여기로 끌어다 놓으세요.</div></div><div class="filechips" id="customerChips"></div><div id="customerStat" class="masterstat small">이번 실행용 최신 거래처리스트가 필요합니다.</div></div>
     <div class="card"><h2>품목 기준정보 업데이트</h2><div class="hint">최초 1회 또는 품목이 추가·수정됐을 때만 올립니다. 여러 파일을 넣으면 순서대로 병합하며 <b>같은 코드는 나중 파일 값으로 업데이트</b>됩니다. 미매칭 품목은 아래 검수 화면에서 직접 영구 매칭할 수 있습니다.</div><input class="file hidden" id="itemFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="itemDrop"><div class="dztext"><b>파일 선택</b> 또는 품목 엑셀을 끌어다 놓으세요.</div></div><div class="filechips" id="itemChips"></div><div class="actions"><button class="btn light" id="importItemBtn" disabled>품목 업데이트</button></div><div id="itemStat" class="masterstat small">저장 0개 · 수동매칭 0개</div></div>
   </div>
-
-  <div class="actions">
-    <button class="btn" id="processBtn" disabled>자동 변환·검수</button>
-    <button class="btn secondary" id="salesBtn" disabled>판매입력 완료본 다운로드</button>
-    <button class="btn secondary" id="cashBtn" disabled>현금입력 완료본 다운로드</button>
-    <button class="btn secondary" id="receiptBtn" disabled>현금영수증 일괄발급 다운로드</button>
-    <button class="btn light" id="reviewBtn" disabled>검수보고서 다운로드</button>
-    <button class="btn light" id="clearDraftBtn">검수중 파일 전체 비우기</button>
+      <div class="baseDataActions">
+        <button class="btn" id="processBtn" disabled>자동 변환·검수</button>
+        <button class="btn light" id="reviewBtn" disabled>검수보고서 다운로드</button>
+        <button class="btn light" id="clearDraftBtn">검수중 파일 전체 비우기</button>
+      </div>
+      <div class="legacyOutputButtons">
+        <button id="salesBtn" disabled>판매입력 완료본 다운로드</button>
+        <button id="cashBtn" disabled>현금입력 완료본 다운로드</button>
+        <button id="receiptBtn" disabled>현금영수증 일괄발급 다운로드</button>
+      </div>
+    </div>
   </div>
 
   <div id="jobListSource">
@@ -383,7 +466,17 @@ function initFirebase(){
     auth.onAuthStateChanged(async u=>{user=u||null; updateAuthUI(); if(user){await loadCloudData();} else {resetCloud();}});
   }catch(e){$('authStatus').textContent='Firebase 연결 오류: '+e.message; $('loginBtn').disabled=true; $('signupBtn').disabled=true; $('statusBox').innerHTML='<p class="warn"><b>Firebase 연결 오류:</b> '+esc(e.message)+'</p>';}
 }
-function updateAuthUI(){const on=!!user; $('loginBtn').classList.toggle('hidden',on); $('signupBtn').classList.toggle('hidden',on); $('logoutBtn').classList.toggle('hidden',!on); $('email').disabled=on; $('password').disabled=on; $('importItemBtn').disabled=!on||selectedFiles.item.length===0; $('processBtn').disabled=!on||!cloud.ready; $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';}
+function updateAuthUI(){
+  const on=!!user;
+  $('compactLoginBar')?.classList.toggle('isLoggedIn',on);
+  $('loginBtn').classList.toggle('hidden',on);
+  $('signupBtn').classList.toggle('hidden',on);
+  $('logoutBtn').classList.toggle('hidden',!on);
+  $('email').disabled=on; $('password').disabled=on;
+  $('importItemBtn').disabled=!on||selectedFiles.item.length===0;
+  $('processBtn').disabled=!on||!cloud.ready;
+  $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
+}
 function resetCloud(){cloud={ready:false,customers:[],items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI();}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 async function loadCloudData(){
@@ -1313,7 +1406,7 @@ function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle'
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 const MENU_PREF_KEY='autoecount-ay-menu-prefs-v1';
 const MENU_DEFAULT_ORDER=[
-  'login','jobs','jangki','customer','item','actions','draft',
+  'jobs','draft',
   'dailySales','settlement','receipt','results','vatPending','vatAuto','issues'
 ];
 let menuBoard=null;
@@ -1333,6 +1426,11 @@ function collectMenuPrefs(){
   for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
     collapsed[p.dataset.menuId]=p.classList.contains('isCollapsed');
   }
+  for(const card of document.querySelectorAll('#topFixedGrid > .card[data-fixed-id]')){
+    collapsed[card.dataset.fixedId]=card.classList.contains('fixedCollapsed');
+  }
+  const baseGroup=$('baseDataGroup');
+  if(baseGroup)collapsed.baseDataGroup=baseGroup.classList.contains('isCollapsed');
   return {order,collapsed};
 }
 
@@ -1357,6 +1455,17 @@ function applyMenuPrefs(pref){
     if(Object.prototype.hasOwnProperty.call(c,p.dataset.menuId)){
       setMenuCollapsed(p,!!c[p.dataset.menuId],false);
     }
+  }
+  for(const card of document.querySelectorAll('#topFixedGrid > .card[data-fixed-id]')){
+    if(Object.prototype.hasOwnProperty.call(c,card.dataset.fixedId)){
+      card.classList.toggle('fixedCollapsed',!!c[card.dataset.fixedId]);
+    }
+  }
+  const baseGroup=$('baseDataGroup');
+  if(baseGroup&&Object.prototype.hasOwnProperty.call(c,'baseDataGroup')){
+    baseGroup.classList.toggle('isCollapsed',!!c.baseDataGroup);
+    const caret=baseGroup.querySelector('.baseDataGroupCaret');
+    if(caret)caret.textContent=c.baseDataGroup?'▸':'▾';
   }
 }
 
@@ -1521,18 +1630,161 @@ function makeMenuPanel(id,title,source){
   return panel;
 }
 
+
+
+
+function setupExplanationToggles(){
+  const sources=[
+    ...document.querySelectorAll('.hint'),
+    ...document.querySelectorAll('.jobListNote'),
+    ...document.querySelectorAll('.explainSource')
+  ];
+
+  let seq=0;
+  for(const el of sources){
+    if(el.dataset.explainReady==='1')continue;
+    el.dataset.explainReady='1';
+    el.classList.add('explainText');
+
+    const id=el.id||('explainText_'+(++seq));
+    el.id=id;
+
+    let target=null;
+    const panel=el.closest('.menuPanel');
+    if(panel){
+      target=panel.querySelector(':scope > .menuHeader');
+    }
+    if(!target){
+      const card=el.closest('#topFixedGrid > .card');
+      if(card)target=card.querySelector(':scope > h2');
+    }
+    if(!target){
+      const det=el.closest('details');
+      if(det)target=det.querySelector(':scope > summary');
+    }
+    if(!target){
+      const sec=el.closest('.section');
+      if(sec)target=sec.querySelector(':scope > h3');
+    }
+    if(!target){
+      target=el.parentElement;
+    }
+    if(!target)continue;
+
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='explainBtn';
+    btn.textContent='ⓘ';
+    btn.title='설명 보기';
+    btn.setAttribute('aria-controls',id);
+    btn.setAttribute('aria-expanded','false');
+    btn.draggable=false;
+
+    btn.addEventListener('pointerdown',e=>e.stopPropagation());
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const open=!el.classList.contains('isOpen');
+      el.classList.toggle('isOpen',open);
+      btn.classList.toggle('isOpen',open);
+      btn.setAttribute('aria-expanded',open?'true':'false');
+      btn.title=open?'설명 접기':'설명 보기';
+    });
+
+    if(target.classList?.contains('menuHeader')){
+      const controls=target.querySelector('.menuControls');
+      if(controls)target.insertBefore(btn,controls);
+      else target.appendChild(btn);
+    }else{
+      target.appendChild(btn);
+    }
+  }
+
+  const footer=document.querySelector('.footer');
+  if(footer && footer.dataset.explainReady!=='1'){
+    footer.dataset.explainReady='1';
+    footer.classList.add('explainText');
+    const wrap=document.createElement('div');
+    wrap.className='footerExplainWrap';
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='explainBtn';
+    btn.textContent='ⓘ';
+    btn.title='Firebase 저장 안내 보기';
+    btn.setAttribute('aria-expanded','false');
+    footer.parentNode.insertBefore(wrap,footer);
+    wrap.appendChild(btn);
+    wrap.appendChild(footer);
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      const open=!footer.classList.contains('isOpen');
+      footer.classList.toggle('isOpen',open);
+      btn.classList.toggle('isOpen',open);
+      btn.setAttribute('aria-expanded',open?'true':'false');
+      btn.title=open?'Firebase 저장 안내 접기':'Firebase 저장 안내 보기';
+    });
+  }
+}
+
+function setupBaseDataGroup(){
+  const group=$('baseDataGroup'),header=$('baseDataGroupHeader');
+  if(!group||!header||group.dataset.ready==='1')return;
+  group.dataset.ready='1';
+  header.title='클릭해서 매출변환 기초자료 전체 접기/펴기';
+  header.addEventListener('click',()=>{
+    const collapsed=!group.classList.contains('isCollapsed');
+    group.classList.toggle('isCollapsed',collapsed);
+    const caret=group.querySelector('.baseDataGroupCaret');
+    if(caret)caret.textContent=collapsed?'▸':'▾';
+    scheduleMenuPrefsSave();
+  });
+  const pref=getLocalMenuPrefs();
+  if(pref?.collapsed&&Object.prototype.hasOwnProperty.call(pref.collapsed,'baseDataGroup')){
+    const collapsed=!!pref.collapsed.baseDataGroup;
+    group.classList.toggle('isCollapsed',collapsed);
+    const caret=group.querySelector('.baseDataGroupCaret');
+    if(caret)caret.textContent=collapsed?'▸':'▾';
+  }
+}
+
+function setupFixedTopCards(){
+  const grid=$('topFixedGrid');
+  if(!grid)return;
+  const defs=[
+    [$('jangkiDrop')?.closest('.card'),'jangki'],
+    [$('customerDrop')?.closest('.card'),'customer'],
+    [$('itemDrop')?.closest('.card'),'item']
+  ];
+  for(const [card,id] of defs){
+    if(!card||card.dataset.fixedReady==='1')continue;
+    card.dataset.fixedReady='1';
+    card.dataset.fixedId=id;
+    const title=card.querySelector(':scope > h2');
+    if(!title)continue;
+    title.title='클릭해서 접기/펴기';
+    title.addEventListener('click',e=>{
+      if(e.target.closest('button,input,select,a'))return;
+      card.classList.toggle('fixedCollapsed');
+      scheduleMenuPrefsSave();
+    });
+  }
+  const pref=getLocalMenuPrefs();
+  if(pref?.collapsed){
+    for(const card of grid.querySelectorAll(':scope > .card[data-fixed-id]')){
+      if(Object.prototype.hasOwnProperty.call(pref.collapsed,card.dataset.fixedId)){
+        card.classList.toggle('fixedCollapsed',!!pref.collapsed[card.dataset.fixedId]);
+      }
+    }
+  }
+}
+
 function setupMenuSystem(){
   const wrap=document.querySelector('.wrap');
   const head=wrap?.querySelector('.head');
   if(!wrap||!head||document.getElementById('menuBoard'))return;
 
   // 기존 소스들을 이동하기 전에 참조 확보
-  const loginSource=$('loginBtn')?.closest('.card');
   const jobsSource=$('jobListSource');
-  const jangkiSource=$('jangkiDrop')?.closest('.card');
-  const customerSource=$('customerDrop')?.closest('.card');
-  const itemSource=$('itemDrop')?.closest('.card');
-  const actionSource=$('processBtn')?.parentElement;
   const draftSource=$('draftListSection');
   const dailySource=$('dailySalesTopSection');
   const settlementSource=$('settlementSummarySection');
@@ -1554,7 +1806,7 @@ function setupMenuSystem(){
 
   const toolbar=document.createElement('div');
   toolbar.className='menuToolbar';
-  toolbar.innerHTML='<div class="small">제목줄 클릭 = 접기/펴기 · 제목줄 드래그 또는 ▲▼ = 순서 변경</div>';
+  toolbar.innerHTML='<div class="small explainSource">작업/검수 메뉴: 제목줄 클릭 = 접기/펴기 · 드래그 또는 ▲▼ = 순서 변경</div>';
 
   const reset=document.createElement('button');
   reset.type='button';
@@ -1569,16 +1821,13 @@ function setupMenuSystem(){
   };
   toolbar.appendChild(reset);
 
-  head.insertAdjacentElement('afterend',toolbar);
+  const baseGroup=$('baseDataGroup');
+  if(baseGroup)baseGroup.insertAdjacentElement('afterend',toolbar);
+  else head.insertAdjacentElement('afterend',toolbar);
   toolbar.insertAdjacentElement('afterend',menuBoard);
 
   const defs=[
-    ['login','로그인',loginSource],
     ['jobs','매출변환 작업 목록',jobsSource],
-    ['jangki','장끼 엑셀',jangkiSource],
-    ['customer','거래처리스트 · 매번 필수',customerSource],
-    ['item','품목 기준정보 업데이트',itemSource],
-    ['actions','실행 · 다운로드',actionSource],
     ['draft','검수중 파일 목록',draftSource],
     ['dailySales','일별 최종매출',dailySource],
     ['settlement','매장/창고 세부 매출 계산',settlementSource],
@@ -1594,21 +1843,30 @@ function setupMenuSystem(){
     if(p)menuBoard.appendChild(p);
   }
 
-  // 비어버린 기존 3열 그리드 제거
-  const grid=wrap.querySelector('.grid');
-  if(grid && grid.children.length===0)grid.remove();
-
   applyMenuPrefs(getLocalMenuPrefs()||{order:[...MENU_DEFAULT_ORDER],collapsed:{}});
 }
 
 function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"><b>오류:</b> '+esc(e.message||e)+'</p>'}
+
+
+$('noticeBtn')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  $('noticePop')?.classList.toggle('hidden');
+});
+document.addEventListener('click',e=>{
+  const pop=$('noticePop'),btn=$('noticeBtn');
+  if(pop&&!pop.classList.contains('hidden')&&!pop.contains(e.target)&&e.target!==btn)pop.classList.add('hidden');
+});
 
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
 $('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
+setupBaseDataGroup();
+setupFixedTopCards();
 setupMenuSystem();
+setupExplanationToggles();
 setupJobListResize();
 renderJobList();
 renderAllDraftFiles(); restoreDraftFiles().finally(initFirebase);
