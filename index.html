@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.23</title>
+<title>아도라블 매출 자동화 v2.24</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -219,7 +219,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v2.23 · Firebase 작업동기화</div>
+      <div class="badge">v2.24 · Firebase 작업동기화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -475,9 +475,14 @@ function resolveCustomer(maps,name){
   const key=norm(name),j=mapResolve(maps.jangki,key),e=mapResolve(maps.ecount,key);
   if(j.ok)return j;if(e.ok)return e;
   const alias=cloud.customerAliases.get(key);
-  if(alias&&alias.targetName){
-    const ar=mapResolve(maps.ecount,alias.targetName); if(ar.ok)return {...ar,via:'customerAlias'};
-    const aj=mapResolve(maps.jangki,alias.targetName); if(aj.ok)return {...aj,via:'customerAlias'};
+  if(alias){
+    if(alias.targetName){
+      const ar=mapResolve(maps.ecount,alias.targetName); if(ar.ok)return {...ar,via:'customerAlias'};
+      const aj=mapResolve(maps.jangki,alias.targetName); if(aj.ok)return {...aj,via:'customerAlias'};
+    }
+    if(alias.manualCode){
+      return {ok:true,value:alias.manualCode,via:'customerManualCode'};
+    }
   }
   if(j.type==='ambiguous')return j;if(e.type==='ambiguous')return e;
   return {ok:false,type:'missing'};
@@ -963,7 +968,7 @@ function renderIssues(issues,meta){
       if(x.type==='품목 미매칭'){
         action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }else if(x.type.includes('거래처')&&x.type.includes('미매칭')){
-        action=`<div class="customerMatch"><input id="customermatch_${i}" list="customerChoices" placeholder="최신 거래처리스트의 거래처코드 입력"><button class="btn light" onclick="saveCustomerAlias(${i},'${escAttr(x.value)}')">앞으로 이 거래처로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
+        action=`<div class="customerMatch"><input id="customermatch_${i}" list="customerChoices" placeholder="거래처코드 입력 (리스트에 없어도 직접 지정 가능)"><button class="btn light" onclick="saveCustomerAlias(${i},'${escAttr(x.value)}')">앞으로 이 거래처로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }
       html+=`<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${x.count}</td><td>${action}</td></tr>`;
     }
@@ -977,17 +982,44 @@ async function saveCustomerAlias(i,alias){
   try{
     const val=norm($('customermatch_'+i).value);
     if(!val)throw new Error('매칭할 거래처코드를 입력해 주세요.');
-    const candidates=(cloud.runtimeCustomers||[]).filter(c=>norm(c.code)===val||norm(c.name)===val||norm(c.jangkiName)===val);
-    if(!candidates.length)throw new Error('이번에 올린 최신 거래처리스트에서 해당 거래처를 찾지 못했습니다.');
-    if(candidates.length>1)throw new Error('여러 거래처가 검색됩니다. 거래처코드를 정확히 입력해 주세요.');
-    const target=candidates[0];
-    const data={alias:norm(alias),targetName:target.name,targetJangkiName:target.jangkiName||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+
+    const candidates=(cloud.runtimeCustomers||[]).filter(c=>
+      norm(c.code)===val || norm(c.name)===val || norm(c.jangkiName)===val
+    );
+
+    let data, message;
+    if(candidates.length>1){
+      throw new Error('여러 거래처가 검색됩니다. 거래처코드를 정확히 입력해 주세요.');
+    }
+
+    if(candidates.length===1){
+      const target=candidates[0];
+      data={
+        alias:norm(alias),
+        targetName:target.name,
+        targetJangkiName:target.jangkiName||'',
+        manualCode:'',
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      message=`<b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 거래처코드는 매번 최신 거래처리스트에서 다시 찾습니다.`;
+    }else{
+      data={
+        alias:norm(alias),
+        targetName:'',
+        targetJangkiName:'',
+        manualCode:val,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      message=`<b>${esc(alias)}</b> → 거래처코드 <b>${esc(val)}</b>로 수동 지정했습니다. 이번 거래처리스트에 없어도 이 코드로 바로 변환합니다.`;
+    }
+
     await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:true});
     cloud.customerAliases.set(norm(alias),{...data,updatedAt:null});
     await processAll(state.parsed?.ticketOverrides||{});
-    $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 거래처코드는 매번 최신 거래처리스트에서 다시 찾습니다.</p>`;
+    $('statusBox').innerHTML=`<p class="ok">✓ ${message}</p>`;
   }catch(e){alert(e.message||e)}
 }
+
 async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
 function renderAutoVat(rows){
   const sec=$('vatAutoSection'),box=$('vatAutoTable'),count=$('vatAutoCount');
