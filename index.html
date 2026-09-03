@@ -3,12 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.0</title>
+<title>아도라블 매출 자동화 v2.1</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
+<script>
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDABvu5k5GeErsxGmWq1uMAECnYcsyQ_dM",
+  authDomain: "autoecount-ay.firebaseapp.com",
+  projectId: "autoecount-ay",
+  storageBucket: "autoecount-ay.firebasestorage.app",
+  messagingSenderId: "442014720755",
+  appId: "1:442014720755:web:cbde441ecee05d49094d86"
+};
+</script>
 <style>
   :root{--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--main:#4f46e5;--bad:#b91c1c;--warn:#b45309;--ok:#047857}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:Arial,"Malgun Gothic",sans-serif;color:var(--text)}
@@ -30,7 +39,7 @@
 <div class="wrap">
   <div class="head">
     <div><h1>매출 자동화 프로그램</h1><div class="sub">매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>거래처·품목 기준정보와 수동 매칭/VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다.<br>장끼·일별정산 원본과 생성된 매출자료는 Firebase에 저장하지 않습니다.</div></div>
-    <div class="badge">v2.0 · Firebase 다중 PC</div>
+    <div class="badge">v2.1 · Firebase 다중 PC</div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -108,7 +117,7 @@ function initFirebase(){
     if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey || String(window.FIREBASE_CONFIG.apiKey).includes('PASTE_')) throw new Error('firebase-config.js에 Firebase 설정값을 입력해 주세요.');
     app=firebase.initializeApp(window.FIREBASE_CONFIG); auth=firebase.auth(); db=firebase.firestore();
     auth.onAuthStateChanged(async u=>{user=u||null; updateAuthUI(); if(user){await loadCloudData();} else {resetCloud();}});
-  }catch(e){$('authStatus').textContent='설정 필요: '+e.message; $('statusBox').innerHTML='<p class="warn"><b>Firebase 설정 필요:</b> '+esc(e.message)+'</p>';}
+  }catch(e){$('authStatus').textContent='Firebase 연결 오류: '+e.message; $('loginBtn').disabled=true; $('signupBtn').disabled=true; $('statusBox').innerHTML='<p class="warn"><b>Firebase 연결 오류:</b> '+esc(e.message)+'</p>';}
 }
 function updateAuthUI(){const on=!!user; $('loginBtn').classList.toggle('hidden',on); $('signupBtn').classList.toggle('hidden',on); $('logoutBtn').classList.toggle('hidden',!on); $('email').disabled=on; $('password').disabled=on; $('importCustomerBtn').disabled=!on; $('importItemBtn').disabled=!on; $('processBtn').disabled=!on||!cloud.ready; $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';}
 function resetCloud(){cloud={ready:false,customers:[],items:[],aliases:new Map(),vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI();}
@@ -158,8 +167,8 @@ function downloadCash(){XLSX.writeFile(makeWorkbook(CASH_HEADERS,state.cashRows,
 function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','부가세행','원본행수'],...vat]),'VAT검수'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['S/P·SP 샘플 제외 장끼',state.meta.sampleExcludedTickets||0],['S/P·SP 샘플 제외 품목',state.meta.sampleExcludedRows||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
 function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"><b>오류:</b> '+esc(e.message||e)+'</p>'}
 
-$('loginBtn').onclick=async()=>{try{await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
-$('signupBtn').onclick=async()=>{try{const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
+$('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
+$('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('reviewBtn').onclick=downloadReview;
 initFirebase();
 </script>
