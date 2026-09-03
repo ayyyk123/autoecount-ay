@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.24</title>
+<title>아도라블 매출 자동화 v2.25</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -219,7 +219,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v2.24 · Firebase 작업동기화</div>
+      <div class="badge">v2.25 · Firebase 작업동기화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -815,7 +815,13 @@ async function downloadCashReceipt(jobId=activeJobId){
   }
 }
 
-function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust); memo.set(k,norm(o['장기비고'])); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({type:'현금 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),value:cust,detail:cm.values?cm.values.join(', '):date+' No.'+no}); cashTmp.push({date,loc:f.loc,no:Number(no)||0,row:[date,null,'1019','1089',cm.ok?cm.value:'[미매칭] '+cust,null,amt,null,null]});}}} cashTmp.sort((a,b)=>a.date.localeCompare(b.date)||((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.no-b.no); return {memo,cash:cashTmp.map(x=>x.row)};}
+function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust); memo.set(k,norm(o['장기비고'])); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({
+  type:'현금 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),
+  value:cust,
+  source:f.loc==='store'?'매장 정산':'창고 정산',
+  sourceFile:f.file.name,
+  detail:(cm.values?cm.values.join(', ')+' · ':'')+date+' No.'+no
+}); cashTmp.push({date,loc:f.loc,no:Number(no)||0,row:[date,null,'1019','1089',cm.ok?cm.value:'[미매칭] '+cust,null,amt,null,null]});}}} cashTmp.sort((a,b)=>a.date.localeCompare(b.date)||((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.no-b.no); return {memo,cash:cashTmp.map(x=>x.row)};}
 function groupDetails(details){const tickets=new Map(),sampleKeys=new Set(); let sampleExcludedRows=0; for(const f of details){if(!f.loc)continue; const objs=objectsFromRows(f.a,f.header); for(const o of objs){const date=ymd(o['일자']); const cust=norm(o['받는곳']); const no=o['No.']; if(!date||!cust||no==null)continue; if(isSampleCustomer(cust)){if(['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세')sampleExcludedRows++; sampleKeys.add(keyTicket(f.loc,date,no,cust)); continue;} const k=keyTicket(f.loc,date,no,cust); if(!tickets.has(k))tickets.set(k,{key:k,loc:f.loc,date,no,cust,rows:[],hasVat:false}); const t=tickets.get(k); const item=norm(o['상품명']); if(item==='부가세')t.hasVat=true; t.rows.push(o);}} return {tickets,sampleExcludedRows,sampleExcludedTickets:sampleKeys.size};}
 
 function money(v){return Number(v||0).toLocaleString('ko-KR')}
@@ -881,7 +887,8 @@ function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){
     if(!cm.ok)issues.push({
       type:'판매 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),
       value:t.cust,
-      detail:(cm.values?cm.values.join(', '):'')+' '+t.date+' No.'+t.no
+      source:t.loc==='store'?'매장 판매내역':'창고 판매내역',
+      detail:(cm.values?cm.values.join(', ')+' · ':'')+t.date+' No.'+t.no
     });
 
     const ticketMemo=normalizeMemo(memo.get(t.key)||'');
@@ -954,29 +961,75 @@ function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){
 
   return {out,pending,autoVatApplied,sourceProductCount};
 }
-function dedupeIssues(items){const m=new Map(); for(const x of items){const k=x.type+'|'+x.value; if(!m.has(k))m.set(k,{...x,count:1}); else m.get(k).count++;} return [...m.values()]}
+function dedupeIssues(items){
+  const m=new Map();
+  for(const x of items){
+    const source=x.source||'';
+    const k=x.type+'|'+x.value+'|'+source;
+    if(!m.has(k)){
+      m.set(k,{
+        ...x,
+        count:1,
+        details:x.detail?[x.detail]:[],
+        sourceFiles:x.sourceFile?[x.sourceFile]:[]
+      });
+    }else{
+      const cur=m.get(k);
+      cur.count++;
+      if(x.detail&&!cur.details.includes(x.detail))cur.details.push(x.detail);
+      if(x.sourceFile&&!cur.sourceFiles.includes(x.sourceFile))cur.sourceFiles.push(x.sourceFile);
+    }
+  }
+  return [...m.values()].map(x=>({
+    ...x,
+    detail:x.details?.length?x.details.join(' / '):(x.detail||''),
+    sourceFile:x.sourceFiles?.length?x.sourceFiles.join(' / '):(x.sourceFile||'')
+  }));
+}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))} function escAttr(s){return esc(s)}
 function renderIssues(issues,meta){
   const d=dedupeIssues(issues),box=$('issueBox');
-  if(!d.length&&!(meta.unclassifiedFiles||[]).length){box.innerHTML='<span class="ok">✓ 매칭/파일 오류 없음</span>';return;}
+  if(!d.length&&!(meta.unclassifiedFiles||[]).length){
+    box.innerHTML='<span class="ok">✓ 매칭/파일 오류 없음</span>';
+    return;
+  }
+
   let html='';
-  if(meta.unclassifiedFiles?.length)html+='<p class="bad"><b>판별 못한 파일:</b> '+meta.unclassifiedFiles.map(esc).join(', ')+'</p>';
+  if(meta.unclassifiedFiles?.length){
+    html+='<p class="bad"><b>판별 못한 파일:</b> '+meta.unclassifiedFiles.map(esc).join(', ')+'</p>';
+  }
+
   if(d.length){
-    html+='<table><thead><tr><th>구분</th><th>값</th><th>건수</th><th>처리/상세</th></tr></thead><tbody>';
+    html+='<table><thead><tr><th>구분</th><th>출처</th><th>값</th><th>건수</th><th>처리/상세</th></tr></thead><tbody>';
+
     for(let i=0;i<d.length;i++){
-      const x=d[i]; let action=esc(x.detail||'');
+      const x=d[i];
+      const sourceText=x.source
+        ? `<b>${esc(x.source)}</b>${x.sourceFile?`<div class="small">${esc(x.sourceFile)}</div>`:''}`
+        : '-';
+
+      let action=esc(x.detail||'');
+
       if(x.type==='품목 미매칭'){
         action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }else if(x.type.includes('거래처')&&x.type.includes('미매칭')){
         action=`<div class="customerMatch"><input id="customermatch_${i}" list="customerChoices" placeholder="거래처코드 입력 (리스트에 없어도 직접 지정 가능)"><button class="btn light" onclick="saveCustomerAlias(${i},'${escAttr(x.value)}')">앞으로 이 거래처로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }
-      html+=`<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${x.count}</td><td>${action}</td></tr>`;
+
+      html+=`<tr>
+        <td>${esc(x.type)}</td>
+        <td>${sourceText}</td>
+        <td>${esc(x.value)}</td>
+        <td>${x.count}</td>
+        <td>${action}</td>
+      </tr>`;
     }
     html+='</tbody></table>';
   }
-  box.innerHTML=html; window._dedupIssues=d;
-}
 
+  box.innerHTML=html;
+  window._dedupIssues=d;
+}
 
 async function saveCustomerAlias(i,alias){
   try{
