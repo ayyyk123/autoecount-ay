@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.12</title>
+<title>아도라블 매출 자동화 v2.13</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -33,7 +33,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}.stat b{font-size:22px;display:block;margin-top:5px}.stat small{color:var(--muted)}
   .section{margin-top:16px}.section h3{font-size:16px;margin:0 0 10px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
   .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto}.msg{line-height:1.55;font-size:14px}.msg p{margin:4px 0}
-  table{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}select,input[type="text"],input[type="email"],input[type="password"]{padding:8px 9px;border:1px solid #cbd5e1;border-radius:7px;background:white} .loginrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.loginrow input{min-width:190px}.masterstat{font-size:13px;line-height:1.65}.grow{flex:1}.itemmatch{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.itemmatch input{min-width:260px}.dropzone{border:2px dashed #cbd5e1;border-radius:12px;padding:16px;background:#fff;cursor:pointer;transition:.15s;min-height:72px;display:flex;align-items:center;justify-content:center;text-align:center}.dropzone.dragover{border-color:#6366f1;background:#eef2ff}.dropzone .dztext{font-size:13px;color:#64748b;line-height:1.5}.filechips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.filechip{display:inline-flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:12px;max-width:100%}.filechip .fname{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.filechip button{border:0;background:transparent;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 1px}.filechip button:hover{color:#dc2626}.draftgroup{margin-top:10px}.draftgroup:first-child{margin-top:0}.drafttitle{font-weight:700;margin-bottom:6px}.draftempty{font-size:12px;color:#94a3b8}.detailbtn{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 8px;cursor:pointer;font-size:12px}.detailbtn:hover{background:#f8fafc}.vatdetail{padding:10px 12px;background:#f8fafc;border-radius:8px;margin:6px 0}.vatdetail table{margin-top:6px}.vatdetail .sumline{font-size:12px;margin-bottom:6px;color:#475569}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}select,input[type="text"],input[type="email"],input[type="password"]{padding:8px 9px;border:1px solid #cbd5e1;border-radius:7px;background:white} .loginrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.loginrow input{min-width:190px}.masterstat{font-size:13px;line-height:1.65}.grow{flex:1}.itemmatch{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.itemmatch input{min-width:260px}.dropzone{border:2px dashed #cbd5e1;border-radius:12px;padding:16px;background:#fff;cursor:pointer;transition:.15s;min-height:72px;display:flex;align-items:center;justify-content:center;text-align:center}.dropzone.dragover{border-color:#6366f1;background:#eef2ff}.dropzone .dztext{font-size:13px;color:#64748b;line-height:1.5}.filechips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.filechip{display:inline-flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:12px;max-width:100%}.filechip .fname{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.filechip button{border:0;background:transparent;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 1px}.filechip button:hover{color:#dc2626}.draftgroup{margin-top:10px}.draftgroup:first-child{margin-top:0}.drafttitle{font-weight:700;margin-bottom:6px}.draftempty{font-size:12px;color:#94a3b8}.detailbtn{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 8px;cursor:pointer;font-size:12px}.detailbtn:hover{background:#f8fafc}.vatdetail{padding:10px 12px;background:#f8fafc;border-radius:8px;margin:6px 0}.vatdetail table{margin-top:6px}.vatdetail .sumline{font-size:12px;margin-bottom:6px;color:#475569}.dailyTotalWrap{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 4px}.dailyTotalCard{flex:1;min-width:220px;border:1px solid #dbe2ea;border-radius:14px;background:white;padding:14px 16px}.dailyTotalCard small{display:block;color:#64748b;font-size:12px;margin-bottom:4px}.dailyTotalCard b{font-size:26px;line-height:1.2}.detailToggle{margin-top:10px}.detailToggle summary{cursor:pointer;font-weight:700;color:#334155;user-select:none}.detailToggle[open] summary{margin-bottom:10px}
   .pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#f3f4f6}.pill.warn{background:#fff7ed;color:#9a3412}.pill.ok{background:#ecfdf5;color:#065f46}
   .hidden{display:none}.footer{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.6}.mono{font-family:Consolas,monospace}.small{font-size:12px;color:var(--muted)}
   @media(max-width:850px){.grid,.stats{grid-template-columns:1fr}.head{display:block}.badge{display:inline-block;margin-top:10px}}
@@ -43,7 +43,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 <div class="wrap">
   <div class="head">
     <div><h1>매출 자동화 프로그램</h1><div class="sub">매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>품목 기준정보와 수동 매칭/VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다. 거래처리스트는 매 실행 최신 파일을 직접 사용합니다.<br>장끼·일별정산 원본과 생성된 매출자료는 Firebase에 저장하지 않습니다.</div></div>
-    <div class="badge">v2.12 · Firebase 다중 PC</div>
+    <div class="badge">v2.13 · Firebase 다중 PC</div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -82,12 +82,18 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     </div>
   </div>
 
-  <div id="settlementSummarySection" class="section hidden">
-    <h3>일별정산 최종합계</h3>
+  <div id="dailySalesTopSection" class="section hidden">
     <div class="box">
+      <div id="dailySalesTop"></div>
+    </div>
+  </div>
+
+  <div id="settlementSummarySection" class="section hidden">
+    <details class="box detailToggle">
+      <summary>매장/창고 세부 매출 계산 보기</summary>
       <div class="hint">최종합계 = 판매액 - 반품액 - S/P판매액 + S/P반품액</div>
       <div id="settlementSummaryTable"></div>
-    </div>
+    </details>
   </div>
 
   <div id="receiptSection" class="section hidden">
@@ -439,6 +445,34 @@ function analyzeSettlements(settlements,issues){
   receiptRows.sort((a,b)=>a.date.localeCompare(b.date)||a.no-b.no);
 
   return {summaries,dayTotals,receiptRows,receiptWarnings};
+}
+
+
+function formatDisplayDate(ymdStr){
+  const s=String(ymdStr||'');
+  if(!/^\d{8}$/.test(s))return s;
+  return `${Number(s.slice(4,6))}/${Number(s.slice(6,8))}`;
+}
+
+function renderDailySalesTop(dayTotals){
+  const sec=$('dailySalesTopSection'),box=$('dailySalesTop');
+  if(!dayTotals||!dayTotals.length){
+    sec.classList.add('hidden');
+    box.innerHTML='';
+    return;
+  }
+  sec.classList.remove('hidden');
+
+  let h='<div class="dailyTotalWrap">';
+  const one=dayTotals.length===1;
+  for(const r of dayTotals){
+    const label=one
+      ? `오늘 최종매출 · ${formatDisplayDate(r.date)}`
+      : `${formatDisplayDate(r.date)} 최종매출`;
+    h+=`<div class="dailyTotalCard"><small>${label}</small><b>${Number(r.finalTotal||0).toLocaleString('ko-KR')}원</b></div>`;
+  }
+  h+='</div>';
+  box.innerHTML=h;
 }
 
 function renderSettlementSummaries(summaries,dayTotals){
@@ -833,7 +867,7 @@ function renderVat(pending){
 async function applyVatChoices(){try{const overrides={...(state.parsed?.ticketOverrides||{})},toSave=[]; let missing=0; document.querySelectorAll('select[data-vat-key]').forEach(s=>{if(!s.value){missing++;return;} overrides[s.dataset.vatKey]=s.value; const cb=document.querySelector(`input[data-vat-save="${CSS.escape(s.dataset.vatKey)}"]`); if(cb?.checked)toSave.push({customer:s.dataset.vatCustomer,mode:s.value});}); if(missing)throw new Error('VAT 검수 항목을 모두 선택해 주세요.'); for(const r of toSave){await userCol('vatRules').doc(safeId(r.customer)).set({customer:r.customer,mode:r.mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); cloud.vatRules.set(norm(r.customer),r.mode);} await processAll(overrides);}catch(e){alert(e.message||e)}}
 
 async function processAll(ticketOverrides={}){try{if(!user||!cloud.ready)throw new Error('로그인 후 Firebase 기준정보 동기화를 완료해 주세요.'); if(typeof XLSX==='undefined')throw new Error('엑셀 라이브러리를 불러오지 못했습니다.'); const jangki=selectedFiles.jangki; if(!jangki.length)throw new Error('매장·창고 장끼 엑셀을 선택해 주세요.'); if(!selectedFiles.customer.length)throw new Error('이번 실행에 사용할 최신 거래처리스트를 넣어 주세요.'); if(!cloud.items.length)throw new Error('최초 1회 품목리스트를 업데이트해 주세요.'); $('statusBox').innerHTML='<p>장끼 파일을 읽고 변환 중입니다...</p>'; const jwbs=await Promise.all(jangki.map(readWb)); const classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])); const details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'); const unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name); const issues=[]; if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'}); if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'}); const runtimeCustomer=await buildRuntimeCustomerMaps(); const settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues); state={salesRows:br.out,cashRows:mc.cash,cashReceiptRows:settlementAnalysis.receiptRows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,receiptWarnings:settlementAnalysis.receiptWarnings,issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length},parsed:{tickets,memo:mc.memo,ticketOverrides}}; finishRender();}catch(e){showError(e)}}
-function finishRender(){const d=dedupeIssues(state.issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length; renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]); renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]); $('stats').classList.remove('hidden'); $('sSales').textContent=state.salesRows.length; $('sCash').textContent=state.cashRows.length; $('sVat').textContent=state.vatPending.length; $('sCust').textContent=custN; $('sItem').textContent=itemN; renderVat(state.vatPending); renderAutoVat(state.autoVatApplied||[]); $('issueSection').classList.remove('hidden'); renderIssues(state.issues,state.meta); const blocking=state.vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||state.meta.unclassifiedFiles.length>0; $('salesBtn').disabled=blocking; $('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0; $('receiptBtn').disabled=!(state.cashReceiptRows||[]).length; $('reviewBtn').disabled=false; let msg=`<p><b>판매 ${state.salesRows.length.toLocaleString()}행</b>, 현금 ${state.cashRows.length.toLocaleString()}행을 만들었습니다.</p>`; if(state.meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(state.meta.customerFileName)}</b> · ${Number(state.meta.customerCount||0).toLocaleString()}개</p>`; if((state.cashReceiptRows||[]).length)msg+=`<p class="ok">✓ 일반거래처 현금영수증 발급대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건을 찾았습니다.</p>`; if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다. 아래 자동적용 목록에서 확인할 수 있습니다.</p>`; if(state.meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${state.meta.sampleExcludedTickets.toLocaleString()}장끼 / ${state.meta.sampleExcludedRows.toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`; if(blocking)msg+='<p class="warn">완료본은 아직 잠겨 있습니다. 아래 VAT 검수(매장 신규규칙/창고 부가세행 누락 확인)와 미매칭 항목을 먼저 해결해 주세요.</p>'; else msg+='<p class="ok">✓ 검수 통과. 이카운트 완료본을 다운로드할 수 있습니다.</p>'; $('statusBox').innerHTML=msg;}
+function finishRender(){const d=dedupeIssues(state.issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length; renderDailySalesTop(state.settlementDayTotals||[]); renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]); renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]); $('stats').classList.remove('hidden'); $('sSales').textContent=state.salesRows.length; $('sCash').textContent=state.cashRows.length; $('sVat').textContent=state.vatPending.length; $('sCust').textContent=custN; $('sItem').textContent=itemN; renderVat(state.vatPending); renderAutoVat(state.autoVatApplied||[]); $('issueSection').classList.remove('hidden'); renderIssues(state.issues,state.meta); const blocking=state.vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||state.meta.unclassifiedFiles.length>0; $('salesBtn').disabled=blocking; $('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0; $('receiptBtn').disabled=!(state.cashReceiptRows||[]).length; $('reviewBtn').disabled=false; let msg=`<p><b>판매 ${state.salesRows.length.toLocaleString()}행</b>, 현금 ${state.cashRows.length.toLocaleString()}행을 만들었습니다.</p>`; if(state.meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(state.meta.customerFileName)}</b> · ${Number(state.meta.customerCount||0).toLocaleString()}개</p>`; if((state.cashReceiptRows||[]).length)msg+=`<p class="ok">✓ 일반거래처 현금영수증 발급대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건을 찾았습니다.</p>`; if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다. 아래 자동적용 목록에서 확인할 수 있습니다.</p>`; if(state.meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${state.meta.sampleExcludedTickets.toLocaleString()}장끼 / ${state.meta.sampleExcludedRows.toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`; if(blocking)msg+='<p class="warn">완료본은 아직 잠겨 있습니다. 아래 VAT 검수(매장 신규규칙/창고 부가세행 누락 확인)와 미매칭 항목을 먼저 해결해 주세요.</p>'; else msg+='<p class="ok">✓ 검수 통과. 이카운트 완료본을 다운로드할 수 있습니다.</p>'; $('statusBox').innerHTML=msg;}
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx')}
 function downloadCash(){XLSX.writeFile(makeWorkbook(CASH_HEADERS,state.cashRows,'입금보고서'),'이카운트_현금입력_자동완성.xlsx')}
@@ -843,7 +877,7 @@ function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
-$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 검수 중인 선택 파일을 이 PC에서 모두 비울까요?'))return; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; $('stats').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
+$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 검수 중인 선택 파일을 이 PC에서 모두 비울까요?'))return; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 renderAllDraftFiles(); restoreDraftFiles().finally(initFirebase);
 </script>
