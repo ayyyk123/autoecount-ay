@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.22</title>
+<title>아도라블 매출 자동화 v2.23</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -137,6 +137,27 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   details>summary .explainBtn{margin-left:6px;display:inline-flex;vertical-align:middle}
   .footerExplainWrap{margin-top:18px;display:flex;align-items:flex-start;gap:6px}
   .footerExplainWrap .footer{margin-top:0;flex:1}
+  #dailySalesTopSection,#settlementSummarySection,#draftListSection{display:none!important}
+  .jobRefList{display:flex;flex-direction:column;gap:4px;align-items:flex-start;max-width:245px;margin:0 auto;text-align:left}
+  .jobRefName{font-size:11px;line-height:1.35;color:#475569;word-break:break-all}
+  .jobRefName.customer{color:#4338ca}
+  .jobSalesDetailHead{margin-bottom:8px}
+  .reviewBoard{display:flex;flex-direction:column;gap:10px}
+  .reviewItemPanel{border:1px solid #dbe2ea;border-radius:11px;background:#fff;overflow:hidden}
+  .reviewItemPanel.reviewDragging{opacity:.5}
+  .reviewItemPanel.source-hidden{display:none}
+  .reviewItemHeader{display:flex;align-items:center;gap:8px;padding:10px 11px;cursor:pointer;user-select:none;background:#fafafa;border-bottom:1px solid #e5e7eb}
+  .reviewItemPanel.isCollapsed>.reviewItemHeader{border-bottom-color:transparent}
+  .reviewItemBody{padding:11px}
+  .reviewItemPanel.isCollapsed>.reviewItemBody{display:none}
+  .reviewItemDrag{font-size:15px;color:#94a3b8;cursor:grab;line-height:1;letter-spacing:-4px;padding-right:3px}
+  .reviewItemTitle{font-weight:800;flex:1;color:#1f2937}
+  .reviewItemControls{display:flex;gap:4px}
+  .reviewItemMoveBtn{appearance:none;border:1px solid #dbe2ea;background:#fff;color:#64748b;border-radius:7px;width:27px;height:27px;line-height:23px;padding:0;cursor:pointer;font-size:11px}
+  .reviewItemMoveBtn:hover{background:#f8fafc;color:#111827}
+  .reviewItemCaret{width:18px;text-align:center;color:#64748b;font-size:13px}
+  .reviewGroupEmpty{padding:14px;color:#94a3b8;text-align:center;font-size:12px}
+
 
   .legacyOutputButtons{display:none!important}
 
@@ -198,7 +219,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v2.22 · Firebase 작업동기화</div>
+      <div class="badge">v2.23 · Firebase 작업동기화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -275,6 +296,10 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="stat"><small>품목 미매칭</small><b id="sItem">0</b></div>
   </div>
 
+  <div id="reviewGroupSource">
+    <div id="reviewBoard" class="reviewBoard"></div>
+    <div id="reviewGroupEmpty" class="reviewGroupEmpty">현재 확인이 필요한 검수 항목이 없습니다.</div>
+  </div>
   <div id="vatSection" class="section hidden"><h3>VAT 검수 필요 장끼</h3><div class="box"><div class="hint">부가세 확인이 필요한 장끼입니다. <b>매장</b>은 부가세행이 없고 아직 학습/저장된 규칙이 없을 때 확인하며, <b>창고</b>는 부가세행이 없으면 입력누락 여부를 놓치지 않도록 항상 확인합니다. 매장은 포함이면 단가÷1.1, 별도면 단가 그대로이고, 창고는 단가를 수정하지 않습니다. 확인이 끝나기 전에는 완료본이 잠깁니다.</div><div id="vatTable"></div></div></div>
   <div id="vatAutoSection" class="section hidden">
     <h3>이번 변환에서 VAT 자동적용된 장끼 <span id="vatAutoCount" class="small">(0개)</span></h3>
@@ -1358,12 +1383,44 @@ function jobOutputCell(job,type){
   if(type==='sales'){if(m.vat)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','vatPending')">VAT 검수 ${m.vat}건</button>`);if(m.salesCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.salesCust}건</button>`);if(m.item)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">품목 미매칭 ${m.item}건</button>`);if(!m.vat&&!m.salesCust&&!m.item&&!m.fatal)lines.push('<span class="jobComplete">완료</span>');can=m.salesBlocking===0}
   const stamp=fmtJobDownloadTime(dl[type]);lines.push(`<div><button class="jobDownloadBtn" ${can?'':'disabled'} onclick="downloadJobOutput('${job.id}','${type}')">다운로드</button></div>`);if(stamp)lines.push(`<div class="jobDownloadTime">${stamp}</div>`);return lines.join('')
 }
+function jobReferenceCell(job){
+  const refs=Array.isArray(job.fileRefs)?job.fileRefs:[];
+  if(!refs.length)return '<span class="small">없음</span>';
+  const unique=[],seen=new Set();
+  for(const r of refs){
+    const name=String(r.name||'').trim();
+    if(!name||seen.has(name))continue;
+    seen.add(name);unique.push({name,kind:r.kind||''});
+  }
+  if(!unique.length)return '<span class="small">없음</span>';
+  return `<div class="jobRefList">${unique.map(r=>`<div class="jobRefName ${r.kind==='customer'?'customer':''}">${esc(r.name)}</div>`).join('')}</div>`;
+}
 function renderJobList(){
-  const box=$('jobListTable');if(!box)return;if(!user){box.innerHTML='<div class="jobEmpty">로그인하면 Firebase에 저장된 작업목록을 불러옵니다.</div>';return}if(!jobCache.length){box.innerHTML='<div class="jobEmpty">아직 Firebase에 저장된 매출변환 작업이 없습니다.</div>';return}
-  let h='<table class="jobTable"><thead><tr><th>상태</th><th>작업</th><th>일자</th><th>구분</th><th>매출액</th><th>현금영수증변환</th><th>현금입력변환</th><th>판매입력변환</th></tr></thead><tbody>';
-  for(const job of jobCache){const sales=salesForJob(job),rows=sales.length?sales:[{date:'',loc:'',finalTotal:0}],rs=rows.length,si=jobStatusInfo(job);rows.forEach((r,i)=>{h+='<tr>';if(i===0){const _req=jobDownloadRequirements(job);
-        h+=`<td rowspan="${rs}"><span class="jobDot ${si.cls}" title="${escAttr(si.title)}"></span></td><td rowspan="${rs}"><button class="jobNameBtn" onclick="openJobAll('${job.id}')">${esc(job.name||'매출변환')}</button><span class="jobSub">매출변환</span><button class="jobDeleteBtn" ${_req.allDone?'':'disabled'} onclick="deleteFirebaseJob('${job.id}')">Firebase 자료삭제</button>${_req.allDone?'':'<div class="jobDeleteHint">필요한 다운로드 완료 후 활성화</div>'}</td>`}h+=`<td>${fmtJobDate(r.date)}</td><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':''}</td><td><button class="jobAmountBtn" onclick="showJobSalesDetail('${job.id}','${r.date}','${r.loc}')">${Number(r.finalTotal||0).toLocaleString('ko-KR')}</button></td>`;if(i===0)h+=`<td rowspan="${rs}">${jobOutputCell(job,'receipt')}</td><td rowspan="${rs}">${jobOutputCell(job,'cash')}</td><td rowspan="${rs}">${jobOutputCell(job,'sales')}</td>`;h+='</tr>'})}
-  box.innerHTML=h+'</tbody></table>'
+  const box=$('jobListTable');if(!box)return;
+  if(!user){box.innerHTML='<div class="jobEmpty">로그인하면 Firebase에 저장된 작업목록을 불러옵니다.</div>';return}
+  if(!jobCache.length){box.innerHTML='<div class="jobEmpty">아직 Firebase에 저장된 매출변환 작업이 없습니다.</div>';return}
+  let h='<table class="jobTable"><thead><tr><th>상태</th><th>작업</th><th>일자</th><th>구분</th><th>매출액</th><th>현금영수증변환</th><th>현금입력변환</th><th>판매입력변환</th><th>참고자료</th></tr></thead><tbody>';
+  for(const job of jobCache){
+    const sales=salesForJob(job),rows=sales.length?sales:[{date:'',loc:'',finalTotal:0}],rs=rows.length,si=jobStatusInfo(job);
+    rows.forEach((r,i)=>{
+      h+='<tr>';
+      if(i===0){
+        const _req=jobDownloadRequirements(job);
+        h+=`<td rowspan="${rs}"><span class="jobDot ${si.cls}" title="${escAttr(si.title)}"></span></td>`;
+        h+=`<td rowspan="${rs}"><button class="jobNameBtn" onclick="openJobAll('${job.id}')">${esc(job.name||'매출변환')}</button><span class="jobSub">매출변환</span><button class="jobDeleteBtn" ${_req.allDone?'':'disabled'} onclick="deleteFirebaseJob('${job.id}')">Firebase 자료삭제</button>${_req.allDone?'':'<div class="jobDeleteHint">필요한 다운로드 완료 후 활성화</div>'}</td>`;
+      }
+      h+=`<td>${fmtJobDate(r.date)}</td><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':''}</td>`;
+      h+=`<td><button class="jobAmountBtn" onclick="showJobSalesDetail('${job.id}','${r.date}','${r.loc}')">${Number(r.finalTotal||0).toLocaleString('ko-KR')}</button></td>`;
+      if(i===0){
+        h+=`<td rowspan="${rs}">${jobOutputCell(job,'receipt')}</td>`;
+        h+=`<td rowspan="${rs}">${jobOutputCell(job,'cash')}</td>`;
+        h+=`<td rowspan="${rs}">${jobOutputCell(job,'sales')}</td>`;
+        h+=`<td rowspan="${rs}">${jobReferenceCell(job)}</td>`;
+      }
+      h+='</tr>';
+    });
+  }
+  box.innerHTML=h+'</tbody></table>';
 }
 
 async function recordJobDownload(id,type){
@@ -1397,19 +1454,55 @@ async function activateJob(id){
     return job;
   }catch(e){loadingJob=false;throw e}
 }
-function expandMenu(id){if(!menuBoard)return;const p=menuBoard.querySelector(`.menuPanel[data-menu-id="${CSS.escape(id)}"]`);if(!p)return;p.classList.remove('source-hidden');setMenuCollapsed(p,false,false)}
-async function openJobAll(id){try{await activateJob(id);for(const x of['dailySales','settlement','receipt','results','vatPending','vatAuto','issues','draft'])expandMenu(x);(menuBoard?.querySelector('.menuPanel[data-menu-id="dailySales"]:not(.source-hidden)')||menuBoard)?.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){showError(e)}}
-async function focusJobSection(id,section){try{await activateJob(id);expandMenu(section);menuBoard?.querySelector(`.menuPanel[data-menu-id="${CSS.escape(section)}"]`)?.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){showError(e)}}
-function showJobSalesDetail(id,date,loc){const j=jobCache.find(x=>x.id===id),r=j&&salesForJob(j).find(x=>String(x.date)===String(date)&&x.loc===loc),box=$('jobSalesDetail');if(!r||!box)return;const m=v=>Number(v||0).toLocaleString('ko-KR');box.classList.remove('hidden');box.innerHTML=`<div class="jobSalesDetailHead"><b>${fmtJobDate(r.date)} · ${r.loc==='store'?'매장':'창고'} 세부금액</b><button class="jobCloseBtn" onclick="document.getElementById('jobSalesDetail').classList.add('hidden')">×</button></div><div class="jobSalesDetailGrid"><div><small>판매액</small><b>${m(r.sales)}원</b></div><div><small>반품액</small><b>${m(r.returns)}원</b></div><div><small>S/P 판매액</small><b>${m(r.spSales)}원</b></div><div><small>S/P 반품액</small><b>${m(r.spReturns)}원</b></div><div><small>최종매출</small><b>${m(r.finalTotal)}원</b></div></div>`}
+function expandMenu(id){
+  if(!menuBoard)return null;
+  if(id==='vatPending'||id==='issues')return expandReviewItem(id);
+  const p=menuBoard.querySelector(`:scope > .menuPanel[data-menu-id="${CSS.escape(id)}"]`);
+  if(!p)return null;
+  p.classList.remove('source-hidden');
+  setMenuCollapsed(p,false,false);
+  return p;
+}
+async function openJobAll(id){
+  try{
+    await activateJob(id);
+    menuBoard?.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){showError(e)}
+}
+async function focusJobSection(id,section){
+  try{
+    await activateJob(id);
+    const target=expandMenu(section);
+    target?.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){showError(e)}
+}
+function showJobSalesDetail(id,date,loc){
+  const j=jobCache.find(x=>x.id===id);
+  const r=j&&salesForJob(j).find(x=>String(x.date)===String(date)&&x.loc===loc);
+  const box=$('jobSalesDetail');
+  if(!r||!box)return;
+  const key=`${id}|${date}|${loc}`;
+  if(!box.classList.contains('hidden')&&box.dataset.detailKey===key){
+    box.classList.add('hidden');
+    box.dataset.detailKey='';
+    box.innerHTML='';
+    return;
+  }
+  const m=v=>Number(v||0).toLocaleString('ko-KR');
+  box.dataset.detailKey=key;
+  box.classList.remove('hidden');
+  box.innerHTML=`<div class="jobSalesDetailHead"><b>${fmtJobDate(r.date)} · ${r.loc==='store'?'매장':'창고'} 세부금액</b></div><div class="jobSalesDetailGrid"><div><small>판매액</small><b>${m(r.sales)}원</b></div><div><small>반품액</small><b>${m(r.returns)}원</b></div><div><small>S/P 판매액</small><b>${m(r.spSales)}원</b></div><div><small>S/P 반품액</small><b>${m(r.spReturns)}원</b></div><div><small>최종매출</small><b>${m(r.finalTotal)}원</b></div></div>`;
+}
 async function downloadJobOutput(id,type){try{await activateJob(id);if(type==='sales')downloadSales(id);else if(type==='cash')downloadCash(id);else if(type==='receipt')await downloadCashReceipt(id)}catch(e){showError(e)}}
 function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle');if(!v||!h)return;const saved=Number(localStorage.getItem(JOB_LIST_HEIGHT_KEY));if(saved>=150&&saved<=720)v.style.height=saved+'px';h.addEventListener('pointerdown',e=>{e.preventDefault();const y=e.clientY,hh=v.getBoundingClientRect().height;h.setPointerCapture(e.pointerId);const move=ev=>v.style.height=Math.max(150,Math.min(720,hh+(ev.clientY-y)))+'px';const up=ev=>{h.releasePointerCapture(ev.pointerId);localStorage.setItem(JOB_LIST_HEIGHT_KEY,String(Math.round(v.getBoundingClientRect().height)));h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up)};h.addEventListener('pointermove',move);h.addEventListener('pointerup',up)})}
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 const MENU_PREF_KEY='autoecount-ay-menu-prefs-v1';
 const MENU_DEFAULT_ORDER=[
-  'jobs','draft',
-  'dailySales','settlement','receipt','results','vatPending','vatAuto','issues'
+  'jobs','reviewGroup','receipt','vatAuto','results'
 ];
+const REVIEW_DEFAULT_ORDER=['vatPending','issues'];
 let menuBoard=null;
+let reviewBoard=null;
 let menuSaveTimer=null;
 
 function getLocalMenuPrefs(){
@@ -1420,7 +1513,7 @@ function getLocalMenuPrefs(){
 }
 
 function collectMenuPrefs(){
-  if(!menuBoard)return {order:[...MENU_DEFAULT_ORDER],collapsed:{}};
+  if(!menuBoard)return {order:[...MENU_DEFAULT_ORDER],collapsed:{},reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed:{}};
   const order=[...menuBoard.querySelectorAll(':scope > .menuPanel')].map(p=>p.dataset.menuId);
   const collapsed={};
   for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
@@ -1431,7 +1524,15 @@ function collectMenuPrefs(){
   }
   const baseGroup=$('baseDataGroup');
   if(baseGroup)collapsed.baseDataGroup=baseGroup.classList.contains('isCollapsed');
-  return {order,collapsed};
+
+  const reviewOrder=reviewBoard?[...reviewBoard.querySelectorAll(':scope > .reviewItemPanel')].map(p=>p.dataset.reviewId):[...REVIEW_DEFAULT_ORDER];
+  const reviewCollapsed={};
+  if(reviewBoard){
+    for(const p of reviewBoard.querySelectorAll(':scope > .reviewItemPanel')){
+      reviewCollapsed[p.dataset.reviewId]=p.classList.contains('isCollapsed');
+    }
+  }
+  return {order,collapsed,reviewOrder,reviewCollapsed};
 }
 
 function applyMenuPrefs(pref){
@@ -1439,7 +1540,6 @@ function applyMenuPrefs(pref){
 
   const order=Array.isArray(pref.order)?pref.order:[];
   const panels=new Map([...menuBoard.querySelectorAll(':scope > .menuPanel')].map(p=>[p.dataset.menuId,p]));
-
   for(const id of order){
     const p=panels.get(id);
     if(p){menuBoard.appendChild(p);panels.delete(id);}
@@ -1452,20 +1552,39 @@ function applyMenuPrefs(pref){
 
   const c=pref.collapsed&&typeof pref.collapsed==='object'?pref.collapsed:{};
   for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
-    if(Object.prototype.hasOwnProperty.call(c,p.dataset.menuId)){
-      setMenuCollapsed(p,!!c[p.dataset.menuId],false);
-    }
+    const collapsed=Object.prototype.hasOwnProperty.call(c,p.dataset.menuId)?!!c[p.dataset.menuId]:true;
+    setMenuCollapsed(p,collapsed,false);
   }
   for(const card of document.querySelectorAll('#topFixedGrid > .card[data-fixed-id]')){
-    if(Object.prototype.hasOwnProperty.call(c,card.dataset.fixedId)){
-      card.classList.toggle('fixedCollapsed',!!c[card.dataset.fixedId]);
-    }
+    const collapsed=Object.prototype.hasOwnProperty.call(c,card.dataset.fixedId)?!!c[card.dataset.fixedId]:true;
+    card.classList.toggle('fixedCollapsed',collapsed);
   }
   const baseGroup=$('baseDataGroup');
-  if(baseGroup&&Object.prototype.hasOwnProperty.call(c,'baseDataGroup')){
-    baseGroup.classList.toggle('isCollapsed',!!c.baseDataGroup);
+  if(baseGroup){
+    const collapsed=Object.prototype.hasOwnProperty.call(c,'baseDataGroup')?!!c.baseDataGroup:true;
+    baseGroup.classList.toggle('isCollapsed',collapsed);
     const caret=baseGroup.querySelector('.baseDataGroupCaret');
-    if(caret)caret.textContent=c.baseDataGroup?'▸':'▾';
+    if(caret)caret.textContent=collapsed?'▸':'▾';
+  }
+
+  if(reviewBoard){
+    const rOrder=Array.isArray(pref.reviewOrder)?pref.reviewOrder:[];
+    const items=new Map([...reviewBoard.querySelectorAll(':scope > .reviewItemPanel')].map(p=>[p.dataset.reviewId,p]));
+    for(const id of rOrder){
+      const p=items.get(id);
+      if(p){reviewBoard.appendChild(p);items.delete(id);}
+    }
+    for(const id of REVIEW_DEFAULT_ORDER){
+      const p=items.get(id);
+      if(p){reviewBoard.appendChild(p);items.delete(id);}
+    }
+    for(const p of items.values())reviewBoard.appendChild(p);
+
+    const rc=pref.reviewCollapsed&&typeof pref.reviewCollapsed==='object'?pref.reviewCollapsed:{};
+    for(const p of reviewBoard.querySelectorAll(':scope > .reviewItemPanel')){
+      const collapsed=Object.prototype.hasOwnProperty.call(rc,p.dataset.reviewId)?!!rc[p.dataset.reviewId]:true;
+      setReviewCollapsed(p,collapsed,false);
+    }
   }
 }
 
@@ -1475,6 +1594,8 @@ async function writeMenuPrefsRemote(pref){
     await userCol('settings').doc('ui').set({
       menuOrder:pref.order,
       menuCollapsed:pref.collapsed,
+      reviewOrder:pref.reviewOrder||REVIEW_DEFAULT_ORDER,
+      reviewCollapsed:pref.reviewCollapsed||{},
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     },{merge:true});
   }catch(e){
@@ -1497,7 +1618,9 @@ async function loadRemoteMenuPrefs(){
       const d=snap.data()||{};
       const pref={
         order:Array.isArray(d.menuOrder)?d.menuOrder:MENU_DEFAULT_ORDER,
-        collapsed:d.menuCollapsed&&typeof d.menuCollapsed==='object'?d.menuCollapsed:{}
+        collapsed:d.menuCollapsed&&typeof d.menuCollapsed==='object'?d.menuCollapsed:{},
+        reviewOrder:Array.isArray(d.reviewOrder)?d.reviewOrder:REVIEW_DEFAULT_ORDER,
+        reviewCollapsed:d.reviewCollapsed&&typeof d.reviewCollapsed==='object'?d.reviewCollapsed:{}
       };
       applyMenuPrefs(pref);
       try{localStorage.setItem(MENU_PREF_KEY,JSON.stringify(pref));}catch(e){}
@@ -1633,6 +1756,121 @@ function makeMenuPanel(id,title,source){
 
 
 
+
+function setReviewCollapsed(panel,collapsed,save=true){
+  if(!panel)return;
+  panel.classList.toggle('isCollapsed',collapsed);
+  const caret=panel.querySelector(':scope > .reviewItemHeader .reviewItemCaret');
+  if(caret)caret.textContent=collapsed?'▸':'▾';
+  if(save)scheduleMenuPrefsSave();
+}
+function moveReviewPanel(panel,dir){
+  if(!panel||!reviewBoard)return;
+  const items=[...reviewBoard.querySelectorAll(':scope > .reviewItemPanel')];
+  const i=items.indexOf(panel),j=i+dir;
+  if(i<0||j<0||j>=items.length)return;
+  if(dir<0)reviewBoard.insertBefore(panel,items[j]);
+  else reviewBoard.insertBefore(items[j],panel);
+  scheduleMenuPrefsSave();
+}
+function syncReviewVisibility(panel,source){
+  const sync=()=>{
+    panel.classList.toggle('source-hidden',source.classList.contains('hidden'));
+    updateReviewGroupVisibility();
+  };
+  sync();
+  new MutationObserver(sync).observe(source,{attributes:true,attributeFilter:['class']});
+}
+function updateReviewGroupVisibility(){
+  const source=$('reviewGroupSource'),empty=$('reviewGroupEmpty');
+  if(!source||!reviewBoard)return;
+  const visible=[...reviewBoard.querySelectorAll(':scope > .reviewItemPanel')].filter(p=>!p.classList.contains('source-hidden'));
+  if(empty)empty.classList.toggle('hidden',visible.length>0);
+  source.classList.toggle('hidden',visible.length===0);
+}
+function makeReviewPanel(id,title,source){
+  if(!source||!reviewBoard)return null;
+  const panel=document.createElement('div');
+  panel.className='reviewItemPanel';
+  panel.dataset.reviewId=id;
+
+  const header=document.createElement('div');
+  header.className='reviewItemHeader';
+  header.draggable=true;
+
+  const drag=document.createElement('span');
+  drag.className='reviewItemDrag';
+  drag.textContent='⋮⋮';
+  drag.title='드래그해서 검수항목 순서 변경';
+
+  const titleEl=document.createElement('div');
+  titleEl.className='reviewItemTitle';
+  titleEl.textContent=title;
+
+  const controls=document.createElement('div');
+  controls.className='reviewItemControls';
+  const up=document.createElement('button');
+  up.type='button';up.className='reviewItemMoveBtn';up.textContent='▲';up.title='위로 이동';
+  up.addEventListener('click',e=>{e.stopPropagation();moveReviewPanel(panel,-1)});
+  const down=document.createElement('button');
+  down.type='button';down.className='reviewItemMoveBtn';down.textContent='▼';down.title='아래로 이동';
+  down.addEventListener('click',e=>{e.stopPropagation();moveReviewPanel(panel,1)});
+  controls.append(up,down);
+
+  const caret=document.createElement('span');
+  caret.className='reviewItemCaret';
+  caret.textContent='▸';
+
+  header.append(drag,titleEl,controls,caret);
+  const body=document.createElement('div');
+  body.className='reviewItemBody';
+
+  for(const ch of [...source.children]){
+    if(ch.tagName==='H2'||ch.tagName==='H3'){ch.classList.add('menuOriginalTitle');break;}
+  }
+  body.appendChild(source);
+  panel.append(header,body);
+  reviewBoard.appendChild(panel);
+  setReviewCollapsed(panel,true,false);
+
+  header.addEventListener('click',e=>{
+    if(e.target.closest('.reviewItemMoveBtn,.explainBtn'))return;
+    setReviewCollapsed(panel,!panel.classList.contains('isCollapsed'),true);
+  });
+  header.addEventListener('dragstart',e=>{
+    panel.classList.add('reviewDragging');
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain','review:'+id);
+  });
+  header.addEventListener('dragend',()=>panel.classList.remove('reviewDragging'));
+  panel.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move'});
+  panel.addEventListener('drop',e=>{
+    e.preventDefault();
+    const data=e.dataTransfer.getData('text/plain');
+    if(!data.startsWith('review:'))return;
+    const fromId=data.slice(7);
+    const from=reviewBoard.querySelector(`.reviewItemPanel[data-review-id="${CSS.escape(fromId)}"]`);
+    if(!from||from===panel)return;
+    const rect=panel.getBoundingClientRect(),after=e.clientY>rect.top+rect.height/2;
+    if(after)reviewBoard.insertBefore(from,panel.nextSibling);
+    else reviewBoard.insertBefore(from,panel);
+    from.classList.remove('reviewDragging');
+    scheduleMenuPrefsSave();
+  });
+  syncReviewVisibility(panel,source);
+  return panel;
+}
+function expandReviewItem(id){
+  const outer=menuBoard?.querySelector(':scope > .menuPanel[data-menu-id="reviewGroup"]');
+  if(outer)setMenuCollapsed(outer,false,false);
+  const item=reviewBoard?.querySelector(`.reviewItemPanel[data-review-id="${CSS.escape(id)}"]`);
+  if(item){
+    item.classList.remove('source-hidden');
+    setReviewCollapsed(item,false,false);
+  }
+  return item||outer||null;
+}
+
 function setupExplanationToggles(){
   const sources=[
     ...document.querySelectorAll('.hint'),
@@ -1650,9 +1888,13 @@ function setupExplanationToggles(){
     el.id=id;
 
     let target=null;
-    const panel=el.closest('.menuPanel');
-    if(panel){
-      target=panel.querySelector(':scope > .menuHeader');
+    const reviewPanel=el.closest('.reviewItemPanel');
+    if(reviewPanel){
+      target=reviewPanel.querySelector(':scope > .reviewItemHeader');
+    }
+    if(!target){
+      const panel=el.closest('.menuPanel');
+      if(panel)target=panel.querySelector(':scope > .menuHeader');
     }
     if(!target){
       const card=el.closest('#topFixedGrid > .card');
@@ -1693,6 +1935,10 @@ function setupExplanationToggles(){
 
     if(target.classList?.contains('menuHeader')){
       const controls=target.querySelector('.menuControls');
+      if(controls)target.insertBefore(btn,controls);
+      else target.appendChild(btn);
+    }else if(target.classList?.contains('reviewItemHeader')){
+      const controls=target.querySelector('.reviewItemControls');
       if(controls)target.insertBefore(btn,controls);
       else target.appendChild(btn);
     }else{
@@ -1739,12 +1985,10 @@ function setupBaseDataGroup(){
     scheduleMenuPrefsSave();
   });
   const pref=getLocalMenuPrefs();
-  if(pref?.collapsed&&Object.prototype.hasOwnProperty.call(pref.collapsed,'baseDataGroup')){
-    const collapsed=!!pref.collapsed.baseDataGroup;
-    group.classList.toggle('isCollapsed',collapsed);
-    const caret=group.querySelector('.baseDataGroupCaret');
-    if(caret)caret.textContent=collapsed?'▸':'▾';
-  }
+  const collapsed=(pref?.collapsed&&Object.prototype.hasOwnProperty.call(pref.collapsed,'baseDataGroup'))?!!pref.collapsed.baseDataGroup:true;
+  group.classList.toggle('isCollapsed',collapsed);
+  const caret=group.querySelector('.baseDataGroupCaret');
+  if(caret)caret.textContent=collapsed?'▸':'▾';
 }
 
 function setupFixedTopCards(){
@@ -1769,12 +2013,9 @@ function setupFixedTopCards(){
     });
   }
   const pref=getLocalMenuPrefs();
-  if(pref?.collapsed){
-    for(const card of grid.querySelectorAll(':scope > .card[data-fixed-id]')){
-      if(Object.prototype.hasOwnProperty.call(pref.collapsed,card.dataset.fixedId)){
-        card.classList.toggle('fixedCollapsed',!!pref.collapsed[card.dataset.fixedId]);
-      }
-    }
+  for(const card of grid.querySelectorAll(':scope > .card[data-fixed-id]')){
+    const collapsed=(pref?.collapsed&&Object.prototype.hasOwnProperty.call(pref.collapsed,card.dataset.fixedId))?!!pref.collapsed[card.dataset.fixedId]:true;
+    card.classList.toggle('fixedCollapsed',collapsed);
   }
 }
 
@@ -1783,17 +2024,13 @@ function setupMenuSystem(){
   const head=wrap?.querySelector('.head');
   if(!wrap||!head||document.getElementById('menuBoard'))return;
 
-  // 기존 소스들을 이동하기 전에 참조 확보
   const jobsSource=$('jobListSource');
-  const draftSource=$('draftListSection');
-  const dailySource=$('dailySalesTopSection');
-  const settlementSource=$('settlementSummarySection');
   const receiptSource=$('receiptSection');
   const vatPendingSource=$('vatSection');
   const vatAutoSource=$('vatAutoSection');
   const issueSource=$('issueSection');
+  const reviewGroupSource=$('reviewGroupSource');
 
-  // 상태박스 + 통계는 한 메뉴로 묶음
   const resultsSource=document.createElement('div');
   resultsSource.id='resultsMenuSource';
   resultsSource.className='menuInnerSource';
@@ -1806,15 +2043,19 @@ function setupMenuSystem(){
 
   const toolbar=document.createElement('div');
   toolbar.className='menuToolbar';
-  toolbar.innerHTML='<div class="small explainSource">작업/검수 메뉴: 제목줄 클릭 = 접기/펴기 · 드래그 또는 ▲▼ = 순서 변경</div>';
+  toolbar.innerHTML='<div class="small explainSource">작업 메뉴는 제목줄 클릭으로 접기/펴기, 드래그 또는 ▲▼로 순서를 바꿀 수 있습니다. 검수 항목은 검수 박스 안에서 별도로 순서를 바꿀 수 있습니다.</div>';
 
   const reset=document.createElement('button');
   reset.type='button';
   reset.className='menuResetBtn';
   reset.textContent='메뉴 배치 초기화';
   reset.onclick=async()=>{
-    if(!confirm('메뉴 순서와 접힘 상태를 기본값으로 되돌릴까요?'))return;
-    const pref={order:[...MENU_DEFAULT_ORDER],collapsed:{}};
+    if(!confirm('메뉴 순서와 접힘 상태를 기본값(모두 접힘)으로 되돌릴까요?'))return;
+    const collapsed={baseDataGroup:true,jangki:true,customer:true,item:true};
+    for(const id of MENU_DEFAULT_ORDER)collapsed[id]=true;
+    const reviewCollapsed={};
+    for(const id of REVIEW_DEFAULT_ORDER)reviewCollapsed[id]=true;
+    const pref={order:[...MENU_DEFAULT_ORDER],collapsed,reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed};
     applyMenuPrefs(pref);
     try{localStorage.setItem(MENU_PREF_KEY,JSON.stringify(pref));}catch(e){}
     await writeMenuPrefsRemote(pref);
@@ -1826,16 +2067,20 @@ function setupMenuSystem(){
   else head.insertAdjacentElement('afterend',toolbar);
   toolbar.insertAdjacentElement('afterend',menuBoard);
 
+  reviewBoard=$('reviewBoard');
+  if(reviewBoard){
+    reviewBoard.innerHTML='';
+    makeReviewPanel('vatPending','VAT 검수 필요 장끼',vatPendingSource);
+    makeReviewPanel('issues','매칭 / 파일 검수',issueSource);
+    updateReviewGroupVisibility();
+  }
+
   const defs=[
     ['jobs','매출변환 작업 목록',jobsSource],
-    ['draft','검수중 파일 목록',draftSource],
-    ['dailySales','일별 최종매출',dailySource],
-    ['settlement','매장/창고 세부 매출 계산',settlementSource],
+    ['reviewGroup','검수 항목',reviewGroupSource],
     ['receipt','현금영수증 일괄발급 대상',receiptSource],
-    ['results','변환 결과 요약',resultsSource],
-    ['vatPending','VAT 검수 필요 장끼',vatPendingSource],
     ['vatAuto','VAT 자동적용 장끼',vatAutoSource],
-    ['issues','매칭 / 파일 검수',issueSource]
+    ['results','변환 결과 요약',resultsSource]
   ];
 
   for(const [id,title,source] of defs){
@@ -1843,9 +2088,18 @@ function setupMenuSystem(){
     if(p)menuBoard.appendChild(p);
   }
 
-  applyMenuPrefs(getLocalMenuPrefs()||{order:[...MENU_DEFAULT_ORDER],collapsed:{}});
+  const local=getLocalMenuPrefs();
+  const defaultCollapsed={baseDataGroup:true,jangki:true,customer:true,item:true};
+  for(const id of MENU_DEFAULT_ORDER)defaultCollapsed[id]=true;
+  const defaultReviewCollapsed={};
+  for(const id of REVIEW_DEFAULT_ORDER)defaultReviewCollapsed[id]=true;
+  applyMenuPrefs(local||{
+    order:[...MENU_DEFAULT_ORDER],
+    collapsed:defaultCollapsed,
+    reviewOrder:[...REVIEW_DEFAULT_ORDER],
+    reviewCollapsed:defaultReviewCollapsed
+  });
 }
-
 function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"><b>오류:</b> '+esc(e.message||e)+'</p>'}
 
 
