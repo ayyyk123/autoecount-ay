@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.26</title>
+<title>아도라블 매출 자동화 v2.27</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -219,7 +219,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v2.26 · Firebase 작업동기화</div>
+      <div class="badge">v2.27 · Firebase 작업동기화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -586,8 +586,11 @@ async function importItems(){try{
 function classifyFile(file,wb){const sh=wb.SheetNames[0],a=aoaFromSheet(wb,sh); const hd=findHeader(a,['일자','No.','구분','상품명']); const hs=findHeader(a,['판매처','No.','현금액','장기비고']); let kind=hd>=0?'detail':hs>=0?'settlement':'unknown'; let loc=null; const fn=file.name; if(fn.includes('매장')||fn.includes('#Ub9e4#Uc7a5'))loc='store'; else if(fn.includes('창고')||fn.includes('#Ucc3d#Uace0'))loc='warehouse'; if(kind==='detail'&&!loc){const objs=objectsFromRows(a,hd); const giver=norm((objs.find(x=>norm(x['주는곳']))||{})['주는곳']); if(giver.includes('아도라진'))loc='store'; else if(giver.includes('아도라블'))loc='warehouse';} return {file,wb,a,kind,loc,header:kind==='detail'?hd:hs};}
 
 function calcReceiptTax(total){
-  const supply=roundAway(total/1.1);
-  return {supply,tax:total-supply};
+  // 홈택스 현금영수증 일괄발급 양식 기준:
+  // 공급가액은 총거래금액 ÷ 1.1을 원단위 올림,
+  // 부가가치세는 총거래금액 - 공급가액으로 계산한다.
+  const supply=Math.ceil((Number(total)*10)/11 - 1e-9);
+  return {supply,tax:Number(total)-supply};
 }
 
 function analyzeSettlements(settlements,issues){
