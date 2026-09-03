@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.25</title>
+<title>아도라블 매출 자동화 v2.26</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -85,7 +85,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .jobSalesDetail{margin-top:10px;border:1px solid #dbe2ea;border-radius:10px;background:#f8fafc;padding:12px}
   .jobSalesDetail.hidden{display:none}
   .jobSalesDetailHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-  .jobSalesDetailGrid{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:8px}
+  .jobSalesDetailGrid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px}
   .jobSalesDetailGrid>div{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:9px}
   .jobSalesDetailGrid small{display:block;color:#64748b;margin-bottom:3px}.jobSalesDetailGrid b{font-size:15px}
   .jobCloseBtn{appearance:none;border:0;background:transparent;font-size:18px;cursor:pointer;color:#64748b}
@@ -219,7 +219,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v2.25 · Firebase 작업동기화</div>
+      <div class="badge">v2.26 · Firebase 작업동기화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -599,7 +599,7 @@ function analyzeSettlements(settlements,issues){
     if(!date||!f.loc)continue;
 
     const objs=objectsFromRows(f.a,f.header);
-    let sales=0,returns=0,spSales=0,spReturns=0;
+    let sales=0,returns=0,spSales=0,spReturns=0,shinsangMarketAmount=0;
 
     for(const o of objs){
       const cust=norm(o['판매처']);
@@ -613,6 +613,10 @@ function analyzeSettlements(settlements,issues){
       if(isSampleCustomer(cust)){
         spSales+=s;
         spReturns+=r;
+      }
+
+      if(f.loc==='store' && cust.startsWith('신상마켓')){
+        shinsangMarketAmount+=(s-r);
       }
 
       if(f.loc==='store' && cust==='일반거래처'){
@@ -651,6 +655,7 @@ function analyzeSettlements(settlements,issues){
       returns,
       spSales,
       spReturns,
+      shinsangMarketAmount,
       finalTotal
     };
     summaries.push(row);
@@ -1213,7 +1218,7 @@ function finishRender(){const d=dedupeIssues(state.issues),custN=d.filter(x=>x.t
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(jobId=activeJobId){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'sales')}
 function downloadCash(jobId=activeJobId){XLSX.writeFile(makeWorkbook(CASH_HEADERS,state.cashRows,'입금보고서'),'이카운트_현금입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'cash')}
-function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>[r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','비고'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 샘플 제외 장끼',state.meta.sampleExcludedTickets||0],['S/P·SP 샘플 제외 품목',state.meta.sampleExcludedRows||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
+function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.shinsangMarketAmount||0,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','신상마켓금액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>[r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','비고'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 샘플 제외 장끼',state.meta.sampleExcludedTickets||0],['S/P·SP 샘플 제외 품목',state.meta.sampleExcludedRows||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
 
 
 
@@ -1389,7 +1394,7 @@ function jobMetrics(st){
 function metricsForJob(job){return job.metrics||jobMetrics(job.state||{})}
 function jobStatusInfo(job){const m=metricsForJob(job);if(m.fatal)return{cls:'red',title:`파일 오류 ${m.fatal}건`};if(m.salesBlocking||m.cashBlocking||m.receipt)return{cls:'yellow',title:'검수 또는 미매칭 항목이 남아 있음'};return{cls:'green',title:'검수 완료'}}
 
-function aggregateJobSales(st){const m=new Map();for(const r of(st.settlementSummaries||[])){const k=`${r.date}|${r.loc}`;if(!m.has(k))m.set(k,{date:r.date,loc:r.loc,sales:0,returns:0,spSales:0,spReturns:0,finalTotal:0});const x=m.get(k);x.sales+=Number(r.sales||0);x.returns+=Number(r.returns||0);x.spSales+=Number(r.spSales||0);x.spReturns+=Number(r.spReturns||0);x.finalTotal+=Number(r.finalTotal||0)}return[...m.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date))||((a.loc==='store'?0:1)-(b.loc==='store'?0:1)))}
+function aggregateJobSales(st){const m=new Map();for(const r of(st.settlementSummaries||[])){const k=`${r.date}|${r.loc}`;if(!m.has(k))m.set(k,{date:r.date,loc:r.loc,sales:0,returns:0,spSales:0,spReturns:0,shinsangMarketAmount:0,finalTotal:0});const x=m.get(k);x.sales+=Number(r.sales||0);x.returns+=Number(r.returns||0);x.spSales+=Number(r.spSales||0);x.spReturns+=Number(r.spReturns||0);if(r.shinsangMarketAmount!==undefined)x.shinsangMarketAmount+=Number(r.shinsangMarketAmount||0);else x.shinsangMarketAmount=undefined;x.finalTotal+=Number(r.finalTotal||0)}return[...m.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date))||((a.loc==='store'?0:1)-(b.loc==='store'?0:1)))}
 function salesForJob(job){return job.salesSummary||aggregateJobSales(job.state||{})}
 function fmtJobDate(d){const s=String(d||'');return/^\d{8}$/.test(s)?s.slice(4):s}
 function fmtJobDownloadTime(iso){if(!iso)return'';const d=new Date(iso);if(Number.isNaN(d.getTime()))return'';return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 다운로드`}
@@ -1561,11 +1566,12 @@ async function focusJobSection(id,section){
     target?.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){showError(e)}
 }
-function showJobSalesDetail(id,date,loc){
-  const j=jobCache.find(x=>x.id===id);
-  const r=j&&salesForJob(j).find(x=>String(x.date)===String(date)&&x.loc===loc);
+async function showJobSalesDetail(id,date,loc){
+  let j=jobCache.find(x=>x.id===id);
+  let r=j&&salesForJob(j).find(x=>String(x.date)===String(date)&&x.loc===loc);
   const box=$('jobSalesDetail');
   if(!r||!box)return;
+
   const key=`${id}|${date}|${loc}`;
   if(!box.classList.contains('hidden')&&box.dataset.detailKey===key){
     box.classList.add('hidden');
@@ -1573,10 +1579,42 @@ function showJobSalesDetail(id,date,loc){
     box.innerHTML='';
     return;
   }
+
+  // v2.26 이전에 저장된 작업은 신상마켓 금액이 없으므로 원본으로 한 번 재계산
+  if(loc==='store' && r.shinsangMarketAmount===undefined){
+    box.dataset.detailKey=key;
+    box.classList.remove('hidden');
+    box.innerHTML='<div class="small">신상마켓 금액 계산을 위해 저장된 원본을 다시 불러오는 중입니다…</div>';
+    try{
+      await activateJob(id);
+      j=jobCache.find(x=>x.id===id);
+      r=j&&salesForJob(j).find(x=>String(x.date)===String(date)&&x.loc===loc);
+      if(!r)throw new Error('매출 세부금액을 다시 계산하지 못했습니다.');
+    }catch(e){
+      box.classList.add('hidden');
+      box.dataset.detailKey='';
+      showError(e);
+      return;
+    }
+  }
+
   const m=v=>Number(v||0).toLocaleString('ko-KR');
   box.dataset.detailKey=key;
   box.classList.remove('hidden');
-  box.innerHTML=`<div class="jobSalesDetailHead"><b>${fmtJobDate(r.date)} · ${r.loc==='store'?'매장':'창고'} 세부금액</b></div><div class="jobSalesDetailGrid"><div><small>판매액</small><b>${m(r.sales)}원</b></div><div><small>반품액</small><b>${m(r.returns)}원</b></div><div><small>S/P 판매액</small><b>${m(r.spSales)}원</b></div><div><small>S/P 반품액</small><b>${m(r.spReturns)}원</b></div><div><small>최종매출</small><b>${m(r.finalTotal)}원</b></div></div>`;
+
+  const shinsang = loc==='store'
+    ? `<div><small>신상마켓 금액</small><b>${m(r.shinsangMarketAmount)}원</b></div>`
+    : '';
+
+  box.innerHTML=`<div class="jobSalesDetailHead"><b>${fmtJobDate(r.date)} · ${r.loc==='store'?'매장':'창고'} 세부금액</b></div>
+    <div class="jobSalesDetailGrid">
+      <div><small>판매액</small><b>${m(r.sales)}원</b></div>
+      <div><small>반품액</small><b>${m(r.returns)}원</b></div>
+      <div><small>S/P 판매액</small><b>${m(r.spSales)}원</b></div>
+      <div><small>S/P 반품액</small><b>${m(r.spReturns)}원</b></div>
+      ${shinsang}
+      <div><small>최종매출</small><b>${m(r.finalTotal)}원</b></div>
+    </div>`;
 }
 async function downloadJobOutput(id,type){try{await activateJob(id);if(type==='sales')downloadSales(id);else if(type==='cash')downloadCash(id);else if(type==='receipt')await downloadCashReceipt(id)}catch(e){showError(e)}}
 function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle');if(!v||!h)return;const saved=Number(localStorage.getItem(JOB_LIST_HEIGHT_KEY));if(saved>=150&&saved<=720)v.style.height=saved+'px';h.addEventListener('pointerdown',e=>{e.preventDefault();const y=e.clientY,hh=v.getBoundingClientRect().height;h.setPointerCapture(e.pointerId);const move=ev=>v.style.height=Math.max(150,Math.min(720,hh+(ev.clientY-y)))+'px';const up=ev=>{h.releasePointerCapture(ev.pointerId);localStorage.setItem(JOB_LIST_HEIGHT_KEY,String(Math.round(v.getBoundingClientRect().height)));h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up)};h.addEventListener('pointermove',move);h.addEventListener('pointerup',up)})}
