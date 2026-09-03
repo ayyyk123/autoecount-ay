@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v2.2</title>
+<title>아도라블 매출 자동화 v2.3</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -29,7 +29,7 @@ window.FIREBASE_CONFIG = {
   .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}.stat b{font-size:22px;display:block;margin-top:5px}.stat small{color:var(--muted)}
   .section{margin-top:16px}.section h3{font-size:16px;margin:0 0 10px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
   .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto}.msg{line-height:1.55;font-size:14px}.msg p{margin:4px 0}
-  table{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}select,input[type="text"],input[type="email"],input[type="password"]{padding:8px 9px;border:1px solid #cbd5e1;border-radius:7px;background:white} .loginrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.loginrow input{min-width:190px}.masterstat{font-size:13px;line-height:1.65}.grow{flex:1}.itemmatch{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.itemmatch input{min-width:260px}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}th{background:#f8fafc;position:sticky;top:0}select,input[type="text"],input[type="email"],input[type="password"]{padding:8px 9px;border:1px solid #cbd5e1;border-radius:7px;background:white} .loginrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.loginrow input{min-width:190px}.masterstat{font-size:13px;line-height:1.65}.grow{flex:1}.itemmatch{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.itemmatch input{min-width:260px}.dropzone{border:2px dashed #cbd5e1;border-radius:12px;padding:16px;background:#fff;cursor:pointer;transition:.15s;min-height:72px;display:flex;align-items:center;justify-content:center;text-align:center}.dropzone.dragover{border-color:#6366f1;background:#eef2ff}.dropzone .dztext{font-size:13px;color:#64748b;line-height:1.5}.filechips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.filechip{display:inline-flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:12px;max-width:100%}.filechip .fname{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.filechip button{border:0;background:transparent;color:#64748b;cursor:pointer;font-size:16px;line-height:1;padding:0 1px}.filechip button:hover{color:#dc2626}
   .pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#f3f4f6}.pill.warn{background:#fff7ed;color:#9a3412}.pill.ok{background:#ecfdf5;color:#065f46}
   .hidden{display:none}.footer{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.6}.mono{font-family:Consolas,monospace}.small{font-size:12px;color:var(--muted)}
   @media(max-width:850px){.grid,.stats{grid-template-columns:1fr}.head{display:block}.badge{display:inline-block;margin-top:10px}}
@@ -39,7 +39,7 @@ window.FIREBASE_CONFIG = {
 <div class="wrap">
   <div class="head">
     <div><h1>매출 자동화 프로그램</h1><div class="sub">매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>거래처·품목 기준정보와 수동 매칭/VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다.<br>장끼·일별정산 원본과 생성된 매출자료는 Firebase에 저장하지 않습니다.</div></div>
-    <div class="badge">v2.2 · Firebase 다중 PC</div>
+    <div class="badge">v2.3 · Firebase 다중 PC</div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -56,9 +56,9 @@ window.FIREBASE_CONFIG = {
   </div>
 
   <div class="grid">
-    <div class="card"><h2>② 장끼 엑셀</h2><div class="hint">매장·창고의 <b>판매내역(생성)</b>과 날짜별 <b>일별정산</b> 파일을 모두 선택하세요. 매일 여기만 올리면 됩니다.</div><input class="file" id="jangkiFiles" type="file" accept=".xlsx,.xls" multiple></div>
-    <div class="card"><h2>거래처 기준정보 업데이트</h2><div class="hint">최초 1회 또는 거래처가 추가·수정됐을 때만 이카운트 거래처리스트를 올립니다. <b>기존 코드는 최신값으로 수정되고 신규 코드는 추가되며, 파일에 없어진 기존 거래처는 자동 삭제하지 않습니다.</b></div><input class="file" id="customerFile" type="file" accept=".xlsx,.xls"><div class="actions"><button class="btn light" id="importCustomerBtn" disabled>거래처 업데이트</button></div><div id="customerStat" class="masterstat small">저장 0개</div></div>
-    <div class="card"><h2>품목 기준정보 업데이트</h2><div class="hint">최초 1회 또는 품목이 추가·수정됐을 때만 품목리스트를 올립니다. 기존 품목은 수정, 신규 품목은 추가합니다. 미매칭 품목은 아래 검수 화면에서 직접 영구 매칭할 수 있습니다.</div><input class="file" id="itemFile" type="file" accept=".xlsx,.xls"><div class="actions"><button class="btn light" id="importItemBtn" disabled>품목 업데이트</button></div><div id="itemStat" class="masterstat small">저장 0개 · 수동매칭 0개</div></div>
+    <div class="card"><h2>② 장끼 엑셀</h2><div class="hint">매장·창고의 <b>판매내역(생성)</b>과 날짜별 <b>일별정산</b> 파일을 모두 넣으세요. 클릭 선택 또는 여러 파일 드래그앤드롭이 가능합니다.</div><input class="file hidden" id="jangkiFiles" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="jangkiDrop"><div class="dztext"><b>파일 선택</b> 또는 여기로 여러 엑셀 파일을 끌어다 놓으세요.</div></div><div class="filechips" id="jangkiChips"></div></div>
+    <div class="card"><h2>거래처 기준정보 업데이트</h2><div class="hint">최초 1회 또는 거래처가 추가·수정됐을 때만 올립니다. 여러 파일을 넣으면 순서대로 병합하며 <b>같은 코드는 나중 파일 값으로 업데이트</b>됩니다. 파일에 없어진 기존 거래처는 자동 삭제하지 않습니다.</div><input class="file hidden" id="customerFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="customerDrop"><div class="dztext"><b>파일 선택</b> 또는 거래처 엑셀을 끌어다 놓으세요.</div></div><div class="filechips" id="customerChips"></div><div class="actions"><button class="btn light" id="importCustomerBtn" disabled>거래처 업데이트</button></div><div id="customerStat" class="masterstat small">저장 0개</div></div>
+    <div class="card"><h2>품목 기준정보 업데이트</h2><div class="hint">최초 1회 또는 품목이 추가·수정됐을 때만 올립니다. 여러 파일을 넣으면 순서대로 병합하며 <b>같은 코드는 나중 파일 값으로 업데이트</b>됩니다. 미매칭 품목은 아래 검수 화면에서 직접 영구 매칭할 수 있습니다.</div><input class="file hidden" id="itemFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="itemDrop"><div class="dztext"><b>파일 선택</b> 또는 품목 엑셀을 끌어다 놓으세요.</div></div><div class="filechips" id="itemChips"></div><div class="actions"><button class="btn light" id="importItemBtn" disabled>품목 업데이트</button></div><div id="itemStat" class="masterstat small">저장 0개 · 수동매칭 0개</div></div>
   </div>
 
   <div class="actions">
@@ -92,6 +92,41 @@ const LEARNED_VAT_RULES={'(에이제트)착한주름':'included','STR':'included
 let app=null,auth=null,db=null,user=null;
 let cloud={ready:false,customers:[],items:[],aliases:new Map(),vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()};
 let state={salesRows:[],cashRows:[],issues:[],vatPending:[],meta:{},parsed:null};
+const selectedFiles={jangki:[],customer:[],item:[]};
+
+function fileKey(f){return [f.name,f.size,f.lastModified].join('|')}
+function addFiles(kind,files){
+  const arr=selectedFiles[kind],seen=new Set(arr.map(fileKey));
+  for(const f of [...files]){
+    if(!/\.(xlsx|xls)$/i.test(f.name))continue;
+    const k=fileKey(f);
+    if(!seen.has(k)){arr.push(f);seen.add(k);}
+  }
+  renderSelectedFiles(kind);
+}
+window.removeSelectedFile=function(kind,index){
+  selectedFiles[kind].splice(index,1);
+  renderSelectedFiles(kind);
+}
+function renderSelectedFiles(kind){
+  const ids={
+    jangki:{chips:'jangkiChips',btn:null},
+    customer:{chips:'customerChips',btn:'importCustomerBtn'},
+    item:{chips:'itemChips',btn:'importItemBtn'}
+  }[kind];
+  const arr=selectedFiles[kind],box=$(ids.chips);
+  box.innerHTML=arr.map((f,i)=>`<span class="filechip" title="${escAttr(f.name)}"><span class="fname">${esc(f.name)}</span><button type="button" aria-label="삭제" onclick="removeSelectedFile('${kind}',${i})">×</button></span>`).join('');
+  if(ids.btn)$(ids.btn).disabled=!user||arr.length===0;
+}
+function setupDropZone(kind,inputId,dropId){
+  const input=$(inputId),drop=$(dropId);
+  drop.onclick=()=>input.click();
+  input.addEventListener('change',()=>{addFiles(kind,input.files);input.value='';});
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();drop.classList.add('dragover');}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();drop.classList.remove('dragover');}));
+  drop.addEventListener('drop',e=>addFiles(kind,e.dataTransfer.files));
+}
+
 const $=id=>document.getElementById(id);
 function norm(v){return (v==null?'':String(v)).trim().replace(/\s+/g,' ')}
 function num(v){if(v==null||v==='')return 0; const n=Number(String(v).replace(/,/g,'')); return Number.isFinite(n)?n:0}
@@ -119,7 +154,7 @@ function initFirebase(){
     auth.onAuthStateChanged(async u=>{user=u||null; updateAuthUI(); if(user){await loadCloudData();} else {resetCloud();}});
   }catch(e){$('authStatus').textContent='Firebase 연결 오류: '+e.message; $('loginBtn').disabled=true; $('signupBtn').disabled=true; $('statusBox').innerHTML='<p class="warn"><b>Firebase 연결 오류:</b> '+esc(e.message)+'</p>';}
 }
-function updateAuthUI(){const on=!!user; $('loginBtn').classList.toggle('hidden',on); $('signupBtn').classList.toggle('hidden',on); $('logoutBtn').classList.toggle('hidden',!on); $('email').disabled=on; $('password').disabled=on; $('importCustomerBtn').disabled=!on; $('importItemBtn').disabled=!on; $('processBtn').disabled=!on||!cloud.ready; $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';}
+function updateAuthUI(){const on=!!user; $('loginBtn').classList.toggle('hidden',on); $('signupBtn').classList.toggle('hidden',on); $('logoutBtn').classList.toggle('hidden',!on); $('email').disabled=on; $('password').disabled=on; $('importCustomerBtn').disabled=!on||selectedFiles.customer.length===0; $('importItemBtn').disabled=!on||selectedFiles.item.length===0; $('processBtn').disabled=!on||!cloud.ready; $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';}
 function resetCloud(){cloud={ready:false,customers:[],items:[],aliases:new Map(),vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI();}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 async function loadCloudData(){
@@ -145,8 +180,32 @@ function parseCustomerEntries(wb){let rows=null; for(const sh of wb.SheetNames){
 function parseItemEntries(wb){let candidates=[]; for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh); if(!a.length)continue; const hi=findHeader(a,['품목명','품목코드']); if(hi>=0){const h=a[hi].map(norm); candidates.push({priority:0,a,hi,src:h.indexOf('품목명'),dst:h.indexOf('품목코드')}); continue;} if(a[0]&&a[0].length>=2)candidates.push({priority:1,a,hi:0,src:0,dst:1});}
  if(!candidates.length)throw new Error('품목리스트에서 품목명/품목코드 데이터를 찾지 못했습니다.'); candidates.sort((a,b)=>a.priority-b.priority); const c=candidates[0],out=[],seen=new Set(); for(const r of c.a.slice(c.hi+1)){const name=norm(r[c.src]),code=norm(r[c.dst]); if(!name||!code||seen.has(code))continue; seen.add(code); out.push({code,name})} return out;}
 async function batchMerge(collectionName,entries){const col=userCol(collectionName); let done=0; for(let p=0;p<entries.length;p+=400){const batch=db.batch(); for(const e of entries.slice(p,p+400)){const ref=col.doc(safeId(e.code)); batch.set(ref,{...e,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});} await batch.commit(); done+=Math.min(400,entries.length-p);} return done;}
-async function importCustomers(){try{const f=$('customerFile').files[0]; if(!f)throw new Error('거래처리스트 파일을 선택해 주세요.'); $('statusBox').innerHTML='<p>거래처 기준정보 업데이트 중...</p>'; const entries=parseCustomerEntries(await readWb(f)); await batchMerge('customers',entries); await loadCloudData(); $('statusBox').innerHTML=`<p class="ok">✓ 거래처 ${entries.length.toLocaleString()}건을 병합 업데이트했습니다. 기존 코드는 수정되고 신규 코드는 추가되었습니다.</p>`;}catch(e){showError(e)}}
-async function importItems(){try{const f=$('itemFile').files[0]; if(!f)throw new Error('품목리스트 파일을 선택해 주세요.'); $('statusBox').innerHTML='<p>품목 기준정보 업데이트 중...</p>'; const entries=parseItemEntries(await readWb(f)); await batchMerge('items',entries); await loadCloudData(); $('statusBox').innerHTML=`<p class="ok">✓ 품목 ${entries.length.toLocaleString()}건을 병합 업데이트했습니다. 기존 코드는 수정되고 신규 코드는 추가되었습니다.</p>`;}catch(e){showError(e)}}
+async function importCustomers(){try{
+  const files=selectedFiles.customer;
+  if(!files.length)throw new Error('거래처리스트 파일을 선택해 주세요.');
+  $('statusBox').innerHTML='<p>거래처 기준정보 업데이트 중...</p>';
+  let total=0;
+  for(const f of files){
+    const entries=parseCustomerEntries(await readWb(f));
+    await batchMerge('customers',entries);
+    total+=entries.length;
+  }
+  await loadCloudData();
+  $('statusBox').innerHTML=`<p class="ok">✓ 거래처 ${total.toLocaleString()}건을 ${files.length}개 파일에서 순서대로 병합 업데이트했습니다. 같은 코드는 나중 파일 값으로 반영되었습니다.</p>`;
+}catch(e){showError(e)}}
+async function importItems(){try{
+  const files=selectedFiles.item;
+  if(!files.length)throw new Error('품목리스트 파일을 선택해 주세요.');
+  $('statusBox').innerHTML='<p>품목 기준정보 업데이트 중...</p>';
+  let total=0;
+  for(const f of files){
+    const entries=parseItemEntries(await readWb(f));
+    await batchMerge('items',entries);
+    total+=entries.length;
+  }
+  await loadCloudData();
+  $('statusBox').innerHTML=`<p class="ok">✓ 품목 ${total.toLocaleString()}건을 ${files.length}개 파일에서 순서대로 병합 업데이트했습니다. 같은 코드는 나중 파일 값으로 반영되었습니다.</p>`;
+}catch(e){showError(e)}}
 
 function classifyFile(file,wb){const sh=wb.SheetNames[0],a=aoaFromSheet(wb,sh); const hd=findHeader(a,['일자','No.','구분','상품명']); const hs=findHeader(a,['판매처','No.','현금액','장기비고']); let kind=hd>=0?'detail':hs>=0?'settlement':'unknown'; let loc=null; const fn=file.name; if(fn.includes('매장')||fn.includes('#Ub9e4#Uc7a5'))loc='store'; else if(fn.includes('창고')||fn.includes('#Ucc3d#Uace0'))loc='warehouse'; if(kind==='detail'&&!loc){const objs=objectsFromRows(a,hd); const giver=norm((objs.find(x=>norm(x['주는곳']))||{})['주는곳']); if(giver.includes('아도라진'))loc='store'; else if(giver.includes('아도라블'))loc='warehouse';} return {file,wb,a,kind,loc,header:kind==='detail'?hd:hs};}
 function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust); memo.set(k,norm(o['장기비고'])); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({type:'현금 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),value:cust,detail:cm.values?cm.values.join(', '):date+' No.'+no}); cashTmp.push({date,loc:f.loc,no:Number(no)||0,row:[date,null,'1019','1089',cm.ok?cm.value:'[미매칭] '+cust,null,amt,null,null]});}}} cashTmp.sort((a,b)=>a.date.localeCompare(b.date)||((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.no-b.no); return {memo,cash:cashTmp.map(x=>x.row)};}
@@ -159,7 +218,7 @@ async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value
 function renderVat(pending){const sec=$('vatSection'),box=$('vatTable'); if(!pending.length){sec.classList.add('hidden');box.innerHTML='';return} sec.classList.remove('hidden'); let h='<table><thead><tr><th>일자</th><th>No.</th><th>거래처</th><th>품목수</th><th>선택</th><th>저장</th></tr></thead><tbody>'; pending.forEach(t=>{h+=`<tr><td>${t.date}</td><td>${t.no}</td><td>${esc(t.cust)}</td><td>${t.rows.filter(o=>['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세').length}</td><td><select data-vat-key="${escAttr(t.key)}" data-vat-customer="${escAttr(t.cust)}"><option value="">선택</option><option value="included">부가세 포함 → 단가÷1.1</option><option value="separate">부가세 별도 → 단가 그대로</option></select></td><td><label><input type="checkbox" data-vat-save="${escAttr(t.key)}"> 기본규칙으로 저장</label></td></tr>`}); h+='</tbody></table><div class="actions"><button class="btn" id="applyVatBtn">선택 적용 후 다시 계산</button></div>'; box.innerHTML=h; $('applyVatBtn').onclick=applyVatChoices;}
 async function applyVatChoices(){try{const overrides={...(state.parsed?.ticketOverrides||{})},toSave=[]; let missing=0; document.querySelectorAll('select[data-vat-key]').forEach(s=>{if(!s.value){missing++;return;} overrides[s.dataset.vatKey]=s.value; const cb=document.querySelector(`input[data-vat-save="${CSS.escape(s.dataset.vatKey)}"]`); if(cb?.checked)toSave.push({customer:s.dataset.vatCustomer,mode:s.value});}); if(missing)throw new Error('VAT 검수 항목을 모두 선택해 주세요.'); for(const r of toSave){await userCol('vatRules').doc(safeId(r.customer)).set({customer:r.customer,mode:r.mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); cloud.vatRules.set(norm(r.customer),r.mode);} await processAll(overrides);}catch(e){alert(e.message||e)}}
 
-async function processAll(ticketOverrides={}){try{if(!user||!cloud.ready)throw new Error('로그인 후 Firebase 기준정보 동기화를 완료해 주세요.'); if(typeof XLSX==='undefined')throw new Error('엑셀 라이브러리를 불러오지 못했습니다.'); const jangki=[...$('jangkiFiles').files]; if(!jangki.length)throw new Error('매장·창고 장끼 엑셀을 선택해 주세요.'); if(!cloud.customers.length||!cloud.items.length)throw new Error('최초 1회 거래처리스트와 품목리스트를 업데이트해 주세요.'); $('statusBox').innerHTML='<p>장끼 파일을 읽고 변환 중입니다...</p>'; const jwbs=await Promise.all(jangki.map(readWb)); const classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])); const details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'); const unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name); const issues=[]; if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'}); if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'}); const mc=buildMemoAndCash(sets,cloud.customerMaps,issues),gd=groupDetails(details),tickets=gd.tickets,br=buildSales(tickets,mc.memo,cloud.customerMaps,cloud.itemMap,ticketOverrides,issues); state={salesRows:br.out,cashRows:mc.cash,issues,vatPending:br.pending,meta:{sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length},parsed:{tickets,memo:mc.memo,ticketOverrides}}; finishRender();}catch(e){showError(e)}}
+async function processAll(ticketOverrides={}){try{if(!user||!cloud.ready)throw new Error('로그인 후 Firebase 기준정보 동기화를 완료해 주세요.'); if(typeof XLSX==='undefined')throw new Error('엑셀 라이브러리를 불러오지 못했습니다.'); const jangki=selectedFiles.jangki; if(!jangki.length)throw new Error('매장·창고 장끼 엑셀을 선택해 주세요.'); if(!cloud.customers.length||!cloud.items.length)throw new Error('최초 1회 거래처리스트와 품목리스트를 업데이트해 주세요.'); $('statusBox').innerHTML='<p>장끼 파일을 읽고 변환 중입니다...</p>'; const jwbs=await Promise.all(jangki.map(readWb)); const classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])); const details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'); const unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name); const issues=[]; if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'}); if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'}); const mc=buildMemoAndCash(sets,cloud.customerMaps,issues),gd=groupDetails(details),tickets=gd.tickets,br=buildSales(tickets,mc.memo,cloud.customerMaps,cloud.itemMap,ticketOverrides,issues); state={salesRows:br.out,cashRows:mc.cash,issues,vatPending:br.pending,meta:{sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length},parsed:{tickets,memo:mc.memo,ticketOverrides}}; finishRender();}catch(e){showError(e)}}
 function finishRender(){const d=dedupeIssues(state.issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length; $('stats').classList.remove('hidden'); $('sSales').textContent=state.salesRows.length; $('sCash').textContent=state.cashRows.length; $('sVat').textContent=state.vatPending.length; $('sCust').textContent=custN; $('sItem').textContent=itemN; renderVat(state.vatPending); $('issueSection').classList.remove('hidden'); renderIssues(state.issues,state.meta); const blocking=state.vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||state.meta.unclassifiedFiles.length>0; $('salesBtn').disabled=blocking; $('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0; $('reviewBtn').disabled=false; let msg=`<p><b>판매 ${state.salesRows.length.toLocaleString()}행</b>, 현금 ${state.cashRows.length.toLocaleString()}행을 만들었습니다.</p>`; if(state.meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${state.meta.sampleExcludedTickets.toLocaleString()}장끼 / ${state.meta.sampleExcludedRows.toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`; if(blocking)msg+='<p class="warn">완료본은 아직 잠겨 있습니다. 아래 VAT/미매칭 항목을 먼저 해결해 주세요.</p>'; else msg+='<p class="ok">✓ 검수 통과. 이카운트 완료본을 다운로드할 수 있습니다.</p>'; $('statusBox').innerHTML=msg;}
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx')}
@@ -170,6 +229,7 @@ function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('reviewBtn').onclick=downloadReview;
+setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 initFirebase();
 </script>
 </body>
