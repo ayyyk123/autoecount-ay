@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.17</title>
+<title>아도라블 매출 자동화 v3.19</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -254,6 +254,10 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .taxSalesInputRow{display:grid;grid-template-columns:1fr 145px;gap:8px;align-items:center;margin:6px 0}
   .taxSalesInputRow input{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;text-align:right}
   .taxSalesCards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+  .taxPrevSalesEditor{margin-top:14px;padding-top:12px;border-top:1px dashed #cbd5e1}
+  .taxPrevSalesHead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .taxPrevSalesHead b{margin-right:auto}
+
   .taxYearSummary{margin-top:10px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px}
   .taxYearSummary table{margin:0;min-width:650px}
   .taxYearSummary th{background:#f8fafc;position:sticky;top:0}
@@ -291,6 +295,14 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .taxManualInvoiceHead{margin-bottom:0}
 
   .taxManualInvoiceSummary{font-size:11px;color:#7c3aed;font-weight:800;margin-top:3px}
+  .taxAggToggleBtn{
+    border:1px solid #c4b5fd;background:#f5f3ff;color:#6d28d9;border-radius:7px;
+    padding:4px 7px;font-size:11px;font-weight:850;cursor:pointer;margin-left:6px;white-space:nowrap
+  }
+  .taxAggToggleBtn:hover{background:#ede9fe}
+  .taxPurchaseNameLine{display:flex;align-items:center;gap:4px}
+  .taxPurchaseNameLine .taxPurchaseName{flex:1;min-width:150px}
+
   @media(max-width:700px){.taxManualInvoiceLine{grid-template-columns:1fr 1fr auto}}
 
   @media(max-width:1050px){
@@ -363,7 +375,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.17 · 월별·날짜별 합산</div>
+      <div class="badge">v3.19 · 전월 매출 최종수정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -652,7 +664,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <span id="taxPurchaseImportStatus" class="small"></span>
           <button id="addTaxPurchaseBtn" class="btn light" type="button">매입받을 항목 추가</button>
         </div>
-        <div class="taxBookSmallNote">고정 매입항목은 위의 `매입자료 가져오기`로 원하는 월의 목록과 최종금액을 불러옵니다. 금액·고정여부·목록순서는 언제든 수정할 수 있습니다. 여러 달 금액을 한 번에 수기세금계산서로 받는 항목은 `월별합산`에서 월별금액과 계산서 수취월을 관리할 수 있습니다.</div>
+        <div class="taxBookSmallNote">고정 매입항목은 위의 `매입자료 가져오기`로 원하는 월의 목록과 최종금액을 불러옵니다. 금액·고정여부·목록순서는 언제든 수정할 수 있습니다. 여러 달 또는 여러 날짜 금액을 합산해 세금계산서로 받는 항목은 `월별합산`·`날짜별합산`에서 금액과 계산서 수취월을 관리할 수 있습니다.</div>
         <div class="taxBookPanel">
           <div id="taxPurchaseSummary" class="taxBookSummary"></div>
           <div id="taxPurchaseList" class="taxPurchaseList taxBookResizable"></div>
@@ -664,6 +676,16 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <div class="taxSalesInputRow"><span>세금계산서 매출</span><input id="taxSalesInvoiceAmount" type="text" inputmode="numeric" placeholder="0"></div>
             <div class="taxSalesInputRow"><span>현금영수증 매출</span><input id="taxSalesCashAmount" type="text" inputmode="numeric" placeholder="0"></div>
             <div id="taxSelectedMonthSummary" class="taxSalesCards"></div>
+
+            <div class="taxPrevSalesEditor">
+              <div class="taxPrevSalesHead">
+                <b id="taxPrevSalesTitle">전월 매출 최종수정</b>
+                <span id="taxPrevSalesStatus" class="small"></span>
+              </div>
+              <div class="taxSalesInputRow"><span>전월 세금계산서 매출</span><input id="taxPrevSalesInvoiceAmount" type="text" inputmode="numeric" placeholder="0"></div>
+              <div class="taxSalesInputRow"><span>전월 현금영수증 매출</span><input id="taxPrevSalesCashAmount" type="text" inputmode="numeric" placeholder="0"></div>
+              <div id="taxPrevSalesSummary" class="taxSalesCards"></div>
+            </div>
           </div>
           <div class="taxResizeHandle" data-tax-resize="taxSalesEntryBox" title="잡아끌어 월별 매출 입력 박스 높이 조절"></div>
 
@@ -750,6 +772,7 @@ let taxCheckState={month:'',bizRegs:[],closed:[],notes:[]};
 let taxPurchaseMasters=[];
 let taxBookState={month:'',purchases:[],salesTax:0,salesCash:0};
 let taxYearBooks=[];
+let taxPrevSalesState={month:'',salesTax:0,salesCash:0};
 const TAX_HISTORY_2026=[{"month":"2026-01","salesTax":277714001,"salesCash":6807845,"purchase":242023594},{"month":"2026-02","salesTax":318286325,"salesCash":6778227,"purchase":622682032},{"month":"2026-03","salesTax":689165515,"salesCash":18976291,"purchase":298690486},{"month":"2026-04","salesTax":693013290,"salesCash":13236973,"purchase":660433281},{"month":"2026-05","salesTax":657112348,"salesCash":17253582,"purchase":472480167},{"month":"2026-06","salesTax":617992386,"salesCash":15228100,"purchase":318624886},{"month":"2026-07","salesTax":529128089,"salesCash":8260827,"purchase":197673259}];
 const TAX_LAST_MONTH_KEY='autoecount-ay-tax-last-month-v1';
 const DEFAULT_TAX_PURCHASE_MASTERS=[
@@ -2524,7 +2547,8 @@ async function importTaxPurchasesFromMonth(){
         lines:[],
         dateLines:[],
         monthCollapsed:false,
-        dateCollapsed:true
+        dateCollapsed:true,
+        detailOpen:false
       }:null
     };
   });
@@ -2578,6 +2602,7 @@ async function loadTaxBookMonth(month){
 
   await loadTaxYearBooks(month.slice(0,4));
   renderTaxBook();
+  await loadPreviousTaxSalesForCurrentMonth();
 }
 function syncCurrentTaxBookToYear(){
   const idx=taxYearBooks.findIndex(x=>x.month===taxBookState.month);
@@ -2707,7 +2732,8 @@ function normalizeTaxManualInvoice(r){
       lines:[],
       dateLines:[],
       monthCollapsed:false,
-      dateCollapsed:true
+      dateCollapsed:true,
+      detailOpen:false
     };
   }
   if(!Array.isArray(r.manualInvoice.lines))r.manualInvoice.lines=[];
@@ -2716,6 +2742,7 @@ function normalizeTaxManualInvoice(r){
   if(!['month','date'].includes(r.manualInvoice.mode))r.manualInvoice.mode='month';
   if(typeof r.manualInvoice.monthCollapsed!=='boolean')r.manualInvoice.monthCollapsed=false;
   if(typeof r.manualInvoice.dateCollapsed!=='boolean')r.manualInvoice.dateCollapsed=true;
+  if(typeof r.manualInvoice.detailOpen!=='boolean')r.manualInvoice.detailOpen=false;
   return r.manualInvoice;
 }
 function taxMonthAggregationTotal(r){
@@ -2780,6 +2807,13 @@ window.setTaxAggregationMode=async function(i,mode){
     m.dateLines=[{id:`date_${Date.now()}`,date:d,amount:Number(r.expectedAmount||0)}];
   }
   syncTaxManualInvoiceExpected(r);
+  await saveTaxBook();
+}
+
+window.toggleTaxAggregationDetail=async function(i){
+  const r=taxBookState.purchases[i];if(!r)return;
+  const m=normalizeTaxManualInvoice(r);
+  m.detailOpen=!m.detailOpen;
   await saveTaxBook();
 }
 window.toggleTaxAggSection=async function(i,type){
@@ -2931,7 +2965,10 @@ function renderTaxPurchaseList(){
     h+=`<tr class="${cls}">
       <td><input type="checkbox" ${r.fixed?'checked':''} onchange="toggleTaxPurchaseFixed(${i},this.checked)"></td>
       <td>
-        <input class="taxPurchaseName" type="text" value="${escAttr(r.name||'')}" placeholder="매입처/항목명" onchange="editTaxPurchaseName(${i},this.value)">
+        <div class="taxPurchaseNameLine">
+          <input class="taxPurchaseName" type="text" value="${escAttr(r.name||'')}" placeholder="매입처/항목명" onchange="editTaxPurchaseName(${i},this.value)">
+          ${manualEnabled?`<button class="taxAggToggleBtn" onclick="toggleTaxAggregationDetail(${i})">${normalizeTaxManualInvoice(r).detailOpen?'합산내역 닫기':'합산내역'}</button>`:''}
+        </div>
         ${manualSummary}
       </td>
       <td><input class="taxMoneyInput" type="text" inputmode="numeric" value="${escAttr(taxMoney(expected))}" ${manualEnabled?'readonly title="월별합산 금액으로 자동계산"':''} onchange="editTaxPurchaseExpected(${i},this.value)"></td>
@@ -2950,14 +2987,14 @@ function renderTaxPurchaseList(){
       </td>
     </tr>`;
 
-    if(manualEnabled){
+    if(manualEnabled&&normalizeTaxManualInvoice(r).detailOpen){
       const m=normalizeTaxManualInvoice(r);
       const monthTotal=taxMonthAggregationTotal(r);
       const dateTotal=taxDateAggregationTotal(r);
       h+=`<tr class="taxManualInvoiceRow"><td colspan="9">
         <div class="taxManualInvoiceBox">
           <div class="taxManualInvoiceHead">
-            <b>수기세금계산서 합산내역</b>
+            <b>세금계산서 합산내역</b>
             <label>계산서 받을 월
               <input type="month" value="${escAttr(m.receiveMonth||taxBookState.month||'')}" onchange="editTaxManualInvoiceReceiveMonth(${i},this.value)">
             </label>
@@ -3042,6 +3079,74 @@ function renderTaxBookSummary(){
     <div><small>매입수취 진행</small><b>${received}/${total}</b>${mismatch?`<div class="taxStatusBad">불일치 ${mismatch}건</div>`:'<div class="taxStatusOk">불일치 0건</div>'}</div>`;
 }
 
+
+async function loadPreviousTaxSalesForCurrentMonth(){
+  const cur=taxBookState.month||$('taxCheckMonth')?.value||'';
+  const prev=taxShiftMonth(cur,-1);
+  if(!prev){
+    taxPrevSalesState={month:'',salesTax:0,salesCash:0};
+    renderPreviousTaxSales();
+    return;
+  }
+  const snap=await userCol('taxMonthlyBooks').doc(prev).get();
+  const d=snap.exists?(snap.data()||{}):{};
+  taxPrevSalesState={
+    month:prev,
+    salesTax:Number(d.salesTax||0),
+    salesCash:Number(d.salesCash||0)
+  };
+  renderPreviousTaxSales();
+}
+function renderPreviousTaxSales(){
+  const title=$('taxPrevSalesTitle'),
+        st=$('taxPrevSalesInvoiceAmount'),
+        sc=$('taxPrevSalesCashAmount'),
+        sum=$('taxPrevSalesSummary'),
+        status=$('taxPrevSalesStatus');
+  if(!title||!st||!sc||!sum)return;
+
+  const m=taxPrevSalesState.month;
+  if(!m){
+    title.textContent='전월 매출 최종수정';
+    st.value='';sc.value='';sum.innerHTML='';
+    st.disabled=true;sc.disabled=true;
+    if(status)status.textContent='';
+    return;
+  }
+
+  st.disabled=false;sc.disabled=false;
+  const monthNo=Number(m.slice(5));
+  title.textContent=`${monthNo}월 매출 최종수정`;
+  st.value=taxMoney(taxPrevSalesState.salesTax||0);
+  sc.value=taxMoney(taxPrevSalesState.salesCash||0);
+  const total=Number(taxPrevSalesState.salesTax||0)+Number(taxPrevSalesState.salesCash||0);
+  sum.innerHTML=`
+    <div><small>${monthNo}월 세금계산서 매출</small><b>${taxMoney(taxPrevSalesState.salesTax||0)}원</b></div>
+    <div><small>${monthNo}월 현금영수증 매출</small><b>${taxMoney(taxPrevSalesState.salesCash||0)}원</b></div>
+    <div><small>${monthNo}월 최종 매출합</small><b>${taxMoney(total)}원</b></div>
+    <div><small>수정대상 월</small><b>${m}</b></div>`;
+}
+async function savePreviousTaxSalesField(field,v){
+  if(!user||!taxPrevSalesState.month)return;
+  const n=parseTaxMoney(v);
+  if(field==='salesTax')taxPrevSalesState.salesTax=n;
+  if(field==='salesCash')taxPrevSalesState.salesCash=n;
+
+  await userCol('taxMonthlyBooks').doc(taxPrevSalesState.month).set({
+    [field]:n,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+
+  await loadTaxYearBooks((taxBookState.month||taxPrevSalesState.month).slice(0,4));
+  renderPreviousTaxSales();
+  renderTaxYearSummary();
+
+  const status=$('taxPrevSalesStatus');
+  if(status){
+    status.textContent=`저장완료 ${new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}`;
+    setTimeout(()=>{if(status)status.textContent=''},1800);
+  }
+}
 function renderTaxSelectedMonth(){
   const label=$('taxBookMonthLabel');
   if(label)label.textContent=`${taxBookState.month||''} · 점검월과 연동`;
@@ -3094,6 +3199,7 @@ function renderTaxBook(){
   renderTaxSelectedMonth();
   renderTaxYearSummary();
   renderTaxPurchaseSourceOptions();
+  renderPreviousTaxSales();
 }
 
 const TAX_LIST_HEIGHT_KEY='autoecount-ay-tax-list-heights-v1';
@@ -3367,7 +3473,7 @@ function downloadTaxCheckExcel(){
 
     if(taxBookState.month){
       const pRows=[
-        ['순서','고정','매입처/항목','들어올 금액','금액확인','매입수취','실제 수취금액','차이','불일치 사유','수기 합산사용','반영방식','계산서 수취월','월별금액 상세','날짜별금액 상세'],
+        ['순서','고정','매입처/항목','들어올 금액','금액확인','매입수취','실제 수취금액','차이','불일치 사유','합산사용','반영방식','계산서 수취월','월별금액 상세','날짜별금액 상세'],
         ...(taxBookState.purchases||[]).map((r,i)=>[
           i+1,r.fixed?'Y':'N',r.name||'',Number(r.expectedAmount||0),r.expectedConfirmed?'Y':'N',
           r.received?'Y':'N',Number(r.actualAmount||0),
@@ -4710,7 +4816,7 @@ $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',re
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
 $('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};
-$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);
+$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupBaseDataGroup();
