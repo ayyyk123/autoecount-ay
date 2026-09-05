@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.23</title>
+<title>아도라블 매출 자동화 v3.24</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -402,7 +402,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.23 · 특수매칭 상세보기</div>
+      <div class="badge">v3.24 · 비교결과 엑셀저장</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -615,7 +615,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <button id="runMonthlyCompareBtn" class="btn" type="button">월매출 비교</button>
           </div>
           <div id="monthlyCompareStatus" class="small"></div>
-          <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)` 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.</div>
+          <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)`은 비교대상에서 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.</div>
         </div>
       </div>
       <div class="compareFilters">
@@ -623,6 +623,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button class="btn light filterBtn" data-cmp-loc="store" type="button">매장</button>
         <button class="btn light filterBtn" data-cmp-loc="warehouse" type="button">창고</button>
         <button id="compareMismatchOnlyBtn" class="btn light active" type="button">불일치만 보기</button>
+        <button id="downloadCompareExcelBtn" class="btn" type="button">비교결과 엑셀 저장</button>
       </div>
       <div id="compareSummary"></div>
       <div id="compareSpecialDetails"></div>
@@ -2290,6 +2291,104 @@ function renderCompareSpecialDetails(){
       </table>
     </div>`:''}
   </div>`;
+}
+
+function compareExcelSafeName(v){
+  return String(v||'').replace(/[\\/:*?"<>|]/g,'_').slice(0,31)||'Sheet';
+}
+function compareLocLabel(v){
+  return v==='store'?'매장':v==='warehouse'?'창고':'미분류';
+}
+function compareRowToExcel(r){
+  return [
+    compareLocLabel(r.loc),
+    r.name||'',
+    r.code||'',
+    r.rawSource==null?'':Number(r.rawSource),
+    r.source==null?'':Number(r.source),
+    r.ecount==null?'':Number(r.ecount),
+    Number(r.diff||0),
+    r.status||'',
+    r.note||'',
+    (r.matchDetails||[]).map(m=>{
+      const parts=[
+        m.name||m.jangki||'',
+        m.jangki&&m.jangki!==m.name?`장끼명:${m.jangki}`:'',
+        m.code?`코드:${m.code}`:'',
+        `금액:${Number(m.amount||0)}`,
+        m.reason?`근거:${m.reason}`:''
+      ].filter(Boolean);
+      return parts.join(' / ');
+    }).join(' || ')
+  ];
+}
+function makeCompareSheet(rows){
+  const data=[
+    ['구분','원본 거래처','거래처코드','원본금액','규칙적용 비교금액','이카운트 합계','차이(이카운트-비교금액)','상태','적용규칙','연결된 이카운트 상세'],
+    ...rows.map(compareRowToExcel)
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[
+    {wch:10},{wch:28},{wch:18},{wch:15},{wch:18},{wch:16},{wch:19},{wch:16},{wch:38},{wch:70}
+  ];
+  return ws;
+}
+function downloadCompareExcel(){
+  if(!compareState.rows?.length){
+    alert('먼저 비교를 실행해 주세요.');
+    return;
+  }
+
+  const wb=XLSX.utils.book_new();
+  const all=[...(compareState.rows||[])];
+  const matched=all.filter(r=>r.status==='일치');
+  const mismatch=all.filter(r=>r.status!=='일치');
+  const special=all.filter(r=>r.special);
+
+  XLSX.utils.book_append_sheet(wb,makeCompareSheet(all),'전체결과');
+  XLSX.utils.book_append_sheet(wb,makeCompareSheet(matched),'일치');
+  XLSX.utils.book_append_sheet(wb,makeCompareSheet(mismatch),'불일치_확인');
+  XLSX.utils.book_append_sheet(wb,makeCompareSheet(special),'특수매칭');
+
+  if(compareState.mode==='sales'){
+    const excluded=compareState.meta?.excluded||[];
+    const exRows=[
+      ['구분','거래처','금액','제외사유'],
+      ...excluded.map(x=>[
+        compareLocLabel(x.loc),
+        x.name||'',
+        Number(x.amount||0),
+        x.reason||''
+      ])
+    ];
+    const exWs=XLSX.utils.aoa_to_sheet(exRows);
+    exWs['!cols']=[{wch:10},{wch:30},{wch:16},{wch:28}];
+    XLSX.utils.book_append_sheet(wb,exWs,'비교제외');
+
+    const meta=compareState.meta||{};
+    const summaryRows=[
+      ['항목','값'],
+      ['비교기준','이카운트 합계'],
+      ['일치건수',matched.length],
+      ['불일치/확인건수',mismatch.length],
+      ['특수매칭건수',special.length],
+      ['비교제외건수',Number(meta.excludedCount||0)],
+      ['신상마켓 VAT환산건수',Number(meta.vatAdjustedCount||0)],
+      ['매장 비교대상건수',Number(meta.storeCount||0)],
+      ['창고 비교대상건수',Number(meta.warehouseCount||0)],
+      ['이카운트 비영(0원 제외) 행수',Number(meta.ecountCount||0)],
+      ['원본 비교금액 합계',Number(meta.sourceTotal||0)],
+      ['이카운트 합계',Number(meta.ecountTotal||0)]
+    ];
+    const sumWs=XLSX.utils.aoa_to_sheet(summaryRows);
+    sumWs['!cols']=[{wch:30},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,sumWs,'비교요약');
+  }
+
+  const now=new Date();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  const prefix=compareState.mode==='sales'?'월매출비교':'잔액비교';
+  XLSX.writeFile(wb,`${prefix}_검수결과_${y}${m}${d}.xlsx`);
 }
 function renderCompare(){
   const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),
@@ -5243,7 +5342,7 @@ $('addComboUnitBtn').onclick=()=>{cashCloseState.comboUnits.push({label:'단위 
 $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',renderCombo);
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
-$('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};
+$('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};$('downloadCompareExcelBtn').onclick=downloadCompareExcel;
 $('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
