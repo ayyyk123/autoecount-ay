@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.21</title>
+<title>아도라블 매출 자동화 v3.23</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -314,11 +314,29 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .compareFilePick{display:inline-flex;flex-direction:column;align-items:flex-start;gap:4px}
   .compareFilePick .filePickLabel{margin:0}
   .compareFileStatus{
-    max-width:190px;font-size:10px;line-height:1.25;color:#64748b;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    max-width:220px;font-size:10px;line-height:1.25;color:#64748b;
+    display:flex;align-items:center;gap:4px;min-height:18px
   }
   .compareFileStatus.selected{color:#15803d;font-weight:800}
+  .compareFileName{max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .compareFileClear{
+    width:18px;height:18px;min-width:18px;padding:0;border:1px solid #cbd5e1;border-radius:50%;
+    background:#fff;color:#64748b;font-size:12px;line-height:16px;cursor:pointer;font-weight:900
+  }
+  .compareFileClear:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
   .filePickLabel.compareSelected{border-color:#86efac;background:#f0fdf4;color:#166534}
+  .monthlyCompareRule{margin-top:8px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:11px;line-height:1.55;color:#475569}
+  .compareRuleNote{font-size:10px;color:#64748b;max-width:360px;line-height:1.35}
+  .compareSpecialBox{margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+  .compareSpecialHead{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f8fafc;cursor:pointer;user-select:none}
+  .compareSpecialHead b{margin-right:auto}
+  .compareSpecialBody{padding:10px;overflow:auto;max-height:520px}
+  .compareSpecialBody table{min-width:1050px;margin:0}
+  .compareSpecialBody th{background:#f8fafc;position:sticky;top:0;z-index:1}
+  .compareSpecialRule{font-size:11px;font-weight:850;color:#7c3aed}
+  .compareSpecialMatch{display:grid;gap:4px}
+  .compareSpecialMatchLine{font-size:11px;padding:5px 7px;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
+
 
   @media(max-width:900px){.moduleGrid{grid-template-columns:1fr}.ledgerSummary{grid-template-columns:repeat(2,1fr)}.comboLine{grid-template-columns:1fr 90px 70px 38px 38px}}
 
@@ -384,7 +402,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.21 · 비교파일 선택표시</div>
+      <div class="badge">v3.23 · 특수매칭 상세보기</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -558,7 +576,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   <div id="amountCompareSection" class="section">
     <h3>거래처 금액 비교</h3>
     <div class="box">
-      <div class="hint">최신 거래처리스트의 거래처명·장끼거래처명·수동 매칭규칙을 활용해 비교합니다. 같은 거래처가 여러 행이면 먼저 합산합니다.</div>
+      <div class="hint">최신 거래처리스트의 거래처명·장끼거래처명·수동 매칭규칙을 활용합니다. <b>월별 매출 비교는 이카운트 파일의 `합계` 금액을 기준</b>으로 매장·창고 자료를 대조합니다.</div>
       <div class="moduleGrid">
         <div class="moduleBox">
           <h4>주간 거래처 잔액 비교</h4>
@@ -597,6 +615,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <button id="runMonthlyCompareBtn" class="btn" type="button">월매출 비교</button>
           </div>
           <div id="monthlyCompareStatus" class="small"></div>
+          <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)` 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.</div>
         </div>
       </div>
       <div class="compareFilters">
@@ -606,6 +625,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button id="compareMismatchOnlyBtn" class="btn light active" type="button">불일치만 보기</button>
       </div>
       <div id="compareSummary"></div>
+      <div id="compareSpecialDetails"></div>
       <div id="compareTable"></div>
     </div>
   </div>
@@ -795,7 +815,7 @@ let currentReceiptConfirmations={};
 let currentBizRegConditionalReviews={};
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalStartDate='20260907';
 let cashCloseState={purchase:null,collection:null,purchaseRows:[],collectionRows:[],purchaseTotal:0,collectionTotal:0,purchaseDates:[],comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
-let compareState={rows:[],loc:'all',mismatchOnly:true,mode:''};
+let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false};
 let taxCheckState={month:'',bizRegs:[],closed:[],notes:[]};
 let taxPurchaseMasters=[];
 let taxBookState={month:'',purchases:[],salesTax:0,salesCash:0};
@@ -1937,17 +1957,44 @@ function renderCombo(){const box=$('comboUnits');if(!box)return;box.innerHTML=ca
 function autoCombo(){const target=Math.abs(num($('comboTarget').value)),units=cashCloseState.comboUnits.filter(u=>u.amount>0);if(!target||!units.length)return;let best={diff:Infinity,qtys:[]};const max0=Math.min(300,Math.ceil(target/units[0].amount)+10);function dfs(i,left,qtys,total){if(i===units.length-1){const q=Math.max(0,Math.round(left/units[i].amount));const sum=total+q*units[i].amount,d=Math.abs(target-sum);if(d<best.diff){best={diff:d,qtys:[...qtys,q]}}return}const max=Math.min(200,Math.ceil(Math.max(0,left)/units[i].amount)+5);for(let q=0;q<=max;q++)dfs(i+1,left-q*units[i].amount,[...qtys,q],total+q*units[i].amount)}dfs(0,target,[],0);let j=0;for(const u of cashCloseState.comboUnits){if(u.amount>0)u.qty=best.qtys[j++]||0;}renderCombo()}
 
 // ===== 거래처 금액 비교 =====
-function customerCanonical(row){if(row.code)return 'C:'+norm(row.code);const maps=cloud.customerMaps||{jangki:new Map(),ecount:new Map()},r=resolveCustomer(maps,row.name);if(r.ok)return 'C:'+norm(r.value);return 'N:'+norm(row.name)}
-function aggregateCompare(rows){const m=new Map();for(const r of rows){const k=customerCanonical(r);if(!m.has(k))m.set(k,{key:k,name:r.name||r.code,code:r.code||'',amount:0,loc:r.loc});const x=m.get(k);x.amount+=Number(r.amount||0);if(!x.name&&r.name)x.name=r.name;}return m}
+// 잔액 비교는 기존의 코드/거래처명 기준 비교를 유지합니다.
+function customerCanonical(row){
+  if(row.code)return 'C:'+norm(row.code);
+  const maps=cloud.customerMaps||{jangki:new Map(),ecount:new Map()},r=resolveCustomer(maps,row.name);
+  if(r.ok)return 'C:'+norm(r.value);
+  return 'N:'+norm(row.name)
+}
+function aggregateCompare(rows){
+  const m=new Map();
+  for(const r of rows){
+    const k=customerCanonical(r);
+    if(!m.has(k))m.set(k,{key:k,name:r.name||r.code,code:r.code||'',amount:0,rawAmount:0,loc:r.loc,note:''});
+    const x=m.get(k);x.amount+=Number(r.amount||0);x.rawAmount+=Number(r.rawAmount??r.amount??0);if(!x.name&&r.name)x.name=r.name;
+  }
+  return m
+}
 async function parseCompareFile(file,kind,loc){if(!file)return[];const p=await genericExcelObjects(file);return extractRows(p,kind,loc)}
 
+function compareModeForInput(inputId){return String(inputId||'').startsWith('monthly')?'sales':String(inputId||'').startsWith('balance')?'balance':''}
+function invalidateCompareResult(inputId){
+  const mode=compareModeForInput(inputId);
+  if(!mode)return;
+  const status=$(mode==='sales'?'monthlyCompareStatus':'balanceCompareStatus');
+  if(status)status.textContent='';
+  if(compareState.mode===mode){compareState={...compareState,rows:[],mode:'',meta:{}};renderCompare()}
+}
+window.clearCompareFile=function(inputId,e){
+  if(e){e.preventDefault();e.stopPropagation()}
+  const input=$(inputId);if(input)input.value='';
+  updateCompareFileSelection(inputId);
+  invalidateCompareResult(inputId);
+}
 function updateCompareFileSelection(inputId){
   const input=$(inputId),status=$(inputId+'Status'),label=$(inputId+'Label');
   if(!input||!status)return;
   const f=input.files?.[0]||null;
   if(f){
-    status.textContent=`✓ ${f.name}`;
-    status.title=f.name;
+    status.innerHTML=`<span class="compareFileName" title="${escAttr(f.name)}">✓ ${esc(f.name)}</span><button type="button" class="compareFileClear" title="파일 빼기" onclick="clearCompareFile('${escAttr(inputId)}',event)">×</button>`;
     status.classList.add('selected');
     label?.classList.add('compareSelected');
   }else{
@@ -1961,21 +2008,302 @@ function setupCompareFileSelectionStatus(){
   const ids=['balanceStoreFile','balanceWarehouseFile','balanceEcountFile','monthlyStoreFile','monthlyWarehouseFile','monthlyEcountFile'];
   ids.forEach(id=>{
     const input=$(id);if(!input)return;
-    input.addEventListener('change',()=>updateCompareFileSelection(id));
+    input.addEventListener('change',()=>{invalidateCompareResult(id);updateCompareFileSelection(id)});
     updateCompareFileSelection(id);
   });
 }
-async function runCompare(mode){try{
-  if(selectedFiles.customer.length)await buildRuntimeCustomerMaps();
-  let sourceRows=[],ecountRows=[];
-  const ids=mode==='balance'
-    ?['balanceStoreFile','balanceWarehouseFile','balanceEcountFile']
-    :['monthlyStoreFile','monthlyWarehouseFile','monthlyEcountFile'];
-  const missing=ids.filter(id=>!$(id)?.files?.[0]);
-  if(missing.length)throw new Error('비교에 필요한 파일 3개를 모두 선택해 주세요.');
-if(mode==='balance'){const [s,w,e]=await Promise.all([parseCompareFile($('balanceStoreFile').files[0],'balance','store'),parseCompareFile($('balanceWarehouseFile').files[0],'balance','warehouse'),parseCompareFile($('balanceEcountFile').files[0],'balance','')]);sourceRows=[...s,...w];ecountRows=e;$('balanceCompareStatus').textContent=`원본 ${sourceRows.length}행 · 이카운트 ${ecountRows.length}행`;}else{const [s,w,e]=await Promise.all([parseCompareFile($('monthlyStoreFile').files[0],'sales','store'),parseCompareFile($('monthlyWarehouseFile').files[0],'sales','warehouse'),parseCompareFile($('monthlyEcountFile').files[0],'sales','')]);sourceRows=[...s,...w];ecountRows=e;$('monthlyCompareStatus').textContent=`매장 ${s.length}행 · 창고 ${w.length}행 · 이카운트 ${e.length}행`;}if(!sourceRows.length||!ecountRows.length)throw new Error('비교할 원본과 이카운트 파일을 모두 넣어 주세요.');const sm=aggregateCompare(sourceRows),em=aggregateCompare(ecountRows),keys=new Set([...sm.keys(),...em.keys()]),rows=[];for(const k of keys){const s=sm.get(k),e=em.get(k),loc=s?.loc||inferCustomerLoc(k,e?.name||'');let status='일치';if(!s)status='이카운트에만 있음';else if(!e)status='원본에만 있음';else if(Number(s.amount)!==Number(e.amount))status='금액불일치';rows.push({key:k,name:s?.name||e?.name||k,code:k.startsWith('C:')?k.slice(2):'',loc,source:s?.amount??null,ecount:e?.amount??null,diff:(e?.amount??0)-(s?.amount??0),status});}compareState={...compareState,rows,mode};renderCompare()}catch(e){alert(e.message||e)}}
-function inferCustomerLoc(key,name){const code=key.startsWith('C:')?key.slice(2):'',c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(code)||norm(x.name)===norm(name));const b=norm(c?.branch||'')+' '+norm(c?.group||'');if(/창고/.test(b))return'warehouse';if(/매장|동대문|본점|남평화/.test(b))return'store';return''}
-function renderCompare(){const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),all=compareState.rows||[],counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length};$('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span></div>`;$('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본</th><th>이카운트</th><th>차이(이카운트-원본)</th><th>상태</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table>`}
+
+function monthlyCompactName(v){
+  let s=norm(v);
+  try{s=s.normalize('NFKC')}catch(e){}
+  return s.toLowerCase().replace(/\s+/g,'')
+}
+function monthlyNameVariants(v){
+  const raw=norm(v);if(!raw)return[];
+  const vals=new Set([raw]);
+  for(const m of raw.matchAll(/\[([^\]]+)\]/g))if(norm(m[1]))vals.add(norm(m[1]));
+  for(const x of [...vals])for(const p of x.split(/[\/／]/))if(norm(p))vals.add(norm(p));
+  const transformed=new Set();
+  for(const original of [...vals]){
+    let q=norm(original);
+    for(let guard=0;guard<5;guard++){
+      const before=q;
+      q=q.replace(/^\([^)]*년[^)]*~\)/,'').replace(/^\d{2,4}년\d{1,2}월~/,'').trim();
+      q=q.replace(/^남평화-/,'').replace(/^신상마켓-/,'').replace(/^누죤-/,'').replace(/^\(A\)/i,'').trim();
+      if(q===before)break;
+    }
+    if(q)transformed.add(q);
+    const noBracket=q.replace(/\[[^\]]+\]/g,'').trim();if(noBracket)transformed.add(noBracket);
+    const noTail=q.replace(/\([^()]*\)$/,'').trim();if(noTail&&noTail.length>=2)transformed.add(noTail);
+    const noKnownTail=q.replace(/\((택배|법인|별도)\)$/i,'').trim();if(noKnownTail)transformed.add(noKnownTail);
+  }
+  for(const x of transformed)vals.add(x);
+  return [...new Set([...vals].map(monthlyCompactName).filter(Boolean))]
+}
+function monthlyLevenshtein(a,b){
+  if(a===b)return 0;
+  if(Math.abs(a.length-b.length)>1)return 2;
+  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev=cur;
+  }
+  return prev[b.length]
+}
+function monthlyCustomerLocByCode(code){
+  const c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(code));
+  if(!c)return'';
+  const g=[c.group,c.branch,c.nampyeonghwa].map(norm).join(' ');
+  if(/본점|창고/.test(g))return'warehouse';
+  if(/동대문점|매장|남평화/.test(g))return'store';
+  return''
+}
+function inferMonthlyEcountLoc(row){
+  const byCode=monthlyCustomerLocByCode(row.code);if(byCode)return byCode;
+  const s=[row.name,row.jangki].map(norm).join(' ');
+  if(/\(A\)/i.test(s))return'warehouse';
+  if(/남평화|신상마켓/.test(s))return'store';
+  return''
+}
+async function parseMonthlySourcePivot(file,loc){
+  if(!file)return {rows:[],excluded:[],zeroCount:0,vatAdjustedCount:0};
+  const wb=await readWb(file);let found=null;
+  for(const sh of wb.SheetNames){
+    const a=aoaFromSheet(wb,sh);
+    for(let i=0;i<Math.min(30,a.length);i++){
+      const h=(a[i]||[]).map(norm),nameI=h.findIndex(x=>x==='Row Labels'||x==='행 레이블'||x==='거래처'||x==='거래처명'),amountI=h.indexOf('합계');
+      if(nameI>=0&&amountI>=0){found={a,hi:i,nameI,amountI};break}
+    }
+    if(found)break;
+  }
+  if(!found)throw new Error(`${file.name}: 월매출 피벗의 'Row Labels / 합계' 열을 찾지 못했습니다.`);
+  const rows=[],excluded=[];let zeroCount=0,vatAdjustedCount=0;
+  for(const r of found.a.slice(found.hi+1)){
+    const name=norm(r[found.nameI]);if(!name)continue;
+    const amount=num(r[found.amountI]);if(!Number.isFinite(amount))continue;
+    if(name==='<합  계>'||name==='Grand Total'||name==='총합계')continue;
+    if(amount===0){zeroCount++;continue}
+    if(isSampleCustomer(name)){excluded.push({name,amount,loc,reason:'S/P 샘플'});continue}
+    if(name==='신상마켓(디테일)'){excluded.push({name,amount,loc,reason:'신상마켓(디테일)'});continue}
+    let compareAmount=amount,vatAdjusted=false;
+    if(loc==='store'&&name.startsWith('신상마켓-')){compareAmount=roundAway(amount*1.1);vatAdjusted=true;vatAdjustedCount++}
+    const rr=resolveCustomer(cloud.customerMaps||{jangki:new Map(),ecount:new Map()},name);
+    rows.push({name,code:rr.ok?norm(rr.value):'',rawAmount:amount,amount:compareAmount,loc,vatAdjusted,aliases:monthlyNameVariants(name)})
+  }
+  return {rows,excluded,zeroCount,vatAdjustedCount}
+}
+async function parseMonthlyEcount(file){
+  if(!file)return {rows:[],zeroCount:0};
+  const wb=await readWb(file);let found=null;
+  for(const sh of wb.SheetNames){
+    const a=aoaFromSheet(wb,sh);
+    for(let i=0;i<Math.min(30,a.length);i++){
+      const h=(a[i]||[]).map(norm),codeI=h.indexOf('거래처코드'),nameI=h.indexOf('거래처명'),sumI=h.indexOf('합계'),jangkiI=h.indexOf('장끼거래처명');
+      if(codeI>=0&&nameI>=0&&sumI>=0){found={a,hi:i,codeI,nameI,sumI,jangkiI};break}
+    }
+    if(found)break;
+  }
+  if(!found)throw new Error(`${file.name}: 이카운트의 '거래처코드 / 거래처명 / 합계' 열을 찾지 못했습니다.`);
+  const rows=[];let zeroCount=0;
+  for(const r of found.a.slice(found.hi+1)){
+    const code=norm(r[found.codeI]),name=norm(r[found.nameI]),jangki=found.jangkiI>=0?norm(r[found.jangkiI]):'';
+    if(!code&&!name&&!jangki)continue;
+    const amount=num(r[found.sumI]);if(!Number.isFinite(amount))continue;
+    if(amount===0){zeroCount++;continue}
+    const row={code,name,jangki,amount};
+    row.loc=inferMonthlyEcountLoc(row);row.aliases=[...new Set([...monthlyNameVariants(name),...monthlyNameVariants(jangki)])];
+    rows.push(row)
+  }
+  return {rows,zeroCount}
+}
+function monthlyPairScore(e,s){
+  let score=0,reason='';
+  if(e.loc&&s.loc&&e.loc!==s.loc)score-=300;
+  if(e.code&&s.code&&norm(e.code)===norm(s.code)){score+=1000;reason='거래처코드 일치'}
+  if(monthlyCompactName(e.jangki)&&monthlyCompactName(e.jangki)===monthlyCompactName(s.name)){score+=500;reason=reason||'장끼명 정확일치'}
+  const inter=e.aliases.filter(a=>s.aliases.includes(a));
+  if(inter.length){score+=400+Math.min(30,Math.max(...inter.map(x=>x.length)));reason=reason||'거래처명/별칭 일치'}
+  if(!inter.length){
+    let bestContain=0;
+    for(const a of e.aliases)for(const b of s.aliases)if(Math.min(a.length,b.length)>=3&&(a.includes(b)||b.includes(a)))bestContain=Math.max(bestContain,Math.min(a.length,b.length));
+    if(bestContain){score+=200+Math.min(30,bestContain);reason=reason||'변경명/포함명 연결'}
+    else{
+      let fuzzy=false;
+      outer:for(const a of e.aliases)for(const b of s.aliases){if(a.length>=3&&a.length<=12&&b.length>=3&&b.length<=12&&monthlyLevenshtein(a,b)<=1){fuzzy=true;break outer}}
+      if(fuzzy){score+=100;reason=reason||'유사명 연결'}
+    }
+  }
+  return {score,reason}
+}
+function assignMonthlyEcountRows(sources,ecountRows){
+  const codeMap=new Map(),aliasMap=new Map();
+  const add=(map,key,i)=>{if(!key)return;if(!map.has(key))map.set(key,new Set());map.get(key).add(i)};
+  sources.forEach((s,i)=>{if(s.code)add(codeMap,norm(s.code),i);for(const a of s.aliases)add(aliasMap,a,i)});
+  const assigned=new Map(),unassigned=[],ambiguous=[];
+  const pushAssign=(i,e,match)=>{if(!assigned.has(i))assigned.set(i,[]);assigned.get(i).push({e,match})};
+  for(const e of ecountRows){
+    let idxs=new Set();
+    if(e.code&&codeMap.has(norm(e.code)))for(const i of codeMap.get(norm(e.code)))idxs.add(i);
+    for(const a of e.aliases)if(aliasMap.has(a))for(const i of aliasMap.get(a))idxs.add(i);
+    if(!idxs.size)idxs=new Set(sources.map((_,i)=>i));
+    let candidates=[];
+    for(const i of idxs){const m=monthlyPairScore(e,sources[i]);if(m.score>=100)candidates.push({i,...m})}
+    candidates.sort((a,b)=>b.score-a.score);
+    if(!candidates.length){unassigned.push(e);continue}
+    if(candidates.length>1&&candidates[0].score===candidates[1].score){ambiguous.push({e,candidates:candidates.slice(0,4)});continue}
+    pushAssign(candidates[0].i,e,candidates[0]);
+  }
+  return {assigned,unassigned,ambiguous}
+}
+function buildMonthlyCompareRows(sources,ecountRows,assignResult){
+  const rows=[];
+  sources.forEach((s,i)=>{
+    const list=assignResult.assigned.get(i)||[],ecount=list.reduce((sum,x)=>sum+Number(x.e.amount||0),0);
+    let status='일치';if(!list.length)status='원본에만 있음';else if(ecount!==Number(s.amount||0))status='금액불일치';
+    const notes=[];
+    if(s.vatAdjusted)notes.push('신상마켓 VAT 10% 포함 환산');
+    if(list.length>1)notes.push(`이카운트 ${list.length}행 합산: ${list.map(x=>x.e.jangki||x.e.name).join(' + ')}`);
+    const reasons=[...new Set(list.map(x=>x.match.reason).filter(Boolean))];
+    if(reasons.some(x=>x==='유사명 연결'))notes.push('유사명 연결');
+    else if(reasons.some(x=>x==='변경명/포함명 연결'))notes.push('변경명/포함명 연결');
+    const matchDetails=list.map(x=>({
+      code:x.e.code||'',
+      name:x.e.name||'',
+      jangki:x.e.jangki||'',
+      amount:Number(x.e.amount||0),
+      reason:x.match.reason||''
+    }));
+    rows.push({
+      key:`S:${s.loc}:${s.name}`,
+      name:s.name,
+      code:s.code||'',
+      loc:s.loc,
+      rawSource:Number(s.rawAmount||0),
+      source:Number(s.amount||0),
+      ecount:list.length?ecount:null,
+      diff:(list.length?ecount:0)-Number(s.amount||0),
+      status,
+      note:notes.join(' · '),
+      special:notes.length>0,
+      matchDetails
+    })
+  });
+  for(const e of assignResult.unassigned){
+    rows.push({key:`E:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',loc:e.loc||inferCustomerLoc('C:'+norm(e.code),e.name),rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'이카운트에만 있음',note:`이카운트: ${e.name}${e.jangki?' / 장끼 '+e.jangki:''}`,special:false,matchDetails:[]})
+  }
+  for(const a of assignResult.ambiguous){
+    const e=a.e;
+    rows.push({key:`A:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',loc:e.loc||'',rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'매칭확인 필요',note:'동일 우선순위 후보가 여러 개라 자동연결하지 않음',special:false,matchDetails:[]})
+  }
+  return rows
+}
+async function runMonthlySalesCompare(){
+  const [s,w,e]=await Promise.all([
+    parseMonthlySourcePivot($('monthlyStoreFile').files[0],'store'),
+    parseMonthlySourcePivot($('monthlyWarehouseFile').files[0],'warehouse'),
+    parseMonthlyEcount($('monthlyEcountFile').files[0])
+  ]);
+  const sources=[...s.rows,...w.rows],assignResult=assignMonthlyEcountRows(sources,e.rows),rows=buildMonthlyCompareRows(sources,e.rows,assignResult);
+  const meta={
+    storeCount:s.rows.length,warehouseCount:w.rows.length,ecountCount:e.rows.length,
+    excludedCount:s.excluded.length+w.excluded.length,excluded:[...s.excluded,...w.excluded],
+    vatAdjustedCount:s.vatAdjustedCount+w.vatAdjustedCount,sourceZeroCount:s.zeroCount+w.zeroCount,ecountZeroCount:e.zeroCount,
+    sourceTotal:sources.reduce((a,x)=>a+Number(x.amount||0),0),ecountTotal:e.rows.reduce((a,x)=>a+Number(x.amount||0),0)
+  };
+  $('monthlyCompareStatus').textContent=`비교대상 매장 ${meta.storeCount}건 · 창고 ${meta.warehouseCount}건 · 이카운트 ${meta.ecountCount}건 · 비교제외 ${meta.excludedCount}건 · 신상마켓 VAT환산 ${meta.vatAdjustedCount}건`;
+  compareState={...compareState,rows,mode:'sales',meta,specialOpen:false};renderCompare()
+}
+async function runBalanceCompare(){
+  const [s,w,e]=await Promise.all([
+    parseCompareFile($('balanceStoreFile').files[0],'balance','store'),
+    parseCompareFile($('balanceWarehouseFile').files[0],'balance','warehouse'),
+    parseCompareFile($('balanceEcountFile').files[0],'balance','')
+  ]);
+  const sourceRows=[...s,...w],sm=aggregateCompare(sourceRows),em=aggregateCompare(e),keys=new Set([...sm.keys(),...em.keys()]),rows=[];
+  $('balanceCompareStatus').textContent=`원본 ${sourceRows.length}행 · 이카운트 ${e.length}행`;
+  for(const k of keys){
+    const sr=sm.get(k),er=em.get(k),loc=sr?.loc||inferCustomerLoc(k,er?.name||'');
+    let status='일치';if(!sr)status='이카운트에만 있음';else if(!er)status='원본에만 있음';else if(Number(sr.amount)!==Number(er.amount))status='금액불일치';
+    rows.push({key:k,name:sr?.name||er?.name||k,code:k.startsWith('C:')?k.slice(2):'',loc,rawSource:sr?.amount??null,source:sr?.amount??null,ecount:er?.amount??null,diff:(er?.amount??0)-(sr?.amount??0),status,note:''})
+  }
+  compareState={...compareState,rows,mode:'balance',meta:{},specialOpen:false};renderCompare()
+}
+async function runCompare(mode){
+  try{
+    if(selectedFiles.customer.length)await buildRuntimeCustomerMaps();
+    const ids=mode==='balance'?['balanceStoreFile','balanceWarehouseFile','balanceEcountFile']:['monthlyStoreFile','monthlyWarehouseFile','monthlyEcountFile'];
+    if(ids.some(id=>!$(id)?.files?.[0]))throw new Error('비교에 필요한 파일 3개를 모두 선택해 주세요.');
+    if(mode==='sales')await runMonthlySalesCompare();else await runBalanceCompare();
+  }catch(e){alert(e.message||e)}
+}
+function inferCustomerLoc(key,name){
+  const code=key.startsWith('C:')?key.slice(2):'',c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(code)||norm(x.name)===norm(name));
+  const b=norm(c?.branch||'')+' '+norm(c?.group||'');
+  if(/창고|본점/.test(b))return'warehouse';
+  if(/매장|동대문점|남평화/.test(b))return'store';
+  return''
+}
+
+window.toggleCompareSpecialDetails=function(){
+  compareState.specialOpen=!compareState.specialOpen;
+  renderCompareSpecialDetails();
+}
+function renderCompareSpecialDetails(){
+  const box=$('compareSpecialDetails');if(!box)return;
+  if(compareState.mode!=='sales'){box.innerHTML='';return}
+  const rows=(compareState.rows||[]).filter(r=>r.special);
+  if(!rows.length){box.innerHTML='';return}
+  const open=!!compareState.specialOpen;
+  box.innerHTML=`<div class="compareSpecialBox">
+    <div class="compareSpecialHead" onclick="toggleCompareSpecialDetails()">
+      <b>특수매칭 상세보기</b>
+      <span class="statusPill">${rows.length}건</span>
+      <span>${open?'▾':'▸'}</span>
+    </div>
+    ${open?`<div class="compareSpecialBody">
+      <table>
+        <thead><tr>
+          <th>구분</th><th>원본 거래처</th><th>원본금액</th><th>비교금액</th><th>적용규칙</th><th>연결된 이카운트 상세</th><th>이카운트 합계</th>
+        </tr></thead>
+        <tbody>${rows.map(r=>`
+          <tr>
+            <td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td>
+            <td><b>${esc(r.name||'')}</b>${r.code?`<div class="small">코드 ${esc(r.code)}</div>`:''}</td>
+            <td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td>
+            <td>${r.source==null?'-':Number(r.source).toLocaleString()}</td>
+            <td><span class="compareSpecialRule">${esc(r.note||'')}</span></td>
+            <td>
+              <div class="compareSpecialMatch">
+                ${(r.matchDetails||[]).map((m,idx)=>`
+                  <div class="compareSpecialMatchLine">
+                    <b>${idx+1}. ${esc(m.name||m.jangki||'')}</b>
+                    ${m.jangki&&m.jangki!==m.name?` / 장끼명 ${esc(m.jangki)}`:''}
+                    ${m.code?` / 코드 ${esc(m.code)}`:''}
+                    <br>금액 <b>${Number(m.amount||0).toLocaleString()}원</b>
+                    ${m.reason?` · 연결근거 ${esc(m.reason)}`:''}
+                  </div>`).join('')||'<span class="small">연결된 이카운트 행 없음</span>'}
+              </div>
+            </td>
+            <td><b>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</b></td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>`:''}
+  </div>`;
+}
+function renderCompare(){
+  const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),
+        all=compareState.rows||[],counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length},meta=compareState.meta||{};
+  const specialCount=compareState.mode==='sales'?all.filter(r=>r.special).length:0;
+  const metaBadges=compareState.mode==='sales'?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">신상마켓 VAT환산 ${Number(meta.vatAdjustedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 기준</span>`:'';
+  $('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span>${metaBadges}</div>`;
+  if(compareState.mode==='sales'){
+    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본금액</th><th>비교금액</th><th>이카운트 합계</th><th>차이(이카운트-비교금액)</th><th>상태</th><th>적용규칙</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td></tr>`).join('')}</tbody></table>`;
+  }else{
+    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본</th><th>이카운트</th><th>차이(이카운트-원본)</th><th>상태</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table>`;
+  }
+  renderCompareSpecialDetails();
+}
 
 // ===== 세금계산서 발행 전 점검 =====
 
