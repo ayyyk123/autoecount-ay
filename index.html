@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.11</title>
+<title>아도라블 매출 자동화 v3.13</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -178,7 +178,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .moduleToolbar input[type="number"]{width:140px}
   .moduleToolbar .grow{flex:1;min-width:170px}
   .statusPill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;background:#f1f5f9;color:#475569}
-  .statusPill.ok{background:#dcfce7;color:#166534}.statusPill.warn{background:#fef3c7;color:#92400e}.statusPill.bad{background:#fee2e2;color:#991b1b}
+  .statusPill.ok{background:#dcfce7;color:#166534}.statusPill.warn{background:#fef3c7;color:#92400e}.statusPill.bad{background:#fee2e2;color:#991b1b}.statusPill.nampyeonghwa{background:#ede9fe;color:#6d28d9}
   .receiptConfirmTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}
   .receiptConfirmTop input[type="date"],.receiptRowDate{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px}
   .receiptDoneRow{background:#f0fdf4}
@@ -319,7 +319,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.11 · 요청제외 휴폐업 연동</div>
+      <div class="badge">v3.13 · 사업자등록증 대상 직접추가</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -541,6 +541,11 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <div class="taxCheckStack">
         <div class="moduleBox taxListBox">
           <h4>사업자등록증 요청대상</h4>
+          <div class="moduleToolbar" style="margin-top:0">
+            <input id="manualBizRegInput" class="grow" list="customerChoices" placeholder="직접 추가할 거래처코드 또는 거래처명">
+            <button id="addManualBizRegBtn" class="btn light" type="button">요청대상 직접추가</button>
+            <span id="manualBizRegStatus" class="small"></span>
+          </div>
           <div class="taxListSearch">
             <input id="tempCustomerSearch" type="text" placeholder="거래처명 · 코드 · 메모 검색">
             <span id="tempCustomerSearchCount" class="taxListSearchCount"></span>
@@ -568,6 +573,15 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         </div>
         <div class="moduleBox taxListBox">
           <h4>휴업 · 폐업 확인</h4>
+          <div class="moduleToolbar" style="margin-top:0">
+            <input id="manualClosedBizRegInput" class="grow" list="customerChoices" placeholder="직접 추가할 거래처코드 또는 거래처명">
+            <select id="manualClosedStatus">
+              <option value="휴업">휴업</option>
+              <option value="폐업">폐업</option>
+            </select>
+            <button id="addManualClosedBizRegBtn" class="btn light" type="button">휴폐업 요청대상 직접추가</button>
+            <span id="manualClosedStatusMsg" class="small"></span>
+          </div>
           <div class="taxListSearch">
             <input id="closedCustomerSearch" type="text" placeholder="거래처명 · 코드 · 상태 · 메모 검색">
             <span id="closedCustomerSearchCount" class="taxListSearchCount"></span>
@@ -1047,6 +1061,7 @@ function parseCustomerEntries(wb){
         groupI=pick(['거래처계층그룹명','거래처계층그룹','계층그룹','계층그룹명','거래처그룹']),
         statusI=pick(['휴폐업상태','휴/폐업상태','휴업/폐업','휴/폐업','휴폐업','휴/폐업구분','사업자상태','사업자상태명','상태']),
         branchI=pick(['지점','매장/창고','구분']),
+        nampyeonghwaI=pick(['남평화','남평화여부','남평화 여부','남평화구분','남평화 구분']),
         bizNoI=pick(['사업자등록번호','사업자번호']),
         memoI=pick(['적요','비고','메모','확인메모']),
         changedNameI=pick(['변경후 거래처명','변경 후 거래처명']);
@@ -1067,6 +1082,7 @@ function parseCustomerEntries(wb){
       group:groupI>=0?norm(r[groupI]):'',
       status,
       branch:branchI>=0?norm(r[branchI]):'',
+      nampyeonghwa:nampyeonghwaI>=0?norm(r[nampyeonghwaI]):'',
       bizNo:bizNoI>=0?norm(r[bizNoI]):'',
       memo
     });
@@ -1830,6 +1846,19 @@ function inferCustomerLoc(key,name){const code=key.startsWith('C:')?key.slice(2)
 function renderCompare(){const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),all=compareState.rows||[],counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length};$('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span></div>`;$('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본</th><th>이카운트</th><th>차이(이카운트-원본)</th><th>상태</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table>`}
 
 // ===== 세금계산서 발행 전 점검 =====
+
+function isNampyeonghwaCustomer(c){
+  const explicit=norm(c?.nampyeonghwa);
+  if(explicit && !['N','NO','아니오','X','0'].includes(explicit.toUpperCase()))return true;
+  return /남평화/.test([
+    c?.group,c?.branch,c?.name,c?.jangkiName,c?.memo,c?.nampyeonghwa
+  ].map(norm).join(' '));
+}
+function nampyeonghwaBadge(c){
+  return c?.nampyeonghwaFlag
+    ? '<span class="statusPill nampyeonghwa">남평화</span>'
+    : '';
+}
 function isTempCustomerCode(c){return /^1000000|^2000000/.test(norm(c))}
 function isTargetTaxGroup(c){const g=norm(c.group);return g==='동대문점'||g==='본점'||g.includes('동대문점')||g.includes('본점')}
 function isClosedStatus(c){return /휴업|폐업/.test([c.status,c.name,c.jangkiName,c.memo].map(norm).join(' '))}
@@ -1894,14 +1923,101 @@ function renderBizRegExclusionList(){
     box.innerHTML='<div class="small" style="padding:9px">'+(q?'검색 결과 없음':'직접 저장된 요청제외 거래처 없음')+'</div>';
     return;
   }
-  box.innerHTML=`<table><thead><tr><th>거래처</th><th>코드</th><th>제외방식</th><th>관리</th></tr></thead><tbody>${
+  box.innerHTML=`<table><thead><tr><th>거래처</th><th>구분</th><th>코드</th><th>제외방식</th><th>관리</th></tr></thead><tbody>${
     rows.map(r=>`<tr>
       <td>${esc(r.name||r.jangkiName||'')}</td>
+      <td>${nampyeonghwaBadge({...r,nampyeonghwaFlag:r.nampyeonghwaFlag||isNampyeonghwaCustomer((cloud.customers||[]).find(c=>exclusionMatchesCustomer(r,c))||r)})}</td>
       <td>${esc(r.code||'')}</td>
       <td><span class="bizExcludeType ${(r.mode||'permanent')==='conditional'?'conditional':'permanent'}">${(r.mode||'permanent')==='conditional'?'판매내역 있으면 재확인':'항상 제외'}</span></td>
       <td><button class="btn light" onclick="removeBizRegExclusion('${escAttr(r.id)}')">제외해제</button></td>
     </tr>`).join('')
   }</tbody></table>`;
+}
+
+
+function findTaxCustomerForManual(raw){
+  const q=norm(raw);
+  if(!q)throw new Error('거래처코드 또는 거래처명을 입력해 주세요.');
+  const matches=(cloud.customers||[]).filter(c=>
+    norm(c.code)===q||norm(c.name)===q||norm(c.jangkiName)===q
+  );
+  if(matches.length>1)throw new Error('여러 거래처가 검색됩니다. 거래처코드를 정확히 입력해 주세요.');
+  if(!matches.length)throw new Error('최신 거래처 기준정보에서 해당 거래처를 찾지 못했습니다.');
+  return matches[0];
+}
+async function clearExclusionForManualRequest(c){
+  const matched=[...bizRegDynamicExclusions.values()].filter(x=>exclusionMatchesCustomer(x,c));
+  for(const x of matched){
+    await userCol('bizRegRequestExclusions').doc(x.id).delete().catch(()=>{});
+    bizRegDynamicExclusions.delete(x.id);
+  }
+  renderBizRegExclusionList();
+  return matched.length;
+}
+async function addManualBizRegTarget(){
+  if(!taxCheckState.month)throw new Error('점검월을 먼저 선택해 주세요.');
+  const c=findTaxCustomerForManual($('manualBizRegInput').value);
+  if((taxCheckState.bizRegs||[]).some(r=>exclusionMatchesCustomer(r,c))){
+    throw new Error('이미 사업자등록증 요청대상 목록에 있는 거래처입니다.');
+  }
+
+  const removedExclusions=await clearExclusionForManualRequest(c);
+  taxCheckState.bizRegs=taxCheckState.bizRegs||[];
+  taxCheckState.bizRegs.push({
+    name:c.name,
+    code:c.code,
+    jangkiName:c.jangkiName||'',
+    nampyeonghwaFlag:isNampyeonghwaCustomer(c),
+    received:false,
+    excluded:false,
+    auto:false,
+    manual:true,
+    memo:''
+  });
+  await saveTaxMonth();
+  $('manualBizRegInput').value='';
+  renderTaxCheck();
+  $('manualBizRegStatus').textContent=`${c.name} 추가완료${removedExclusions?' · 요청제외 해제':''}`;
+}
+
+async function addManualClosedBizRegTarget(){
+  if(!taxCheckState.month)throw new Error('점검월을 먼저 선택해 주세요.');
+  const c=findTaxCustomerForManual($('manualClosedBizRegInput').value);
+  if((taxCheckState.closed||[]).some(r=>exclusionMatchesCustomer(r,c))){
+    throw new Error('이미 휴업·폐업 확인 목록에 있는 거래처입니다.');
+  }
+
+  const removedExclusions=await clearExclusionForManualRequest(c);
+  const status=$('manualClosedStatus').value||'휴업';
+  taxCheckState.closed=taxCheckState.closed||[];
+  taxCheckState.closed.push({
+    name:c.name,
+    code:c.code,
+    status,
+    nampyeonghwaFlag:isNampyeonghwaCustomer(c),
+    requestBizReg:true,
+    manual:true,
+    memo:''
+  });
+  await saveTaxMonth();
+  $('manualClosedBizRegInput').value='';
+  renderTaxCheck();
+  $('manualClosedStatusMsg').textContent=`${c.name} ${status} 요청대상 추가완료${removedExclusions?' · 요청제외 해제':''}`;
+}
+
+window.deleteManualBizRegTarget=async function(i){
+  const r=taxCheckState.bizRegs?.[i];if(!r||!r.manual)return;
+  if(!confirm(`${r.name} 직접추가 요청대상을 삭제할까요?`))return;
+  taxCheckState.bizRegs.splice(i,1);
+  await saveTaxMonth();
+  renderTaxCheck();
+}
+window.deleteManualClosedTarget=async function(i){
+  const r=taxCheckState.closed?.[i];if(!r||!r.manual)return;
+  if(!confirm(`${r.name} 직접추가 휴·폐업 항목을 삭제할까요?`))return;
+  taxCheckState.closed.splice(i,1);
+  await saveTaxMonth();
+  renderTaxCheck();
 }
 
 async function addBizRegExclusion(){
@@ -1916,6 +2032,7 @@ async function addBizRegExclusion(){
     code:c.code||'',
     name:c.name||raw,
     jangkiName:c.jangkiName||'',
+    nampyeonghwaFlag:isNampyeonghwaCustomer(c),
     mode,
     source:'manual',
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1974,23 +2091,29 @@ async function scanTaxCustomers(){
   }
   const oldMap=new Map((old.bizRegs||[]).map(x=>[norm(x.name),x]));
   const oldClosedMap=new Map((old.closed||[]).map(x=>[norm(x.code)||norm(x.name),x]));
+  const autoBiz=temps.map(c=>{
+    const prior=oldMap.get(norm(c.name))||carry.get(norm(c.name))||{};
+    return {name:c.name,code:c.code,jangkiName:c.jangkiName||'',nampyeonghwaFlag:isNampyeonghwaCustomer(c),received:!!prior.received,excluded:!!prior.excluded,auto:!!prior.auto,manual:!!prior.manual,memo:prior.memo||''};
+  });
+  const autoClosed=closed.map(c=>{
+    const key=norm(c.code)||norm(c.name);
+    const prior=oldClosedMap.get(key)||closedCarry.get(key)||{};
+    return {
+      name:c.name,
+      code:c.code,
+      status:c.status||(/폐업/.test([c.name,c.jangkiName,c.memo].map(norm).join(' '))?'폐업':'휴업'),
+      nampyeonghwaFlag:isNampyeonghwaCustomer(c),
+      requestBizReg:!!prior.requestBizReg,
+      manual:!!prior.manual,
+      memo:prior.memo||''
+    };
+  });
+  const manualBiz=(old.bizRegs||[]).filter(r=>r.manual&&!autoBiz.some(x=>exclusionMatchesCustomer(x,r))&&!isBizRegRequestExcluded(r));
+  const manualClosed=(old.closed||[]).filter(r=>r.manual&&!autoClosed.some(x=>exclusionMatchesCustomer(x,r))&&!isBizRegRequestExcluded(r));
   taxCheckState={
     month,
-    bizRegs:temps.map(c=>{
-      const prior=oldMap.get(norm(c.name))||carry.get(norm(c.name))||{};
-      return {name:c.name,code:c.code,jangkiName:c.jangkiName||'',received:!!prior.received,excluded:!!prior.excluded,auto:!!prior.auto,memo:prior.memo||''};
-    }),
-    closed:closed.map(c=>{
-      const key=norm(c.code)||norm(c.name);
-      const prior=oldClosedMap.get(key)||closedCarry.get(key)||{};
-      return {
-        name:c.name,
-        code:c.code,
-        status:c.status||(/폐업/.test([c.name,c.jangkiName,c.memo].map(norm).join(' '))?'폐업':'휴업'),
-        requestBizReg:!!prior.requestBizReg,
-        memo:prior.memo||''
-      };
-    }),
+    bizRegs:[...autoBiz,...manualBiz],
+    closed:[...autoClosed,...manualClosed],
     notes:old.notes||[]
   };
   await autoCompletePriorBizRegs(entries,month);
@@ -2013,7 +2136,7 @@ window.toggleBizRegExclude=async function(i,checked){
   if(checked){r.received=false;r.auto=false}
   const key=safeId(norm(r.code)||norm(r.name));
   if(checked){
-    const data={code:r.code||'',name:r.name||'',jangkiName:r.jangkiName||'',createdFromMonth:taxCheckState.month||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const data={code:r.code||'',name:r.name||'',jangkiName:r.jangkiName||'',nampyeonghwaFlag:!!r.nampyeonghwaFlag,createdFromMonth:taxCheckState.month||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     await userCol('bizRegRequestExclusions').doc(key).set(data,{merge:true});
     bizRegDynamicExclusions.set(key,{id:key,...data,updatedAt:null});
     taxCheckState.closed=(taxCheckState.closed||[]).filter(x=>!exclusionMatchesCustomer(r,x));
@@ -2633,7 +2756,9 @@ async function importClosedTaxCheckSheet(wb){
         nameI=idx(['거래처','거래처명']),
         codeI=idx(['코드','거래처코드']),
         statusI=idx(['상태','휴폐업상태','휴/폐업상태']),
-        memoI=idx(['메모']);
+        nampyeonghwaI=idx(['남평화 여부','남평화']),
+        memoI=idx(['메모']),
+        manualI=idx(['등록구분']);
 
   const current=taxCheckState.closed||[];
   const byCode=new Map(current.map((r,i)=>[norm(r.code),i])),
@@ -2647,12 +2772,14 @@ async function importClosedTaxCheckSheet(wb){
 
     const requestBizReg=reqI>=0?truthyExcelFlag(r[reqI]):false,
           status=statusI>=0?norm(r[statusI]):'',
-          memo=memoI>=0?String(r[memoI]??'').trim():'';
+          nampyeonghwaFlag=nampyeonghwaI>=0?/남평화|Y|YES|TRUE|1/i.test(norm(r[nampyeonghwaI])):false,
+          memo=memoI>=0?String(r[memoI]??'').trim():'',
+          manual=manualI>=0?norm(r[manualI])==='직접추가':false;
 
     let i=byCode.get(code);
     if(i===undefined)i=byName.get(name);
     if(i===undefined){
-      current.push({name,code,status,requestBizReg,memo});
+      current.push({name,code,status,nampyeonghwaFlag,requestBizReg,manual,memo});
       i=current.length-1;
       if(code)byCode.set(code,i);
       if(name)byName.set(name,i);
@@ -2662,6 +2789,8 @@ async function importClosedTaxCheckSheet(wb){
       x.name=name||x.name;
       x.code=code||x.code;
       x.status=status||x.status||'';
+      if(nampyeonghwaI>=0)x.nampyeonghwaFlag=nampyeonghwaFlag;
+      if(manualI>=0)x.manual=manual;
       x.requestBizReg=requestBizReg;
       x.memo=memo;
       changed++;
@@ -2691,9 +2820,11 @@ async function importTaxCheckExcel(file){
         codeI=idx(['임시코드','거래처코드']),
         jangkiI=idx(['장끼거래처명']),
         memoI=idx(['메모']),
+        nampyeonghwaI=idx(['남평화 여부','남평화']),
         recvI=idx(['수취상태','수취']),
         exclI=idx(['제외']),
-        procI=idx(['처리구분','상태']);
+        procI=idx(['처리구분','상태']),
+        manualI=idx(['등록구분']);
 
   const current=taxCheckState.bizRegs||[];
   const byCode=new Map(current.map((r,i)=>[norm(r.code),i])),
@@ -2710,18 +2841,22 @@ async function importTaxCheckExcel(file){
           excluded=truthyExcelFlag(exclRaw)||recv==='제외'||proc==='제외',
           received=!excluded&&(recv.includes('수취완료')||proc==='완료'||proc==='자동완료'),
           memo=memoI>=0?String(r[memoI]??'').trim():'',
-          jangki=jangkiI>=0?norm(r[jangkiI]):'';
+          jangki=jangkiI>=0?norm(r[jangkiI]):'',
+          nampyeonghwaFlag=nampyeonghwaI>=0?/남평화|Y|YES|TRUE|1/i.test(norm(r[nampyeonghwaI])):false,
+          manual=manualI>=0?norm(r[manualI])==='직접추가':false;
 
     let i=byCode.get(code);
     if(i===undefined)i=byName.get(name);
     if(i===undefined){
-      current.push({name,code,jangkiName:jangki,received,excluded,auto:proc==='자동완료',memo});
+      current.push({name,code,jangkiName:jangki,nampyeonghwaFlag,received,excluded,auto:proc==='자동완료',manual,memo});
       i=current.length-1;
       if(code)byCode.set(code,i);if(name)byName.set(name,i);
       added++;
     }else{
       const x=current[i];
       x.name=name||x.name;x.code=code||x.code;x.jangkiName=jangki||x.jangkiName||'';
+      if(nampyeonghwaI>=0)x.nampyeonghwaFlag=nampyeonghwaFlag;
+      if(manualI>=0)x.manual=manual;
       x.received=received;x.excluded=excluded;x.auto=proc==='자동완료';x.memo=memo;
       changed++;
     }
@@ -2745,33 +2880,37 @@ function downloadTaxCheckExcel(){
     const wb=XLSX.utils.book_new();
 
     const bizRows=[
-      ['수취상태','제외','거래처','임시코드','장끼거래처명','메모','처리구분'],
+      ['수취상태','제외','거래처','남평화 여부','임시코드','장끼거래처명','메모','처리구분','등록구분'],
       ...biz.map(r=>[
         r.received?'수취완료':r.excluded?'제외':'요청필요',
         r.excluded?'Y':'N',
         r.name||'',
+        r.nampyeonghwaFlag?'남평화':'',
         r.code||'',
         r.jangkiName||'',
         r.memo||'',
-        r.excluded?'제외':r.auto?'자동완료':r.received?'완료':'미완료'
+        r.excluded?'제외':r.auto?'자동완료':r.received?'완료':'미완료',
+        r.manual?'직접추가':'자동'
       ])
     ];
     const bizWs=XLSX.utils.aoa_to_sheet(bizRows);
-    bizWs['!cols']=[{wch:12},{wch:8},{wch:28},{wch:18},{wch:28},{wch:36},{wch:12}];
+    bizWs['!cols']=[{wch:12},{wch:8},{wch:28},{wch:12},{wch:18},{wch:28},{wch:36},{wch:12},{wch:12}];
     XLSX.utils.book_append_sheet(wb,bizWs,'사업자등록증 요청대상');
 
     const closedRows=[
-      ['사업자등록증 요청','거래처','코드','상태','메모'],
+      ['사업자등록증 요청','거래처','남평화 여부','코드','상태','메모','등록구분'],
       ...closed.map(r=>[
         r.requestBizReg?'Y':'N',
         r.name||'',
+        r.nampyeonghwaFlag?'남평화':'',
         r.code||'',
         r.status||'',
-        r.memo||''
+        r.memo||'',
+        r.manual?'직접추가':'자동'
       ])
     ];
     const closedWs=XLSX.utils.aoa_to_sheet(closedRows);
-    closedWs['!cols']=[{wch:16},{wch:30},{wch:18},{wch:14},{wch:40}];
+    closedWs['!cols']=[{wch:16},{wch:30},{wch:12},{wch:18},{wch:14},{wch:40},{wch:12}];
     XLSX.utils.book_append_sheet(wb,closedWs,'휴업폐업 확인');
 
     if(taxBookState.month){
@@ -2816,12 +2955,13 @@ function renderTaxCheck(){
   const bizRows=bizAll.filter(r=>includesTaxSearch([
     r.name,r.code,r.jangkiName,r.memo,
     r.excluded?'제외':'',
-    r.received?'수취완료':'요청필요'
+    r.received?'수취완료':'요청필요',
+    r.manual?'직접추가':''
   ],bizQ));
   if($('tempCustomerSearchCount'))$('tempCustomerSearchCount').textContent=bizQ?`${bizRows.length}/${bizAll.length}건`:`${bizAll.length}건`;
 
   b.innerHTML=bizRows.length
-    ? `<table><thead><tr><th>수취 / 제외</th><th>거래처</th><th>임시코드</th><th>메모</th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>수취 / 제외</th><th>거래처</th><th>구분</th><th>임시코드</th><th>메모</th><th>관리</th></tr></thead><tbody>${
         bizRows.map((r)=>{
           const i=bizAll.indexOf(r);
           const status=r.excluded
@@ -2842,8 +2982,10 @@ function renderTaxCheck(){
               ${status}
             </td>
             <td>${esc(r.name)}</td>
+            <td>${nampyeonghwaBadge(r)}</td>
             <td>${esc(r.code)}</td>
             <td><input value="${escAttr(r.memo||'')}" onchange="saveBizMemo(${i},this.value)" style="width:100%;box-sizing:border-box"></td>
+            <td>${r.manual?'<span class="statusPill warn">직접추가</span> <button class="btn light" onclick="deleteManualBizRegTarget('+i+')">삭제</button>':'-'}</td>
           </tr>`;
         }).join('')
       }</tbody></table>`
@@ -2853,12 +2995,13 @@ function renderTaxCheck(){
   const closedQ=currentTaxSearch('closedCustomerSearch');
   const closedRows=closedAll.filter(r=>includesTaxSearch([
     r.name,r.code,r.status,r.memo,
-    r.requestBizReg?'사업자등록증 요청 요청필요':''
+    r.requestBizReg?'사업자등록증 요청 요청필요':'',
+    r.manual?'직접추가':''
   ],closedQ));
   if($('closedCustomerSearchCount'))$('closedCustomerSearchCount').textContent=closedQ?`${closedRows.length}/${closedAll.length}건`:`${closedAll.length}건`;
 
   c.innerHTML=closedRows.length
-    ? `<table><thead><tr><th>사업자등록증 요청</th><th>거래처</th><th>코드</th><th>상태</th><th>메모</th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>사업자등록증 요청</th><th>거래처</th><th>구분</th><th>코드</th><th>상태</th><th>메모</th><th>관리</th></tr></thead><tbody>${
         closedRows.map((r)=>{
           const i=closedAll.indexOf(r);
           return `<tr>
@@ -2867,9 +3010,11 @@ function renderTaxCheck(){
             ${r.requestBizReg?'<div class="taxPending">요청필요</div>':''}
           </td>
           <td>${esc(r.name)}</td>
+          <td>${nampyeonghwaBadge(r)}</td>
           <td>${esc(r.code)}</td>
           <td><span class="statusPill bad">${esc(r.status)}</span></td>
           <td><input value="${escAttr(r.memo||'')}" placeholder="메모" onchange="saveClosedBizMemo(${i},this.value)" style="width:100%;box-sizing:border-box"></td>
+          <td>${r.manual?'<span class="statusPill warn">직접추가</span> <button class="btn light" onclick="deleteManualClosedTarget('+i+')">삭제</button>':'-'}</td>
         </tr>`;
         }).join('')
       }</tbody></table>`
@@ -2911,7 +3056,7 @@ async function addUnexcludedCustomerToCurrentTaxCheck(x){
   const exists=(taxCheckState.bizRegs||[]).some(r=>exclusionMatchesCustomer(c,r));
   if(exists)return;
   taxCheckState.bizRegs.push({
-    name:c.name,code:c.code,jangkiName:c.jangkiName||'',
+    name:c.name,code:c.code,jangkiName:c.jangkiName||'',nampyeonghwaFlag:isNampyeonghwaCustomer(c),
     received:false,excluded:false,auto:false,memo:'판매내역 발생으로 요청제외 해제'
   });
   await saveTaxMonth();
@@ -4097,7 +4242,7 @@ $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',re
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
 $('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};
-$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);
+$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupBaseDataGroup();
