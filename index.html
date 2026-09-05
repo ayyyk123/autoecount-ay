@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.24</title>
+<title>아도라블 매출 자동화 v3.25</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -91,6 +91,14 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .jobCloseBtn{appearance:none;border:0;background:transparent;font-size:18px;cursor:pointer;color:#64748b}
   .jobListNote{font-size:12px;color:#64748b;margin-bottom:9px;line-height:1.5}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .dataSafetyActions{display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap;max-width:620px}
+  .dataSafetyActions .btn{padding:6px 9px;font-size:10px;min-height:28px;border-radius:7px}
+  .dataSafetyStatus{font-size:10px;color:#64748b;text-align:right;max-width:620px;line-height:1.35}
+  .dataSafetyStatus.saved{color:#15803d;font-weight:800}
+  .dataSafetyStatus.error{color:#b91c1c;font-weight:800}
+  .dataSafetyRestoreLabel{display:inline-flex;align-items:center;cursor:pointer}
+  .dataSafetyRestoreLabel input{display:none}
+
   .headMain{min-width:0;flex:1}
   .headTitleRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .headTitleRow h1{margin:0}
@@ -402,8 +410,15 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.24 · 비교결과 엑셀저장</div>
+      <div class="badge">v3.25 · 데이터 백업·수동저장</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
+      <div class="dataSafetyActions">
+        <button id="saveLatestDataBtn" class="btn" type="button">최신자료 저장</button>
+        <button id="downloadBackupDataBtn" class="btn light" type="button">백업 데이터 다운로드</button>
+        <label class="btn light dataSafetyRestoreLabel">백업파일 복원<input id="restoreBackupDataFile" type="file" accept=".json,application/json"></label>
+        <button id="restoreLatestSnapshotBtn" class="btn light" type="button">최근 저장본 복원</button>
+      </div>
+      <div id="dataSafetyStatus" class="dataSafetyStatus">수동 저장본 확인 중…</div>
     </div>
   </div>
 
@@ -1014,6 +1029,288 @@ function resolveCustomer(maps,name){
 }
 function resolveItem(map,name){const alias=cloud.aliases.get(norm(name)); if(alias)return {ok:true,value:alias.itemCode,via:'alias'}; return mapResolve(map,name)}
 
+
+// ===== 데이터 안전관리 / 백업 =====
+// 장기간 보존해야 하는 운영데이터만 백업한다.
+// 매출변환 job의 대용량 원본 Excel chunk는 임시/작업 데이터이므로 이 백업에서 제외한다.
+const OPERATIONAL_BACKUP_COLLECTIONS=[
+  'settings',
+  'customerMasterChunks',
+  'items',
+  'itemAliases',
+  'customerAliases',
+  'vatRules',
+  'bizRegRequestExclusions',
+  'taxInvoiceChecks',
+  'taxPurchaseMasters',
+  'taxMonthlyBooks',
+  'generalOpeningBalances',
+  'generalReceiptActions',
+  'generalReceiptTransactions'
+];
+const OPERATIONAL_BACKUP_LOCAL_KEYS=[
+  'autoecount-ay-menu-prefs-v1',
+  'autoecount-ay-tax-list-heights-v1',
+  'autoecount-ay-job-list-height-v1',
+  'autoecount-ay-tax-last-month-v1'
+];
+const MANUAL_SNAPSHOT_KEEP=5;
+const MANUAL_SNAPSHOT_CHUNK_CHARS=180000;
+
+function setDataSafetyStatus(text,type=''){
+  const el=$('dataSafetyStatus');if(!el)return;
+  el.textContent=text||'';
+  el.classList.toggle('saved',type==='saved');
+  el.classList.toggle('error',type==='error');
+}
+function backupSerializeValue(v){
+  if(v===null||v===undefined||typeof v==='string'||typeof v==='number'||typeof v==='boolean')return v??null;
+  if(Array.isArray(v))return v.map(backupSerializeValue);
+  if(typeof Date!=='undefined'&&v instanceof Date)return {__aeType:'date',ms:v.getTime()};
+  if(v&&typeof v.toMillis==='function'&&typeof v.seconds==='number'){
+    return {__aeType:'timestamp',ms:v.toMillis()};
+  }
+  if(v&&typeof v.latitude==='number'&&typeof v.longitude==='number'){
+    return {__aeType:'geopoint',latitude:v.latitude,longitude:v.longitude};
+  }
+  if(v&&typeof v.path==='string'&&v.firestore){
+    return {__aeType:'reference',path:v.path};
+  }
+  if(typeof v==='object'){
+    const o={};
+    for(const [k,x] of Object.entries(v))o[k]=backupSerializeValue(x);
+    return o;
+  }
+  return String(v);
+}
+function backupDeserializeValue(v){
+  if(v===null||v===undefined||typeof v!=='object')return v;
+  if(Array.isArray(v))return v.map(backupDeserializeValue);
+  if(v.__aeType==='timestamp')return firebase.firestore.Timestamp.fromMillis(Number(v.ms||0));
+  if(v.__aeType==='date')return new Date(Number(v.ms||0));
+  if(v.__aeType==='geopoint')return new firebase.firestore.GeoPoint(Number(v.latitude||0),Number(v.longitude||0));
+  if(v.__aeType==='reference'&&v.path)return db.doc(v.path);
+  const o={};
+  for(const [k,x] of Object.entries(v))o[k]=backupDeserializeValue(x);
+  return o;
+}
+async function sha256Text(text){
+  if(!window.crypto?.subtle)throw new Error('이 브라우저에서는 백업 무결성 검사를 사용할 수 없습니다.');
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function backupCorePackage(pkg){
+  const x={...pkg};
+  delete x.integrity;
+  return x;
+}
+async function verifyBackupPackage(pkg){
+  if(!pkg||pkg.app!=='autoecount-ay'||Number(pkg.schemaVersion)!==1)throw new Error('이 프로그램의 백업파일이 아니거나 지원하지 않는 형식입니다.');
+  if(!pkg.integrity?.sha256)throw new Error('백업 무결성 정보가 없습니다.');
+  const actual=await sha256Text(JSON.stringify(backupCorePackage(pkg)));
+  if(actual!==pkg.integrity.sha256)throw new Error('백업파일 무결성 검사가 실패했습니다. 파일이 손상되었거나 내용이 변경되었습니다.');
+  return true;
+}
+async function readOperationalCollection(name){
+  const snap=await userCol(name).get();
+  return snap.docs
+    .filter(d=>!(name==='settings'&&d.id==='latestDataSave'))
+    .map(d=>({id:d.id,data:backupSerializeValue(d.data()||{})}));
+}
+async function collectOperationalBackupPackage(reason='manual'){
+  if(!user)throw new Error('로그인이 필요합니다.');
+  setDataSafetyStatus('현재 운영데이터를 읽는 중…');
+  const collections={};
+  const counts={};
+  for(const name of OPERATIONAL_BACKUP_COLLECTIONS){
+    const docs=await readOperationalCollection(name);
+    collections[name]=docs;
+    counts[name]=docs.length;
+  }
+  const localStorageData={};
+  for(const key of OPERATIONAL_BACKUP_LOCAL_KEYS){
+    try{
+      const v=localStorage.getItem(key);
+      if(v!==null)localStorageData[key]=v;
+    }catch(e){}
+  }
+  const core={
+    schemaVersion:1,
+    app:'autoecount-ay',
+    appVersion:'v3.25',
+    createdAtIso:new Date().toISOString(),
+    createdAtMs:Date.now(),
+    reason,
+    collections,
+    localStorage:localStorageData,
+    notes:{
+      scope:'기준정보·세금계산서·현금영수증대장·매칭규칙·UI설정 등 장기 운영데이터',
+      excluded:'검수중 매출변환 job 원본 Excel/Firestore 대용량 chunk'
+    },
+    counts
+  };
+  const hash=await sha256Text(JSON.stringify(core));
+  return {...core,integrity:{algorithm:'SHA-256',sha256:hash}};
+}
+function backupSummaryText(pkg){
+  const c=pkg?.counts||{};
+  const tax=(c.taxMonthlyBooks||0)+(c.taxInvoiceChecks||0);
+  return `거래처기준 ${c.customerMasterChunks||0}조각 · 품목 ${c.items||0} · 세금계산서 월자료 ${tax} · 요청제외 ${c.bizRegRequestExclusions||0}`;
+}
+async function deleteSnapshotDoc(ref){
+  const chunks=await ref.collection('chunks').get();
+  for(let p=0;p<chunks.docs.length;p+=350){
+    const batch=db.batch();
+    chunks.docs.slice(p,p+350).forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  }
+  await ref.delete();
+}
+async function pruneManualSnapshots(){
+  const snap=await userCol('manualSnapshots').orderBy('createdAtMs','desc').get();
+  const old=snap.docs.slice(MANUAL_SNAPSHOT_KEEP);
+  for(const d of old)await deleteSnapshotDoc(d.ref);
+}
+async function saveManualDataSnapshot(reason='사용자 수동저장'){
+  if(!user)throw new Error('로그인이 필요합니다.');
+  setDataSafetyStatus('최신자료 저장 중…');
+  const pkg=await collectOperationalBackupPackage(reason);
+  const text=JSON.stringify(pkg);
+  const id='s_'+String(pkg.createdAtMs);
+  const root=userCol('manualSnapshots').doc(id);
+  const chunks=[];
+  for(let i=0;i<text.length;i+=MANUAL_SNAPSHOT_CHUNK_CHARS)chunks.push(text.slice(i,i+MANUAL_SNAPSHOT_CHUNK_CHARS));
+  await root.set({
+    createdAtMs:pkg.createdAtMs,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    appVersion:pkg.appVersion,
+    reason,
+    sha256:pkg.integrity.sha256,
+    chunkCount:chunks.length,
+    charLength:text.length,
+    counts:pkg.counts
+  });
+  for(let p=0;p<chunks.length;p+=300){
+    const batch=db.batch();
+    chunks.slice(p,p+300).forEach((chunk,j)=>{
+      const idx=p+j;
+      batch.set(root.collection('chunks').doc(String(idx).padStart(5,'0')),{index:idx,text:chunk});
+    });
+    await batch.commit();
+  }
+  await userCol('settings').doc('latestDataSave').set({
+    snapshotId:id,
+    savedAtMs:pkg.createdAtMs,
+    savedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    appVersion:pkg.appVersion,
+    reason,
+    sha256:pkg.integrity.sha256,
+    summary:backupSummaryText(pkg)
+  },{merge:true});
+  await pruneManualSnapshots();
+  setDataSafetyStatus(`✓ 최신자료 저장 완료 · ${formatMasterUpdateTime(pkg.createdAtMs)} · Firebase 최근 ${MANUAL_SNAPSHOT_KEEP}개 보관`,'saved');
+  return pkg;
+}
+async function loadLatestDataSaveStatus(){
+  if(!user){setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.');return}
+  try{
+    const snap=await userCol('settings').doc('latestDataSave').get();
+    if(!snap.exists){setDataSafetyStatus('아직 수동 저장본 없음 · 자동저장은 계속 작동 중');return}
+    const d=snap.data()||{};
+    setDataSafetyStatus(`최근 수동저장 ${formatMasterUpdateTime(d.savedAtMs)} · ${d.summary||''}`,'saved');
+  }catch(e){
+    setDataSafetyStatus('수동 저장본 상태 확인 실패: '+(e.message||e),'error');
+  }
+}
+function downloadTextFile(text,fileName,type='application/json'){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+async function downloadOperationalBackup(){
+  if(!user)throw new Error('로그인이 필요합니다.');
+  setDataSafetyStatus('백업파일 만드는 중…');
+  const pkg=await collectOperationalBackupPackage('백업 데이터 다운로드');
+  const d=new Date(pkg.createdAtMs);
+  const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  downloadTextFile(JSON.stringify(pkg,null,2),`매출자동화_운영데이터백업_${stamp}.json`);
+  setDataSafetyStatus(`✓ 백업 다운로드 완료 · ${formatMasterUpdateTime(pkg.createdAtMs)} · ${backupSummaryText(pkg)}`,'saved');
+}
+async function loadSnapshotPackage(snapshotId){
+  if(!snapshotId)throw new Error('저장본 ID가 없습니다.');
+  const root=userCol('manualSnapshots').doc(snapshotId);
+  const meta=await root.get();
+  if(!meta.exists)throw new Error('해당 최신자료 저장본을 찾지 못했습니다.');
+  const snap=await root.collection('chunks').orderBy('index').get();
+  const text=snap.docs.map(d=>String((d.data()||{}).text||'')).join('');
+  const pkg=JSON.parse(text);
+  await verifyBackupPackage(pkg);
+  return pkg;
+}
+async function replaceCollectionFromBackup(name,rows){
+  const col=userCol(name);
+  const existing=await col.get();
+  const preserve=new Set(name==='settings'?['latestDataSave']:[]);
+  const keep=new Set((rows||[]).map(r=>String(r.id)));
+  const deletes=existing.docs.filter(d=>!preserve.has(d.id)&&!keep.has(d.id));
+  for(let p=0;p<deletes.length;p+=350){
+    const batch=db.batch();
+    deletes.slice(p,p+350).forEach(d=>batch.delete(d.ref));
+    await batch.commit();
+  }
+  for(let p=0;p<(rows||[]).length;p+=350){
+    const batch=db.batch();
+    for(const r of rows.slice(p,p+350)){
+      if(name==='settings'&&r.id==='latestDataSave')continue;
+      batch.set(col.doc(String(r.id)),backupDeserializeValue(r.data||{}));
+    }
+    await batch.commit();
+  }
+}
+async function restoreOperationalBackupPackage(pkg,sourceLabel='백업파일'){
+  await verifyBackupPackage(pkg);
+  const when=new Date(Number(pkg.createdAtMs||Date.parse(pkg.createdAtIso)||0));
+  const whenText=Number.isNaN(when.getTime())?'알 수 없음':formatMasterUpdateTime(when.getTime());
+  const summary=backupSummaryText(pkg);
+  if(!confirm(`${sourceLabel}을 복원할까요?\n\n백업시각: ${whenText}\n${summary}\n\n복원 직전 현재 상태도 자동으로 별도 저장합니다.`))return false;
+  const word=prompt('실수 방지를 위해 아래 칸에 정확히 "복원"이라고 입력해 주세요.');
+  if(word!=='복원')return false;
+
+  setDataSafetyStatus('복원 직전 현재자료 안전저장 중…');
+  await saveManualDataSnapshot('복원 직전 자동백업');
+
+  setDataSafetyStatus('운영데이터 복원 중…');
+  for(const name of OPERATIONAL_BACKUP_COLLECTIONS){
+    if(!Object.prototype.hasOwnProperty.call(pkg.collections||{},name))continue;
+    await replaceCollectionFromBackup(name,pkg.collections[name]||[]);
+  }
+  for(const key of OPERATIONAL_BACKUP_LOCAL_KEYS){
+    try{
+      if(Object.prototype.hasOwnProperty.call(pkg.localStorage||{},key))localStorage.setItem(key,String(pkg.localStorage[key]));
+    }catch(e){}
+  }
+  await loadCloudData();
+  await loadLatestDataSaveStatus();
+  setDataSafetyStatus(`✓ 복원 완료 · 백업시점 ${whenText}`,'saved');
+  return true;
+}
+async function restoreOperationalBackupFile(file){
+  if(!file)throw new Error('복원할 JSON 백업파일을 선택해 주세요.');
+  let pkg;
+  try{pkg=JSON.parse(await file.text())}
+  catch(e){throw new Error('백업 JSON 파일을 읽을 수 없습니다.')}
+  return restoreOperationalBackupPackage(pkg,file.name);
+}
+async function restoreLatestManualSnapshot(){
+  if(!user)throw new Error('로그인이 필요합니다.');
+  const latest=await userCol('settings').doc('latestDataSave').get();
+  if(!latest.exists)throw new Error('최근 수동 저장본이 없습니다.');
+  const d=latest.data()||{};
+  const pkg=await loadSnapshotPackage(d.snapshotId);
+  return restoreOperationalBackupPackage(pkg,`최근 저장본 (${formatMasterUpdateTime(d.savedAtMs)})`);
+}
 function initFirebase(){
   try{
     if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey || String(window.FIREBASE_CONFIG.apiKey).includes('PASTE_')) throw new Error('firebase-config.js에 Firebase 설정값을 입력해 주세요.');
@@ -1031,9 +1328,13 @@ function updateAuthUI(){
   $('importItemBtn').disabled=!on||selectedFiles.item.length===0;
   if($('importCustomerBtn'))$('importCustomerBtn').disabled=!on||selectedFiles.customer.length===0;
   $('processBtn').disabled=!on||!cloud.ready;
+  if($('saveLatestDataBtn'))$('saveLatestDataBtn').disabled=!on;
+  if($('downloadBackupDataBtn'))$('downloadBackupDataBtn').disabled=!on;
+  if($('restoreLatestSnapshotBtn'))$('restoreLatestSnapshotBtn').disabled=!on;
+  if($('restoreBackupDataFile'))$('restoreBackupDataFile').disabled=!on;
   $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
 }
-function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI();}
+function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.');}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 
 async function loadCustomerMasterFromFirebase(){
@@ -1126,6 +1427,7 @@ async function loadCloudData(){
   if(_taxMigrated&&$('taxScanStatus'))$('taxScanStatus').textContent='기존 2026년 9월 월초작업을 8월 자료로 이동했습니다.';
   $('statusBox').innerHTML=`<p class="ok">✓ Firebase 기준정보 동기화 완료: 거래처 ${cloud.customers.length.toLocaleString()}개 · 품목 ${cloud.items.length.toLocaleString()}개 · 수동매칭 ${cloud.aliases.size.toLocaleString()}개</p>`;
   if($('autosaveStatus')&&$('autosaveStatus').textContent==='자동저장 대기')$('autosaveStatus').textContent='자동저장 준비됨';
+  await loadLatestDataSaveStatus();
 }
 function rebuildCloudMaps(){
   const itemMap=new Map(),itemByCode=new Map(),itemNameToCodes=new Map();
@@ -5342,7 +5644,10 @@ $('addComboUnitBtn').onclick=()=>{cashCloseState.comboUnits.push({label:'단위 
 $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',renderCombo);
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
-$('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};$('downloadCompareExcelBtn').onclick=downloadCompareExcel;
+$('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};$('downloadCompareExcelBtn').onclick=downloadCompareExcel;$('saveLatestDataBtn').onclick=()=>saveManualDataSnapshot().catch(e=>setDataSafetyStatus('저장 실패: '+(e.message||e),'error'));
+$('downloadBackupDataBtn').onclick=()=>downloadOperationalBackup().catch(e=>setDataSafetyStatus('백업 다운로드 실패: '+(e.message||e),'error'));
+$('restoreBackupDataFile').addEventListener('change',()=>{const f=$('restoreBackupDataFile').files[0];if(f)restoreOperationalBackupFile(f).catch(e=>{alert(e.message||e);setDataSafetyStatus('복원 실패: '+(e.message||e),'error')});$('restoreBackupDataFile').value=''});
+$('restoreLatestSnapshotBtn').onclick=()=>restoreLatestManualSnapshot().catch(e=>{alert(e.message||e);setDataSafetyStatus('최근 저장본 복원 실패: '+(e.message||e),'error')});
 $('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
