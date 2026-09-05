@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.09</title>
+<title>아도라블 매출 자동화 v3.11</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -222,7 +222,11 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .bizExcludeManage h5{margin:0 0 7px;font-size:12px}
   .bizExcludeControls{display:grid;grid-template-columns:minmax(220px,1fr) 180px auto;gap:7px;align-items:center}
   .bizExcludeControls input,.bizExcludeControls select{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font:inherit;background:#fff}
-  .bizExcludeList{margin-top:8px;max-height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:9px}
+  .bizExcludeList{margin-top:8px;height:220px;min-height:120px;max-height:900px;overflow:auto;border:1px solid #e2e8f0;border-radius:9px}
+  .taxListSearch{display:flex;gap:7px;align-items:center;margin:0 0 8px}
+  .taxListSearch input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font:inherit;background:#fff}
+  .taxListSearchCount{font-size:11px;color:#64748b;white-space:nowrap}
+
   .bizExcludeList table{margin:0;min-width:680px}
   .bizExcludeType{font-size:11px;font-weight:850}
   .bizExcludeType.conditional{color:#b45309}
@@ -315,7 +319,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.09 · 요청제외 중복정리·전체박스 접기</div>
+      <div class="badge">v3.11 · 요청제외 휴폐업 연동</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -537,6 +541,10 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <div class="taxCheckStack">
         <div class="moduleBox taxListBox">
           <h4>사업자등록증 요청대상</h4>
+          <div class="taxListSearch">
+            <input id="tempCustomerSearch" type="text" placeholder="거래처명 · 코드 · 메모 검색">
+            <span id="tempCustomerSearchCount" class="taxListSearchCount"></span>
+          </div>
           <div id="tempCustomerList" class="miniList taxResizableList"></div>
           <div class="taxResizeHandle" data-tax-resize="tempCustomerList" title="잡아끌어 목록 높이 조절"></div>
           <div class="bizExcludeManage">
@@ -550,11 +558,20 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
               <button id="addBizRegExcludeBtn" class="btn light" type="button">요청제외 추가</button>
             </div>
             <div class="taxBookSmallNote">여기서 직접 추가한 제외목록은 Firebase에 저장됩니다. 조건부 제외는 판매변환 시 해당 거래처가 나오면 제외 해제 여부를 다시 확인합니다.</div>
+            <div class="taxListSearch" style="margin-top:8px">
+              <input id="bizRegExcludeSearch" type="text" placeholder="거래처명 · 코드 · 제외방식 검색">
+              <span id="bizRegExcludeSearchCount" class="taxListSearchCount"></span>
+            </div>
             <div id="bizRegExcludeList" class="bizExcludeList"></div>
+            <div class="taxResizeHandle" data-tax-resize="bizRegExcludeList" title="잡아끌어 요청제외 목록 높이 조절"></div>
           </div>
         </div>
         <div class="moduleBox taxListBox">
           <h4>휴업 · 폐업 확인</h4>
+          <div class="taxListSearch">
+            <input id="closedCustomerSearch" type="text" placeholder="거래처명 · 코드 · 상태 · 메모 검색">
+            <span id="closedCustomerSearchCount" class="taxListSearchCount"></span>
+          </div>
           <div id="closedCustomerList" class="miniList taxResizableList"></div>
           <div class="taxResizeHandle" data-tax-resize="closedCustomerList" title="잡아끌어 목록 높이 조절"></div>
         </div>
@@ -1821,18 +1838,27 @@ async function loadTaxMonth(month){
   const snap=await userCol('taxInvoiceChecks').doc(month).get();
   taxCheckState=snap.exists?{month,...snap.data()}:{month,bizRegs:[],closed:[],notes:[]};
 
-  const before=(taxCheckState.bizRegs||[]).length;
+  const beforeBiz=(taxCheckState.bizRegs||[]).length;
+  const beforeClosed=(taxCheckState.closed||[]).length;
+
   taxCheckState.bizRegs=(taxCheckState.bizRegs||[]).filter(r=>{
     if(r.excluded)return true;
     return !isBizRegRequestExcluded(r);
   });
-  const removed=before-taxCheckState.bizRegs.length;
-  if(removed>0)await saveTaxMonth();
+  taxCheckState.closed=(taxCheckState.closed||[]).filter(r=>!isBizRegRequestExcluded(r));
+
+  const removedBiz=beforeBiz-taxCheckState.bizRegs.length;
+  const removedClosed=beforeClosed-taxCheckState.closed.length;
+  if(removedBiz>0||removedClosed>0)await saveTaxMonth();
 
   renderTaxCheck();
   await loadTaxBookMonth(month);
-  if(removed>0&&$('taxScanStatus')){
-    $('taxScanStatus').textContent=`기존 요청목록에서 이미 요청제외로 등록된 거래처 ${removed}곳을 자동 정리했습니다.`;
+
+  if((removedBiz>0||removedClosed>0)&&$('taxScanStatus')){
+    const parts=[];
+    if(removedBiz>0)parts.push(`사업자등록증 요청 ${removedBiz}곳`);
+    if(removedClosed>0)parts.push(`휴·폐업 확인 ${removedClosed}곳`);
+    $('taxScanStatus').textContent=`이미 요청제외로 등록된 거래처를 자동 정리했습니다 · ${parts.join(' · ')}`;
   }
 }
 
@@ -1841,14 +1867,31 @@ function exclusionMatchesCustomer(x,c){
         cc=norm(c?.code),cn=norm(c?.name),cj=norm(c?.jangkiName);
   return !!((xc&&cc&&xc===cc)||(xn&&cn&&xn===cn)||(xj&&cj&&xj===cj)||(xj&&cn&&xj===cn)||(xn&&cj&&xn===cj));
 }
+
+function includesTaxSearch(parts,query){
+  const q=norm(query).toLowerCase();
+  if(!q)return true;
+  return parts.map(x=>norm(x).toLowerCase()).some(x=>x.includes(q));
+}
+function currentTaxSearch(id){
+  return $(id)?.value||'';
+}
 function renderBizRegExclusionList(){
   const box=$('bizRegExcludeList');if(!box)return;
-  const rows=[...bizRegDynamicExclusions.values()].sort((a,b)=>{
+  const q=currentTaxSearch('bizRegExcludeSearch');
+  const all=[...bizRegDynamicExclusions.values()].sort((a,b)=>{
     const ma=(a.mode||'permanent')==='conditional'?1:0,mb=(b.mode||'permanent')==='conditional'?1:0;
     return ma-mb||String(a.name||'').localeCompare(String(b.name||''));
   });
+  const rows=all.filter(r=>includesTaxSearch([
+    r.name,r.code,r.jangkiName,
+    (r.mode||'permanent')==='conditional'?'판매내역 있으면 재확인':'항상 제외'
+  ],q));
+
+  if($('bizRegExcludeSearchCount'))$('bizRegExcludeSearchCount').textContent=q?`${rows.length}/${all.length}건`:`${all.length}건`;
+
   if(!rows.length){
-    box.innerHTML='<div class="small" style="padding:9px">직접 저장된 요청제외 거래처 없음</div>';
+    box.innerHTML='<div class="small" style="padding:9px">'+(q?'검색 결과 없음':'직접 저장된 요청제외 거래처 없음')+'</div>';
     return;
   }
   box.innerHTML=`<table><thead><tr><th>거래처</th><th>코드</th><th>제외방식</th><th>관리</th></tr></thead><tbody>${
@@ -1881,10 +1924,15 @@ async function addBizRegExclusion(){
   bizRegDynamicExclusions.set(id,{id,...data,updatedAt:null});
   $('bizRegExcludeInput').value='';
   renderBizRegExclusionList();
-  if(taxCheckState.month&&taxCheckState.bizRegs?.length){
-    taxCheckState.bizRegs=taxCheckState.bizRegs.filter(r=>!exclusionMatchesCustomer(data,r));
-    await saveTaxMonth();
-    renderTaxCheck();
+  if(taxCheckState.month){
+    const beforeBiz=(taxCheckState.bizRegs||[]).length;
+    const beforeClosed=(taxCheckState.closed||[]).length;
+    taxCheckState.bizRegs=(taxCheckState.bizRegs||[]).filter(r=>!exclusionMatchesCustomer(data,r));
+    taxCheckState.closed=(taxCheckState.closed||[]).filter(r=>!exclusionMatchesCustomer(data,r));
+    if(beforeBiz!==taxCheckState.bizRegs.length||beforeClosed!==taxCheckState.closed.length){
+      await saveTaxMonth();
+      renderTaxCheck();
+    }
   }
 }
 window.removeBizRegExclusion=async function(id){
@@ -1906,7 +1954,9 @@ async function scanTaxCustomers(){
         tempCandidates=target.filter(c=>isTempCustomerCode(c.code)),
         excludedTemps=tempCandidates.filter(isBizRegRequestExcluded),
         temps=tempCandidates.filter(c=>!isBizRegRequestExcluded(c)),
-        closed=target.filter(isClosedStatus),
+        closedCandidates=target.filter(isClosedStatus),
+        closedExcluded=closedCandidates.filter(isBizRegRequestExcluded),
+        closed=closedCandidates.filter(c=>!isBizRegRequestExcluded(c)),
         allSnap=await userCol('taxInvoiceChecks').get(),
         oldSnap=await userCol('taxInvoiceChecks').doc(month).get(),
         old=oldSnap.exists?oldSnap.data():{},
@@ -1946,7 +1996,7 @@ async function scanTaxCustomers(){
   await autoCompletePriorBizRegs(entries,month);
   await saveTaxMonth();
   renderTaxCheck();
-  $('taxScanStatus').textContent=`임시거래처 ${temps.length}곳 · 요청제외 ${excludedTemps.length}곳 · 휴/폐업 ${closed.length}곳 · 기준 ${cloud.customerMasterMeta?.fileName||'저장된 거래처리스트'}`;
+  $('taxScanStatus').textContent=`임시거래처 ${temps.length}곳 · 요청제외 ${excludedTemps.length}곳 · 휴/폐업 ${closed.length}곳${closedExcluded.length?` · 휴/폐업 중 요청제외 ${closedExcluded.length}곳`:''} · 기준 ${cloud.customerMasterMeta?.fileName||'저장된 거래처리스트'}`;
 }
 async function autoCompletePriorBizRegs(entries,currentMonth){const snap=await userCol('taxInvoiceChecks').get(),curMap=new Map(entries.map(c=>[norm(c.name),c]));for(const d of snap.docs){if(d.id>=currentMonth)continue;const data=d.data(),regs=data.bizRegs||[];let changed=false;for(const r of regs){if(r.received||r.excluded)continue;const cur=curMap.get(norm(r.name));if(cur&&!isTempCustomerCode(cur.code)){r.received=true;r.auto=true;r.memo=appendMemoText(r.memo,`${currentMonth} 정식코드 전환 자동완료`);changed=true;}}if(changed)await d.ref.set({bizRegs:regs,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}}
 window.toggleBizReg=async function(i,checked){
@@ -1966,12 +2016,14 @@ window.toggleBizRegExclude=async function(i,checked){
     const data={code:r.code||'',name:r.name||'',jangkiName:r.jangkiName||'',createdFromMonth:taxCheckState.month||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     await userCol('bizRegRequestExclusions').doc(key).set(data,{merge:true});
     bizRegDynamicExclusions.set(key,{id:key,...data,updatedAt:null});
+    taxCheckState.closed=(taxCheckState.closed||[]).filter(x=>!exclusionMatchesCustomer(r,x));
   }else{
     await userCol('bizRegRequestExclusions').doc(key).delete().catch(()=>{});
     bizRegDynamicExclusions.delete(key);
   }
   await saveTaxMonth();
   renderTaxCheck();
+  renderBizRegExclusionList();
 }
 window.saveBizMemo=async function(i,v){taxCheckState.bizRegs[i].memo=v;await saveTaxMonth()}
 window.toggleClosedBizRegRequest=async function(i,checked){
@@ -2558,6 +2610,7 @@ async function syncExclusionFromImportedRow(row){
     };
     await userCol('bizRegRequestExclusions').doc(id).set(data,{merge:true});
     bizRegDynamicExclusions.set(id,{id,...data,updatedAt:null});
+    taxCheckState.closed=(taxCheckState.closed||[]).filter(x=>!exclusionMatchesCustomer(row,x));
   }else if(bizRegDynamicExclusions.has(id)){
     await userCol('bizRegRequestExclusions').doc(id).delete();
     bizRegDynamicExclusions.delete(id);
@@ -2758,9 +2811,19 @@ function renderTaxCheck(){
   const b=$('tempCustomerList'),c=$('closedCustomerList'),n=$('taxChecklist');
   if(!b||!c||!n)return;
 
-  b.innerHTML=(taxCheckState.bizRegs||[]).length
+  const bizAll=taxCheckState.bizRegs||[];
+  const bizQ=currentTaxSearch('tempCustomerSearch');
+  const bizRows=bizAll.filter(r=>includesTaxSearch([
+    r.name,r.code,r.jangkiName,r.memo,
+    r.excluded?'제외':'',
+    r.received?'수취완료':'요청필요'
+  ],bizQ));
+  if($('tempCustomerSearchCount'))$('tempCustomerSearchCount').textContent=bizQ?`${bizRows.length}/${bizAll.length}건`:`${bizAll.length}건`;
+
+  b.innerHTML=bizRows.length
     ? `<table><thead><tr><th>수취 / 제외</th><th>거래처</th><th>임시코드</th><th>메모</th></tr></thead><tbody>${
-        taxCheckState.bizRegs.map((r,i)=>{
+        bizRows.map((r)=>{
+          const i=bizAll.indexOf(r);
           const status=r.excluded
             ? '<div class="taxAuto">제외</div>'
             : r.auto
@@ -2784,11 +2847,21 @@ function renderTaxCheck(){
           </tr>`;
         }).join('')
       }</tbody></table>`
-    : '<div class="small" style="padding:8px">임시거래처 없음</div>';
+    : `<div class="small" style="padding:8px">${bizQ?'검색 결과 없음':'임시거래처 없음'}</div>`;
 
-  c.innerHTML=(taxCheckState.closed||[]).length
+  const closedAll=taxCheckState.closed||[];
+  const closedQ=currentTaxSearch('closedCustomerSearch');
+  const closedRows=closedAll.filter(r=>includesTaxSearch([
+    r.name,r.code,r.status,r.memo,
+    r.requestBizReg?'사업자등록증 요청 요청필요':''
+  ],closedQ));
+  if($('closedCustomerSearchCount'))$('closedCustomerSearchCount').textContent=closedQ?`${closedRows.length}/${closedAll.length}건`:`${closedAll.length}건`;
+
+  c.innerHTML=closedRows.length
     ? `<table><thead><tr><th>사업자등록증 요청</th><th>거래처</th><th>코드</th><th>상태</th><th>메모</th></tr></thead><tbody>${
-        taxCheckState.closed.map((r,i)=>`<tr>
+        closedRows.map((r)=>{
+          const i=closedAll.indexOf(r);
+          return `<tr>
           <td style="text-align:center">
             <input type="checkbox" ${r.requestBizReg?'checked':''} onchange="toggleClosedBizRegRequest(${i},this.checked)">
             ${r.requestBizReg?'<div class="taxPending">요청필요</div>':''}
@@ -2797,9 +2870,10 @@ function renderTaxCheck(){
           <td>${esc(r.code)}</td>
           <td><span class="statusPill bad">${esc(r.status)}</span></td>
           <td><input value="${escAttr(r.memo||'')}" placeholder="메모" onchange="saveClosedBizMemo(${i},this.value)" style="width:100%;box-sizing:border-box"></td>
-        </tr>`).join('')
+        </tr>`;
+        }).join('')
       }</tbody></table>`
-    : '<div class="small" style="padding:8px">휴업·폐업 거래처 없음</div>';
+    : `<div class="small" style="padding:8px">${closedQ?'검색 결과 없음':'휴업·폐업 거래처 없음'}</div>`;
 
   n.innerHTML=(taxCheckState.notes||[]).map((x,i)=>`
     <div class="moduleToolbar">
@@ -4023,7 +4097,7 @@ $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',re
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
 $('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};
-$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);
+$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupBaseDataGroup();
