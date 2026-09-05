@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.08</title>
+<title>아도라블 매출 자동화 v3.09</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -160,6 +160,19 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .moduleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .moduleBox{border:1px solid #e2e8f0;border-radius:12px;background:#fff;padding:12px}
   .moduleBox h4{margin:0 0 9px;font-size:14px}
+  .moduleBox.innerCollapsible>.innerBoxToggleTitle,
+  .moduleBox.innerCollapsible>.innerBoxToggleHost .innerBoxToggleTitle{
+    display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none
+  }
+  .innerBoxToggleCaret{margin-left:auto;color:#64748b;font-size:12px;flex:0 0 auto}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>*{display:none!important}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleTitle,
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleHost{display:flex!important}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleHost>*:not(.innerBoxToggleTitle){display:none!important}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleTitle{margin-bottom:0!important}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleHost{margin:0!important}
+  .moduleBox.innerCollapsible.innerBoxCollapsed>.innerBoxToggleHost .innerBoxToggleTitle{margin:0!important;flex:1}
+
   .moduleToolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
   .moduleToolbar input,.moduleToolbar select,.moduleToolbar textarea{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font:inherit;background:#fff}
   .moduleToolbar input[type="number"]{width:140px}
@@ -302,7 +315,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.08 · 휴폐업 요청체크·메모</div>
+      <div class="badge">v3.09 · 요청제외 중복정리·전체박스 접기</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -1803,7 +1816,25 @@ function renderCompare(){const rows=(compareState.rows||[]).filter(r=>(compareSt
 function isTempCustomerCode(c){return /^1000000|^2000000/.test(norm(c))}
 function isTargetTaxGroup(c){const g=norm(c.group);return g==='동대문점'||g==='본점'||g.includes('동대문점')||g.includes('본점')}
 function isClosedStatus(c){return /휴업|폐업/.test([c.status,c.name,c.jangkiName,c.memo].map(norm).join(' '))}
-async function loadTaxMonth(month){if(!user||!month)return;const snap=await userCol('taxInvoiceChecks').doc(month).get();taxCheckState=snap.exists?{month,...snap.data()}:{month,bizRegs:[],closed:[],notes:[]};renderTaxCheck();await loadTaxBookMonth(month)}
+async function loadTaxMonth(month){
+  if(!user||!month)return;
+  const snap=await userCol('taxInvoiceChecks').doc(month).get();
+  taxCheckState=snap.exists?{month,...snap.data()}:{month,bizRegs:[],closed:[],notes:[]};
+
+  const before=(taxCheckState.bizRegs||[]).length;
+  taxCheckState.bizRegs=(taxCheckState.bizRegs||[]).filter(r=>{
+    if(r.excluded)return true;
+    return !isBizRegRequestExcluded(r);
+  });
+  const removed=before-taxCheckState.bizRegs.length;
+  if(removed>0)await saveTaxMonth();
+
+  renderTaxCheck();
+  await loadTaxBookMonth(month);
+  if(removed>0&&$('taxScanStatus')){
+    $('taxScanStatus').textContent=`기존 요청목록에서 이미 요청제외로 등록된 거래처 ${removed}곳을 자동 정리했습니다.`;
+  }
+}
 
 function exclusionMatchesCustomer(x,c){
   const xc=norm(x?.code),xn=norm(x?.name),xj=norm(x?.jangkiName),
@@ -3291,7 +3322,7 @@ function getLocalMenuPrefs(){
 }
 
 function collectMenuPrefs(){
-  if(!menuBoard)return {order:[...MENU_DEFAULT_ORDER],collapsed:{},reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed:{}};
+  if(!menuBoard)return {order:[...MENU_DEFAULT_ORDER],collapsed:{},reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed:{},innerCollapsed:{}};
   const order=[...menuBoard.querySelectorAll(':scope > .menuPanel')].map(p=>p.dataset.menuId);
   const collapsed={};
   for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
@@ -3310,7 +3341,12 @@ function collectMenuPrefs(){
       reviewCollapsed[p.dataset.reviewId]=p.classList.contains('isCollapsed');
     }
   }
-  return {order,collapsed,reviewOrder,reviewCollapsed};
+
+  const innerCollapsed={};
+  for(const box of document.querySelectorAll('.moduleBox[data-inner-box-id]')){
+    innerCollapsed[box.dataset.innerBoxId]=box.classList.contains('innerBoxCollapsed');
+  }
+  return {order,collapsed,reviewOrder,reviewCollapsed,innerCollapsed};
 }
 
 function applyMenuPrefs(pref){
@@ -3364,6 +3400,8 @@ function applyMenuPrefs(pref){
       setReviewCollapsed(p,collapsed,false);
     }
   }
+
+  applyInnerBoxPrefs(pref);
 }
 
 async function writeMenuPrefsRemote(pref){
@@ -3374,6 +3412,7 @@ async function writeMenuPrefsRemote(pref){
       menuCollapsed:pref.collapsed,
       reviewOrder:pref.reviewOrder||REVIEW_DEFAULT_ORDER,
       reviewCollapsed:pref.reviewCollapsed||{},
+      innerCollapsed:pref.innerCollapsed||{},
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     },{merge:true});
   }catch(e){
@@ -3398,7 +3437,8 @@ async function loadRemoteMenuPrefs(){
         order:Array.isArray(d.menuOrder)?d.menuOrder:MENU_DEFAULT_ORDER,
         collapsed:d.menuCollapsed&&typeof d.menuCollapsed==='object'?d.menuCollapsed:{},
         reviewOrder:Array.isArray(d.reviewOrder)?d.reviewOrder:REVIEW_DEFAULT_ORDER,
-        reviewCollapsed:d.reviewCollapsed&&typeof d.reviewCollapsed==='object'?d.reviewCollapsed:{}
+        reviewCollapsed:d.reviewCollapsed&&typeof d.reviewCollapsed==='object'?d.reviewCollapsed:{},
+        innerCollapsed:d.innerCollapsed&&typeof d.innerCollapsed==='object'?d.innerCollapsed:{}
       };
       applyMenuPrefs(pref);
       try{localStorage.setItem(MENU_PREF_KEY,JSON.stringify(pref));}catch(e){}
@@ -3797,6 +3837,69 @@ function setupFixedTopCards(){
   }
 }
 
+
+function innerBoxStableId(box,index){
+  const menuId=box.closest('.menuPanel')?.dataset.menuId||'root';
+  const ownIds=[...box.querySelectorAll('[id]')].filter(el=>el.closest('.moduleBox')===box);
+  const ref=ownIds[0]?.id||`box${index}`;
+  return `${menuId}:${ref}`;
+}
+function setInnerBoxCollapsed(box,collapsed,save=true){
+  if(!box)return;
+  box.classList.toggle('innerBoxCollapsed',collapsed);
+  const caret=box.querySelector('.innerBoxToggleCaret');
+  if(caret)caret.textContent=collapsed?'▸':'▾';
+  if(save)scheduleMenuPrefsSave();
+}
+function applyInnerBoxPrefs(pref){
+  const c=pref?.innerCollapsed&&typeof pref.innerCollapsed==='object'?pref.innerCollapsed:{};
+  for(const box of document.querySelectorAll('.moduleBox[data-inner-box-id]')){
+    const id=box.dataset.innerBoxId;
+    const collapsed=Object.prototype.hasOwnProperty.call(c,id)?!!c[id]:true;
+    setInnerBoxCollapsed(box,collapsed,false);
+  }
+}
+function setupInnerBoxCollapse(){
+  const boxes=[...document.querySelectorAll('.moduleBox')];
+  boxes.forEach((box,index)=>{
+    if(box.dataset.innerBoxReady==='1')return;
+
+    let title=box.querySelector(':scope > h4');
+    let host=null;
+    if(title){
+      host=title;
+      title.classList.add('innerBoxToggleTitle');
+    }else{
+      const toolbar=box.querySelector(':scope > .moduleToolbar');
+      const h=toolbar?.querySelector(':scope > h4');
+      if(h){
+        title=h;
+        host=toolbar;
+        toolbar.classList.add('innerBoxToggleHost');
+        h.classList.add('innerBoxToggleTitle');
+      }
+    }
+    if(!title||!host)return;
+
+    box.dataset.innerBoxReady='1';
+    box.dataset.innerBoxId=innerBoxStableId(box,index);
+    box.classList.add('innerCollapsible');
+
+    const caret=document.createElement('span');
+    caret.className='innerBoxToggleCaret';
+    caret.textContent='▾';
+    title.appendChild(caret);
+    title.title='클릭해서 접기/펴기';
+
+    title.addEventListener('click',e=>{
+      if(e.target.closest('button,input,select,a,label'))return;
+      setInnerBoxCollapsed(box,!box.classList.contains('innerBoxCollapsed'),true);
+    });
+  });
+
+  applyInnerBoxPrefs(getLocalMenuPrefs()||{});
+}
+
 function setupMenuSystem(){
   const wrap=document.querySelector('.wrap');
   const head=wrap?.querySelector('.head');
@@ -3837,7 +3940,7 @@ function setupMenuSystem(){
     for(const id of MENU_DEFAULT_ORDER)collapsed[id]=true;
     const reviewCollapsed={};
     for(const id of REVIEW_DEFAULT_ORDER)reviewCollapsed[id]=true;
-    const pref={order:[...MENU_DEFAULT_ORDER],collapsed,reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed};
+    const pref={order:[...MENU_DEFAULT_ORDER],collapsed,reviewOrder:[...REVIEW_DEFAULT_ORDER],reviewCollapsed,innerCollapsed:{}};
     applyMenuPrefs(pref);
     try{localStorage.setItem(MENU_PREF_KEY,JSON.stringify(pref));}catch(e){}
     await writeMenuPrefsRemote(pref);
@@ -3926,6 +4029,7 @@ setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','cu
 setupBaseDataGroup();
 setupFixedTopCards();
 setupMenuSystem();
+setupInnerBoxCollapse();
 setupExplanationToggles();
 setupJobListResize();
 setupTaxListResize();
