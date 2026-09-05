@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.26</title>
+<title>아도라블 매출 자동화 v3.27</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -202,17 +202,19 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .comboLine{display:grid;grid-template-columns:1fr 100px 90px 42px 42px;gap:6px;align-items:center;margin:5px 0}.comboLine input{width:100%;box-sizing:border-box}
   .dateSuggestion{display:flex;gap:5px;flex-wrap:wrap}.dateChip{background:#f1f5f9;border-radius:999px;padding:4px 8px;font-size:11px}
   .taxAuto{font-size:11px;color:#166534;font-weight:800}.taxPending{font-size:11px;color:#b45309;font-weight:800}
-  .taxNoteGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-  .taxNoteBox{margin:0!important;min-width:0}
+  .taxNoteGrid{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .taxNoteBox{margin:0!important;min-width:0;width:100%;box-sizing:border-box}
   .taxNoteBox>h4{display:flex;align-items:center;gap:7px}
-  .taxNoteList{display:grid;gap:6px}
-  .taxNoteRow{display:grid;grid-template-columns:24px minmax(180px,1fr) 105px auto;gap:6px;align-items:center}
-  .taxNoteRow input[type="text"]{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:7px;padding:7px 8px;font:inherit}
+  .taxNoteList{display:grid;gap:7px}
+  .taxNoteRow{display:grid;grid-template-columns:24px minmax(0,1fr) 110px auto;gap:7px;align-items:start}
+  .taxNoteTextWrap{min-width:0}
+  .taxNoteRow textarea{width:100%;min-height:48px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:7px;padding:7px 8px;font:inherit;line-height:1.4;resize:vertical;background:#fff}
   .taxNoteRow select{border:1px solid #cbd5e1;border-radius:7px;padding:7px 8px;background:#fff;font:inherit}
-  .taxNoteRow.done input[type="text"]{text-decoration:line-through;color:#94a3b8;background:#f8fafc}
+  .taxNoteRow.done textarea{text-decoration:line-through;color:#94a3b8;background:#f8fafc}
+  .taxNoteCarry{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;background:#fff7ed;color:#b45309;font-size:10px;font-weight:850}
   .taxNoteDeleteBtn{border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:800;cursor:pointer}
   .taxNoteHint{font-size:10px;color:#64748b;margin:-2px 0 7px}
-  @media(max-width:850px){.taxNoteGrid{grid-template-columns:1fr}.taxNoteRow{grid-template-columns:24px minmax(150px,1fr) 95px auto}}
+  @media(max-width:700px){.taxNoteRow{grid-template-columns:24px minmax(0,1fr)}.taxNoteRow select,.taxNoteDeleteBtn{grid-column:2}}
 
   .miniList{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:9px}.miniList table{margin:0}
   .taxCheckStack{display:flex;flex-direction:column;gap:12px}
@@ -422,7 +424,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.26 · 월별·상시 유의사항</div>
+      <div class="badge">v3.27 · 미완료 유의사항 자동이월</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div class="dataSafetyActions">
         <button id="saveLatestDataBtn" class="btn" type="button">최신자료 저장</button>
@@ -734,7 +736,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <div class="taxNoteGrid">
           <div id="taxMonthlyNoteBox" class="moduleBox taxNoteBox">
             <h4 id="taxMonthlyNoteTitle">월별 유의사항</h4>
-            <div class="taxNoteHint">선택한 점검월에만 보관되는 유의사항</div>
+            <div class="taxNoteHint">선택한 점검월의 유의사항 · 미완료 항목은 다음 달로 자동 이월</div>
             <div id="taxMonthlyChecklist" class="taxNoteList"></div>
           </div>
           <div id="taxGlobalNoteBox" class="moduleBox taxNoteBox">
@@ -2756,19 +2758,67 @@ function isTempCustomerCode(c){return /^1000000|^2000000/.test(norm(c))}
 function isTargetTaxGroup(c){const g=norm(c.group);return g==='동대문점'||g==='본점'||g.includes('동대문점')||g.includes('본점')}
 function isClosedStatus(c){return /휴업|폐업/.test([c.status,c.name,c.jangkiName,c.memo].map(norm).join(' '))}
 
-function normalizeTaxNote(x,prefix='note'){
-  if(typeof x==='string')return {id:`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,text:x,done:false};
+function normalizeTaxNote(x,prefix='note',month=''){
+  const generatedId=`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+  if(typeof x==='string'){
+    return {id:generatedId,lineageId:generatedId,text:x,done:false,originMonth:month||'',carriedFromMonth:''};
+  }
+  const id=x?.id||generatedId;
   return {
-    id:x?.id||`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    id,
+    lineageId:x?.lineageId||id,
     text:String(x?.text||'').trim(),
-    done:!!x?.done
+    done:!!x?.done,
+    originMonth:x?.originMonth||month||'',
+    carriedFromMonth:x?.carriedFromMonth||''
   };
+}
+function taxNoteMonthLabel(month){
+  const m=/^(\d{4})-(\d{2})$/.exec(String(month||''));
+  return m?`${Number(m[2])}월`:'';
+}
+async function carryForwardMonthlyTaxNotes(month,currentNotes){
+  const current=(Array.isArray(currentNotes)?currentNotes:[])
+    .map(x=>normalizeTaxNote(x,'monthly',month)).filter(x=>x.text);
+  const prevMonth=taxShiftMonth(month,-1);
+  if(!prevMonth)return {notes:current,added:0};
+
+  const prevSnap=await userCol('taxInvoiceChecks').doc(prevMonth).get();
+  if(!prevSnap.exists)return {notes:current,added:0};
+
+  const prevNotes=(Array.isArray(prevSnap.data()?.notes)?prevSnap.data().notes:[])
+    .map(x=>normalizeTaxNote(x,'monthly',prevMonth))
+    .filter(x=>x.text&&!x.done);
+
+  const existingLineage=new Set(current.map(x=>x.lineageId).filter(Boolean));
+  const existingOriginText=new Set(current.map(x=>`${x.originMonth||month}|${norm(x.text)}`));
+  let added=0;
+
+  for(const p of prevNotes){
+    const origin=p.originMonth||prevMonth;
+    const lineage=p.lineageId||p.id;
+    const textKey=`${origin}|${norm(p.text)}`;
+    if(existingLineage.has(lineage)||existingOriginText.has(textKey))continue;
+
+    current.push({
+      id:`monthly_${month}_${Date.now()}_${added}`,
+      lineageId:lineage,
+      text:p.text,
+      done:false,
+      originMonth:origin,
+      carriedFromMonth:prevMonth
+    });
+    existingLineage.add(lineage);
+    existingOriginText.add(textKey);
+    added++;
+  }
+  return {notes:current,added};
 }
 async function loadTaxGlobalNotes(){
   if(!user){taxGlobalNotes=[];return}
   const snap=await userCol('settings').doc('taxGlobalNotes').get();
   const rows=snap.exists?(snap.data()?.notes||[]):[];
-  taxGlobalNotes=(Array.isArray(rows)?rows:[]).map(x=>normalizeTaxNote(x,'global')).filter(x=>x.text);
+  taxGlobalNotes=(Array.isArray(rows)?rows:[]).map(x=>normalizeTaxNote(x,'global','')).filter(x=>x.text);
 }
 async function saveTaxGlobalNotes(){
   if(!user)return;
@@ -2796,7 +2846,7 @@ async function migrateLegacyTaxNotesV326(){
     const data=d.data()||{},notes=Array.isArray(data.notes)?data.notes:[];
     if(!notes.length)continue;
     for(const raw of notes){
-      const n=normalizeTaxNote(raw,'legacy');
+      const n=normalizeTaxNote(raw,'legacy','');
       if(!n.text)continue;
       const k=norm(n.text);
       if(byText.has(k)){
@@ -2833,7 +2883,8 @@ async function loadTaxMonth(month){
   if(!user||!month)return;
   const snap=await userCol('taxInvoiceChecks').doc(month).get();
   taxCheckState=snap.exists?{month,...snap.data()}:{month,bizRegs:[],closed:[],notes:[],bizRegStateArchive:{},closedStateArchive:{}};
-  taxCheckState.notes=(Array.isArray(taxCheckState.notes)?taxCheckState.notes:[]).map(x=>normalizeTaxNote(x,'monthly')).filter(x=>x.text);
+  const carryResult=await carryForwardMonthlyTaxNotes(month,taxCheckState.notes||[]);
+  taxCheckState.notes=carryResult.notes;
   rememberCurrentTaxCheckStates();
 
   const beforeBiz=(taxCheckState.bizRegs||[]).length;
@@ -2850,16 +2901,17 @@ async function loadTaxMonth(month){
 
   const removedBiz=beforeBiz-taxCheckState.bizRegs.length;
   const removedClosed=beforeClosed-taxCheckState.closed.length;
-  if(removedBiz>0||removedClosed>0)await saveTaxMonth();
+  if(removedBiz>0||removedClosed>0||carryResult.added>0)await saveTaxMonth();
 
   renderTaxCheck();
   await loadTaxBookMonth(month);
 
-  if((removedBiz>0||removedClosed>0)&&$('taxScanStatus')){
+  if((removedBiz>0||removedClosed>0||carryResult.added>0)&&$('taxScanStatus')){
     const parts=[];
-    if(removedBiz>0)parts.push(`사업자등록증 요청 ${removedBiz}곳`);
-    if(removedClosed>0)parts.push(`휴·폐업 확인 ${removedClosed}곳`);
-    $('taxScanStatus').textContent=`이미 요청제외로 등록된 거래처를 자동 정리했습니다 · ${parts.join(' · ')}`;
+    if(removedBiz>0)parts.push(`사업자등록증 요청 ${removedBiz}곳 정리`);
+    if(removedClosed>0)parts.push(`휴·폐업 확인 ${removedClosed}곳 정리`);
+    if(carryResult.added>0)parts.push(`미완료 유의사항 ${carryResult.added}건 이월`);
+    $('taxScanStatus').textContent=parts.join(' · ');
   }
 }
 
@@ -3133,7 +3185,7 @@ async function scanTaxCustomers(){
     month,
     bizRegs:[...autoBiz,...manualBiz],
     closed:[...autoClosed,...manualClosed],
-    notes:(Array.isArray(old.notes)?old.notes:[]).map(x=>normalizeTaxNote(x,'monthly')).filter(x=>x.text),
+    notes:(Array.isArray(old.notes)?old.notes:[]).map(x=>normalizeTaxNote(x,'monthly',month)).filter(x=>x.text),
     bizRegStateArchive:mergeTaxCheckArchive(bizArchive,[...autoBiz,...manualBiz]),
     closedStateArchive:mergeTaxCheckArchive(closedArchive,[...autoClosed,...manualClosed])
   };
@@ -3238,11 +3290,14 @@ window.changeTaxNoteScope=async function(scope,i,next){
   if(scope===next)return;
   if(scope==='monthly'){
     const [r]=taxCheckState.notes.splice(i,1);if(!r)return;
-    if(next==='global')taxGlobalNotes.push({...r,id:`global_${Date.now()}`});
+    if(next==='global')taxGlobalNotes.push({...r,id:`global_${Date.now()}`,originMonth:'',carriedFromMonth:''});
     await saveTaxMonth();await saveTaxGlobalNotes();
   }else{
     const [r]=taxGlobalNotes.splice(i,1);if(!r)return;
-    if(next==='monthly')taxCheckState.notes.push({...r,id:`monthly_${Date.now()}`});
+    if(next==='monthly'){
+      const id=`monthly_${Date.now()}`;
+      taxCheckState.notes.push({...r,id,lineageId:id,originMonth:taxCheckState.month||'',carriedFromMonth:''});
+    }
     await saveTaxGlobalNotes();await saveTaxMonth();
   }
   renderTaxCheck();
@@ -3255,7 +3310,8 @@ async function addTaxNote(){
     await saveTaxGlobalNotes();
   }else{
     taxCheckState.notes=taxCheckState.notes||[];
-    taxCheckState.notes.push({id:`monthly_${Date.now()}`,text,done:false});
+    const id=`monthly_${Date.now()}`;
+    taxCheckState.notes.push({id,lineageId:id,text,done:false,originMonth:taxCheckState.month||'',carriedFromMonth:''});
     await saveTaxMonth();
   }
   $('taxNoteInput').value='';
@@ -4583,21 +4639,29 @@ function renderTaxCheck(){
   if($('taxMonthlyNoteTitle'))$('taxMonthlyNoteTitle').textContent=`월별 유의사항${monthNo?' · '+monthNo+'월':''}`;
 
   const monthly=taxCheckState.notes||[];
-  mn.innerHTML=monthly.length?monthly.map((x,i)=>`
-    <div class="taxNoteRow ${x.done?'done':''}">
+  mn.innerHTML=monthly.length?monthly.map((x,i)=>{
+    const origin=x.originMonth||taxCheckState.month||'';
+    const carried=origin&&origin!==taxCheckState.month;
+    return `<div class="taxNoteRow ${x.done?'done':''}">
       <input type="checkbox" ${x.done?'checked':''} onchange="toggleMonthlyTaxNote(${i},this.checked)">
-      <input type="text" value="${escAttr(x.text||'')}" onchange="editMonthlyTaxNote(${i},this.value)">
+      <div class="taxNoteTextWrap">
+        <textarea onchange="editMonthlyTaxNote(${i},this.value)">${esc(x.text||'')}</textarea>
+        ${carried?`<span class="taxNoteCarry">${esc(taxNoteMonthLabel(origin))}에서 이월</span>`:''}
+      </div>
       <select onchange="changeTaxNoteScope('monthly',${i},this.value)">
         <option value="monthly" selected>월별</option>
         <option value="global">상시로 이동</option>
       </select>
       <button class="taxNoteDeleteBtn" onclick="deleteMonthlyTaxNote(${i})">삭제</button>
-    </div>`).join(''):'<div class="small">이 달에 등록된 유의사항 없음</div>';
+    </div>`;
+  }).join(''):'<div class="small">이 달에 등록된 유의사항 없음</div>';
 
   gn.innerHTML=taxGlobalNotes.length?taxGlobalNotes.map((x,i)=>`
     <div class="taxNoteRow ${x.done?'done':''}">
       <input type="checkbox" ${x.done?'checked':''} onchange="toggleGlobalTaxNote(${i},this.checked)">
-      <input type="text" value="${escAttr(x.text||'')}" onchange="editGlobalTaxNote(${i},this.value)">
+      <div class="taxNoteTextWrap">
+        <textarea onchange="editGlobalTaxNote(${i},this.value)">${esc(x.text||'')}</textarea>
+      </div>
       <select onchange="changeTaxNoteScope('global',${i},this.value)">
         <option value="global" selected>상시</option>
         <option value="monthly">이번달로 이동</option>
