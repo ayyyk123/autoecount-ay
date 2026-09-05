@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.19</title>
+<title>아도라블 매출 자동화 v3.20</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -375,7 +375,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.19 · 전월 매출 최종수정</div>
+      <div class="badge">v3.20 · 7월 매입 최종확정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -684,6 +684,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
               </div>
               <div class="taxSalesInputRow"><span>전월 세금계산서 매출</span><input id="taxPrevSalesInvoiceAmount" type="text" inputmode="numeric" placeholder="0"></div>
               <div class="taxSalesInputRow"><span>전월 현금영수증 매출</span><input id="taxPrevSalesCashAmount" type="text" inputmode="numeric" placeholder="0"></div>
+              <div id="taxPrevPurchaseFinalRow" class="taxSalesInputRow hidden"><span>7월 매입 최종금액</span><input id="taxPrevPurchaseFinalAmount" type="text" inputmode="numeric" placeholder="0"></div>
               <div id="taxPrevSalesSummary" class="taxSalesCards"></div>
             </div>
           </div>
@@ -772,7 +773,7 @@ let taxCheckState={month:'',bizRegs:[],closed:[],notes:[]};
 let taxPurchaseMasters=[];
 let taxBookState={month:'',purchases:[],salesTax:0,salesCash:0};
 let taxYearBooks=[];
-let taxPrevSalesState={month:'',salesTax:0,salesCash:0};
+let taxPrevSalesState={month:'',salesTax:0,salesCash:0,purchaseTotal:0,purchaseEditable:false};
 const TAX_HISTORY_2026=[{"month":"2026-01","salesTax":277714001,"salesCash":6807845,"purchase":242023594},{"month":"2026-02","salesTax":318286325,"salesCash":6778227,"purchase":622682032},{"month":"2026-03","salesTax":689165515,"salesCash":18976291,"purchase":298690486},{"month":"2026-04","salesTax":693013290,"salesCash":13236973,"purchase":660433281},{"month":"2026-05","salesTax":657112348,"salesCash":17253582,"purchase":472480167},{"month":"2026-06","salesTax":617992386,"salesCash":15228100,"purchase":318624886},{"month":"2026-07","salesTax":529128089,"salesCash":8260827,"purchase":197673259}];
 const TAX_LAST_MONTH_KEY='autoecount-ay-tax-last-month-v1';
 const DEFAULT_TAX_PURCHASE_MASTERS=[
@@ -2332,6 +2333,9 @@ function taxHistoricalPurchaseFallback(book){
   return !rows.length&&v!==null&&v!==undefined&&v!==''?Number(v||0):null;
 }
 function taxBookPurchaseTotal(book){
+  if(book?.finalPurchaseTotalOverride!==null&&book?.finalPurchaseTotalOverride!==undefined&&book?.finalPurchaseTotalOverride!==''){
+    return Number(book.finalPurchaseTotalOverride||0);
+  }
   const fallback=taxHistoricalPurchaseFallback(book);
   if(fallback!==null)return fallback;
   return (book?.purchases||[]).reduce((s,r)=>s+(r.received?Number(r.actualAmount||0):Number(r.expectedAmount||0)),0);
@@ -2597,6 +2601,7 @@ async function loadTaxBookMonth(month){
     salesTax:Number(book.salesTax||0),
     salesCash:Number(book.salesCash||0),
     purchaseTotalOverride:book.purchaseTotalOverride??null,
+    finalPurchaseTotalOverride:book.finalPurchaseTotalOverride??null,
     historicalSummary:!!book.historicalSummary
   };
 
@@ -2606,7 +2611,7 @@ async function loadTaxBookMonth(month){
 }
 function syncCurrentTaxBookToYear(){
   const idx=taxYearBooks.findIndex(x=>x.month===taxBookState.month);
-  const cur={month:taxBookState.month,purchases:taxBookState.purchases.map(x=>({...x})),salesTax:Number(taxBookState.salesTax||0),salesCash:Number(taxBookState.salesCash||0),purchaseTotalOverride:taxBookState.purchaseTotalOverride??null,historicalSummary:!!taxBookState.historicalSummary};
+  const cur={month:taxBookState.month,purchases:taxBookState.purchases.map(x=>({...x})),salesTax:Number(taxBookState.salesTax||0),salesCash:Number(taxBookState.salesCash||0),purchaseTotalOverride:taxBookState.purchaseTotalOverride??null,finalPurchaseTotalOverride:taxBookState.finalPurchaseTotalOverride??null,historicalSummary:!!taxBookState.historicalSummary};
   if(idx>=0)taxYearBooks[idx]=cur;else taxYearBooks.push(cur);
 }
 
@@ -2617,6 +2622,7 @@ async function saveTaxBook(render=true){
     salesTax:Number(taxBookState.salesTax||0),
     salesCash:Number(taxBookState.salesCash||0),
     purchaseTotalOverride:taxBookState.purchaseTotalOverride??null,
+    finalPurchaseTotalOverride:taxBookState.finalPurchaseTotalOverride??null,
     historicalSummary:!!taxBookState.historicalSummary,
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
@@ -3084,7 +3090,7 @@ async function loadPreviousTaxSalesForCurrentMonth(){
   const cur=taxBookState.month||$('taxCheckMonth')?.value||'';
   const prev=taxShiftMonth(cur,-1);
   if(!prev){
-    taxPrevSalesState={month:'',salesTax:0,salesCash:0};
+    taxPrevSalesState={month:'',salesTax:0,salesCash:0,purchaseTotal:0,purchaseEditable:false};
     renderPreviousTaxSales();
     return;
   }
@@ -3093,7 +3099,9 @@ async function loadPreviousTaxSalesForCurrentMonth(){
   taxPrevSalesState={
     month:prev,
     salesTax:Number(d.salesTax||0),
-    salesCash:Number(d.salesCash||0)
+    salesCash:Number(d.salesCash||0),
+    purchaseTotal:taxBookPurchaseTotal({month:prev,...d}),
+    purchaseEditable:prev==='2026-07'
   };
   renderPreviousTaxSales();
 }
@@ -3101,6 +3109,8 @@ function renderPreviousTaxSales(){
   const title=$('taxPrevSalesTitle'),
         st=$('taxPrevSalesInvoiceAmount'),
         sc=$('taxPrevSalesCashAmount'),
+        purchaseRow=$('taxPrevPurchaseFinalRow'),
+        purchaseInput=$('taxPrevPurchaseFinalAmount'),
         sum=$('taxPrevSalesSummary'),
         status=$('taxPrevSalesStatus');
   if(!title||!st||!sc||!sum)return;
@@ -3109,6 +3119,8 @@ function renderPreviousTaxSales(){
   if(!m){
     title.textContent='전월 매출 최종수정';
     st.value='';sc.value='';sum.innerHTML='';
+    if(purchaseInput)purchaseInput.value='';
+    if(purchaseRow)purchaseRow.classList.add('hidden');
     st.disabled=true;sc.disabled=true;
     if(status)status.textContent='';
     return;
@@ -3119,12 +3131,40 @@ function renderPreviousTaxSales(){
   title.textContent=`${monthNo}월 매출 최종수정`;
   st.value=taxMoney(taxPrevSalesState.salesTax||0);
   sc.value=taxMoney(taxPrevSalesState.salesCash||0);
+
+  if(purchaseRow&&purchaseInput){
+    purchaseRow.classList.toggle('hidden',!taxPrevSalesState.purchaseEditable);
+    purchaseInput.value=taxMoney(taxPrevSalesState.purchaseTotal||0);
+    purchaseInput.disabled=!taxPrevSalesState.purchaseEditable;
+  }
+
   const total=Number(taxPrevSalesState.salesTax||0)+Number(taxPrevSalesState.salesCash||0);
   sum.innerHTML=`
     <div><small>${monthNo}월 세금계산서 매출</small><b>${taxMoney(taxPrevSalesState.salesTax||0)}원</b></div>
     <div><small>${monthNo}월 현금영수증 매출</small><b>${taxMoney(taxPrevSalesState.salesCash||0)}원</b></div>
     <div><small>${monthNo}월 최종 매출합</small><b>${taxMoney(total)}원</b></div>
-    <div><small>수정대상 월</small><b>${m}</b></div>`;
+    <div><small>${monthNo}월 매입확정</small><b>${taxMoney(taxPrevSalesState.purchaseTotal||0)}원</b></div>`;
+}
+
+async function savePreviousPurchaseFinal(v){
+  if(!user||taxPrevSalesState.month!=='2026-07')return;
+  const n=parseTaxMoney(v);
+  taxPrevSalesState.purchaseTotal=n;
+
+  await userCol('taxMonthlyBooks').doc('2026-07').set({
+    finalPurchaseTotalOverride:n,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+
+  await loadTaxYearBooks('2026');
+  renderPreviousTaxSales();
+  renderTaxYearSummary();
+
+  const status=$('taxPrevSalesStatus');
+  if(status){
+    status.textContent='7월 매입 최종금액 저장완료';
+    setTimeout(()=>{if(status)status.textContent=''},1800);
+  }
 }
 async function savePreviousTaxSalesField(field,v){
   if(!user||!taxPrevSalesState.month)return;
@@ -4816,7 +4856,7 @@ $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',re
 $('runBalanceCompareBtn').onclick=()=>runCompare('balance');$('runMonthlyCompareBtn').onclick=()=>runCompare('sales');
 document.querySelectorAll('[data-cmp-loc]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cmp-loc]').forEach(x=>x.classList.remove('active'));b.classList.add('active');compareState.loc=b.dataset.cmpLoc;renderCompare()});
 $('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState.mismatchOnly;$('compareMismatchOnlyBtn').classList.toggle('active',compareState.mismatchOnly);renderCompare()};
-$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));
+$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupBaseDataGroup();
