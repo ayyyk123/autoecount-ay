@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.14</title>
+<title>아도라블 매출 자동화 v3.16</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -201,10 +201,26 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .taxResizeHandle{height:13px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;user-select:none;touch-action:none}
   .taxResizeHandle::before{content:"";width:56px;height:4px;border-radius:999px;background:#cbd5e1}
   .taxResizeHandle:hover::before{background:#94a3b8}
-  .taxBookLayout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(350px,1fr);gap:12px;align-items:start}
+  .taxBookLayout{display:block}
+  .taxSalesBelow{margin-top:14px}
+  .taxBookResizable{
+    overflow:auto;
+    min-height:120px;
+    max-height:900px;
+  }
+  #taxPurchaseList{height:420px}
+  #taxSalesEntryBox{height:220px}
+  #taxYearSummary{height:360px}
+  #taxRatioSummary{height:220px}
+  .taxBookResizeLabel{
+    font-size:10px;color:#94a3b8;text-align:center;margin-top:-2px;margin-bottom:2px
+  }
+
+  .taxSalesBelow .taxSalesEntry{max-width:none}
+
   .taxBookPanel{min-width:0}
   .taxPurchaseList{overflow:auto;border:1px solid #e2e8f0;border-radius:10px;max-height:620px}
-  .taxPurchaseList table{margin:0;min-width:1120px}
+  .taxPurchaseList table{margin:0;min-width:1380px}
   .taxPurchaseList th{position:sticky;top:0;z-index:2;background:#f8fafc}
   .taxPurchaseList input[type="text"]{border:1px solid #cbd5e1;border-radius:7px;padding:6px 7px;box-sizing:border-box}
   .taxPurchaseName{min-width:190px;width:100%}
@@ -265,7 +281,6 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   @media(max-width:700px){.taxManualInvoiceLine{grid-template-columns:1fr 1fr auto}}
 
   @media(max-width:1050px){
-    .taxBookLayout{grid-template-columns:1fr}
     .taxBookSummary{grid-template-columns:1fr 1fr}
   }
 
@@ -335,7 +350,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.14 · 수기계산서 합산·매입순서</div>
+      <div class="badge">v3.16 · 월별세금계산서 박스 높이조절</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -625,21 +640,25 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <button id="addTaxPurchaseBtn" class="btn light" type="button">매입받을 항목 추가</button>
         </div>
         <div class="taxBookSmallNote">고정 매입항목은 위의 `매입자료 가져오기`로 원하는 월의 목록과 최종금액을 불러옵니다. 금액·고정여부·목록순서는 언제든 수정할 수 있습니다. 여러 달 금액을 한 번에 수기세금계산서로 받는 항목은 `월별합산`에서 월별금액과 계산서 수취월을 관리할 수 있습니다.</div>
-        <div class="taxBookLayout">
-          <div class="taxBookPanel">
-            <div id="taxPurchaseSummary" class="taxBookSummary"></div>
-            <div id="taxPurchaseList" class="taxPurchaseList"></div>
+        <div class="taxBookPanel">
+          <div id="taxPurchaseSummary" class="taxBookSummary"></div>
+          <div id="taxPurchaseList" class="taxPurchaseList taxBookResizable"></div>
+          <div class="taxResizeHandle" data-tax-resize="taxPurchaseList" title="잡아끌어 매입세금계산서 목록 높이 조절"></div>
+        </div>
+        <div class="taxSalesBelow">
+          <div id="taxSalesEntryBox" class="taxSalesEntry taxBookResizable">
+            <h4>월별 매출 입력</h4>
+            <div class="taxSalesInputRow"><span>세금계산서 매출</span><input id="taxSalesInvoiceAmount" type="text" inputmode="numeric" placeholder="0"></div>
+            <div class="taxSalesInputRow"><span>현금영수증 매출</span><input id="taxSalesCashAmount" type="text" inputmode="numeric" placeholder="0"></div>
+            <div id="taxSelectedMonthSummary" class="taxSalesCards"></div>
           </div>
-          <div class="taxBookPanel">
-            <div class="taxSalesEntry">
-              <h4>월별 매출 입력</h4>
-              <div class="taxSalesInputRow"><span>세금계산서 매출</span><input id="taxSalesInvoiceAmount" type="text" inputmode="numeric" placeholder="0"></div>
-              <div class="taxSalesInputRow"><span>현금영수증 매출</span><input id="taxSalesCashAmount" type="text" inputmode="numeric" placeholder="0"></div>
-              <div id="taxSelectedMonthSummary" class="taxSalesCards"></div>
-            </div>
-            <div id="taxYearSummary" class="taxYearSummary"></div>
-            <div id="taxRatioSummary" class="taxRatioSummary"></div>
-          </div>
+          <div class="taxResizeHandle" data-tax-resize="taxSalesEntryBox" title="잡아끌어 월별 매출 입력 박스 높이 조절"></div>
+
+          <div id="taxYearSummary" class="taxYearSummary taxBookResizable"></div>
+          <div class="taxResizeHandle" data-tax-resize="taxYearSummary" title="잡아끌어 연간 월별요약 높이 조절"></div>
+
+          <div id="taxRatioSummary" class="taxRatioSummary taxBookResizable"></div>
+          <div class="taxResizeHandle" data-tax-resize="taxRatioSummary" title="잡아끌어 91~88% 비교표 높이 조절"></div>
         </div>
       </div>
     </div>
@@ -1891,7 +1910,10 @@ async function loadTaxMonth(month){
     if(r.excluded)return true;
     return !isBizRegRequestExcluded(r);
   });
-  taxCheckState.closed=(taxCheckState.closed||[]).filter(r=>!isBizRegRequestExcluded(r));
+  taxCheckState.closed=(taxCheckState.closed||[]).filter(r=>{
+    if(r.excluded)return true;
+    return !isBizRegRequestExcluded(r);
+  });
 
   const removedBiz=beforeBiz-taxCheckState.bizRegs.length;
   const removedClosed=beforeClosed-taxCheckState.closed.length;
@@ -2012,7 +2034,8 @@ async function addManualClosedBizRegTarget(){
     code:c.code,
     status,
     nampyeonghwaFlag:isNampyeonghwaCustomer(c),
-    requestBizReg:true,
+    received:false,
+    excluded:false,
     manual:true,
     memo:''
   });
@@ -2163,7 +2186,8 @@ async function scanTaxCustomers(){
       code:c.code,
       status:c.status||prior.status||(/폐업/.test([c.name,c.jangkiName,c.memo].map(norm).join(' '))?'폐업':'휴업'),
       nampyeonghwaFlag:isNampyeonghwaCustomer(c),
-      requestBizReg:!!prior.requestBizReg,
+      received:!!prior.received,
+      excluded:!!prior.excluded,
       manual:!!prior.manual,
       memo:prior.memo||''
     };
@@ -2213,11 +2237,40 @@ window.toggleBizRegExclude=async function(i,checked){
   renderBizRegExclusionList();
 }
 window.saveBizMemo=async function(i,v){taxCheckState.bizRegs[i].memo=v;await saveTaxMonth()}
-window.toggleClosedBizRegRequest=async function(i,checked){
+window.toggleClosedBizRegReceived=async function(i,checked){
   const r=taxCheckState.closed[i];if(!r)return;
-  r.requestBizReg=checked;
+  r.received=checked;
+  if(checked)r.excluded=false;
   await saveTaxMonth();
   renderTaxCheck();
+}
+window.toggleClosedBizRegExclude=async function(i,checked){
+  const r=taxCheckState.closed[i];if(!r)return;
+  r.excluded=checked;
+  if(checked)r.received=false;
+
+  const key=safeId(norm(r.code)||norm(r.name));
+  if(checked){
+    const data={
+      code:r.code||'',
+      name:r.name||'',
+      jangkiName:r.jangkiName||'',
+      nampyeonghwaFlag:!!r.nampyeonghwaFlag,
+      createdFromMonth:taxCheckState.month||'',
+      mode:'permanent',
+      source:'closed_tax_check',
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await userCol('bizRegRequestExclusions').doc(key).set(data,{merge:true});
+    bizRegDynamicExclusions.set(key,{id:key,...data,updatedAt:null});
+  }else{
+    await userCol('bizRegRequestExclusions').doc(key).delete().catch(()=>{});
+    bizRegDynamicExclusions.delete(key);
+  }
+
+  await saveTaxMonth();
+  renderTaxCheck();
+  renderBizRegExclusionList();
 }
 window.saveClosedBizMemo=async function(i,v){
   const r=taxCheckState.closed[i];if(!r)return;
@@ -2970,7 +3023,9 @@ async function importClosedTaxCheckSheet(wb){
 
   const h=source.a[source.hi].map(norm);
   const idx=(names)=>{for(const n of names){const i=h.indexOf(n);if(i>=0)return i}return -1};
-  const reqI=idx(['사업자등록증 요청','사업자등록증요청','요청']),
+  const recvI=idx(['수취상태','수취']),
+        exclI=idx(['제외']),
+        legacyReqI=idx(['사업자등록증 요청','사업자등록증요청','요청']),
         nameI=idx(['거래처','거래처명']),
         codeI=idx(['코드','거래처코드']),
         statusI=idx(['상태','휴폐업상태','휴/폐업상태']),
@@ -2988,7 +3043,10 @@ async function importClosedTaxCheckSheet(wb){
           code=codeI>=0?norm(r[codeI]):'';
     if(!name&&!code)continue;
 
-    const requestBizReg=reqI>=0?truthyExcelFlag(r[reqI]):false,
+    const recv=recvI>=0?norm(r[recvI]):'',
+          excluded=exclI>=0?truthyExcelFlag(r[exclI]):false,
+          received=!excluded&&(recv.includes('수취완료')||truthyExcelFlag(recv)),
+          legacyRequested=legacyReqI>=0?truthyExcelFlag(r[legacyReqI]):false,
           status=statusI>=0?norm(r[statusI]):'',
           nampyeonghwaFlag=nampyeonghwaI>=0?/남평화|Y|YES|TRUE|1/i.test(norm(r[nampyeonghwaI])):false,
           memo=memoI>=0?String(r[memoI]??'').trim():'',
@@ -2997,7 +3055,7 @@ async function importClosedTaxCheckSheet(wb){
     let i=byCode.get(code);
     if(i===undefined)i=byName.get(name);
     if(i===undefined){
-      current.push({name,code,status,nampyeonghwaFlag,requestBizReg,manual,memo});
+      current.push({name,code,status,nampyeonghwaFlag,received,excluded,manual,memo});
       i=current.length-1;
       if(code)byCode.set(code,i);
       if(name)byName.set(name,i);
@@ -3009,13 +3067,34 @@ async function importClosedTaxCheckSheet(wb){
       x.status=status||x.status||'';
       if(nampyeonghwaI>=0)x.nampyeonghwaFlag=nampyeonghwaFlag;
       if(manualI>=0)x.manual=manual;
-      x.requestBizReg=requestBizReg;
+      if(recvI>=0||exclI>=0){
+        x.received=received;
+        x.excluded=excluded;
+      }else if(legacyReqI>=0){
+        x.received=false;
+        x.excluded=false;
+      }
       x.memo=memo;
       changed++;
     }
   }
 
   taxCheckState.closed=current;
+  for(const row of current){
+    if(!row.excluded)continue;
+    const key=safeId(norm(row.code)||norm(row.name));
+    const data={
+      code:row.code||'',
+      name:row.name||'',
+      jangkiName:row.jangkiName||'',
+      nampyeonghwaFlag:!!row.nampyeonghwaFlag,
+      mode:'permanent',
+      source:'closed_tax_check_excel_import',
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await userCol('bizRegRequestExclusions').doc(key).set(data,{merge:true});
+    bizRegDynamicExclusions.set(key,{id:key,...data,updatedAt:null});
+  }
   return {changed,added};
 }
 
@@ -3116,9 +3195,10 @@ function downloadTaxCheckExcel(){
     XLSX.utils.book_append_sheet(wb,bizWs,'사업자등록증 요청대상');
 
     const closedRows=[
-      ['사업자등록증 요청','거래처','남평화 여부','코드','상태','메모','등록구분'],
+      ['수취상태','제외','거래처','남평화 여부','코드','상태','메모','등록구분'],
       ...closed.map(r=>[
-        r.requestBizReg?'Y':'N',
+        r.received?'수취완료':r.excluded?'제외':'요청필요',
+        r.excluded?'Y':'N',
         r.name||'',
         r.nampyeonghwaFlag?'남평화':'',
         r.code||'',
@@ -3128,7 +3208,7 @@ function downloadTaxCheckExcel(){
       ])
     ];
     const closedWs=XLSX.utils.aoa_to_sheet(closedRows);
-    closedWs['!cols']=[{wch:16},{wch:30},{wch:12},{wch:18},{wch:14},{wch:40},{wch:12}];
+    closedWs['!cols']=[{wch:12},{wch:8},{wch:30},{wch:12},{wch:18},{wch:14},{wch:40},{wch:12}];
     XLSX.utils.book_append_sheet(wb,closedWs,'휴업폐업 확인');
 
     if(taxBookState.month){
@@ -3216,19 +3296,30 @@ function renderTaxCheck(){
   const closedQ=currentTaxSearch('closedCustomerSearch');
   const closedRows=closedAll.filter(r=>includesTaxSearch([
     r.name,r.code,r.status,r.memo,
-    r.requestBizReg?'사업자등록증 요청 요청필요':'',
+    r.received?'수취완료':'요청필요',
+    r.excluded?'제외':'',
     r.manual?'직접추가':''
   ],closedQ));
   if($('closedCustomerSearchCount'))$('closedCustomerSearchCount').textContent=closedQ?`${closedRows.length}/${closedAll.length}건`:`${closedAll.length}건`;
 
   c.innerHTML=closedRows.length
-    ? `<table><thead><tr><th>사업자등록증 요청</th><th>거래처</th><th>구분</th><th>코드</th><th>상태</th><th>메모</th><th>관리</th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>수취 / 제외</th><th>거래처</th><th>구분</th><th>코드</th><th>상태</th><th>메모</th><th>관리</th></tr></thead><tbody>${
         closedRows.map((r)=>{
           const i=closedAll.indexOf(r);
+          const requestStatus=r.excluded
+            ? '<div class="taxAuto">제외</div>'
+            : r.received
+              ? '<div class="taxAuto">수취완료</div>'
+              : '<div class="taxPending">요청필요</div>';
           return `<tr>
-          <td style="text-align:center">
-            <input type="checkbox" ${r.requestBizReg?'checked':''} onchange="toggleClosedBizRegRequest(${i},this.checked)">
-            ${r.requestBizReg?'<div class="taxPending">요청필요</div>':''}
+          <td style="white-space:nowrap">
+            <label style="display:inline-flex;align-items:center;gap:3px;margin-right:9px">
+              <input type="checkbox" ${r.received?'checked':''} ${r.excluded?'disabled':''} onchange="toggleClosedBizRegReceived(${i},this.checked)"> 수취
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:3px">
+              <input type="checkbox" ${r.excluded?'checked':''} onchange="toggleClosedBizRegExclude(${i},this.checked)"> 제외
+            </label>
+            ${requestStatus}
           </td>
           <td>${esc(r.name)}</td>
           <td>${nampyeonghwaBadge(r)}</td>
