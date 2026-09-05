@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.20</title>
+<title>아도라블 매출 자동화 v3.21</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -311,6 +311,15 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
 
   .filePickLabel{display:inline-flex;align-items:center;gap:5px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 9px;cursor:pointer;font-size:12px;font-weight:700}.filePickLabel input{display:none}
+  .compareFilePick{display:inline-flex;flex-direction:column;align-items:flex-start;gap:4px}
+  .compareFilePick .filePickLabel{margin:0}
+  .compareFileStatus{
+    max-width:190px;font-size:10px;line-height:1.25;color:#64748b;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .compareFileStatus.selected{color:#15803d;font-weight:800}
+  .filePickLabel.compareSelected{border-color:#86efac;background:#f0fdf4;color:#166534}
+
   @media(max-width:900px){.moduleGrid{grid-template-columns:1fr}.ledgerSummary{grid-template-columns:repeat(2,1fr)}.comboLine{grid-template-columns:1fr 90px 70px 38px 38px}}
 
 
@@ -375,7 +384,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.20 · 7월 매입 최종확정</div>
+      <div class="badge">v3.21 · 비교파일 선택표시</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
     </div>
   </div>
@@ -554,9 +563,18 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <div class="moduleBox">
           <h4>주간 거래처 잔액 비교</h4>
           <div class="moduleToolbar">
-            <label class="filePickLabel">매장 잔액 파일<input id="balanceStoreFile" type="file" accept=".xlsx,.xls"></label>
-            <label class="filePickLabel">창고 잔액 파일<input id="balanceWarehouseFile" type="file" accept=".xlsx,.xls"></label>
-            <label class="filePickLabel">이카운트 잔액 파일<input id="balanceEcountFile" type="file" accept=".xlsx,.xls"></label>
+            <span class="compareFilePick">
+              <label id="balanceStoreFileLabel" class="filePickLabel">매장 잔액 파일<input id="balanceStoreFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="balanceStoreFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
+            <span class="compareFilePick">
+              <label id="balanceWarehouseFileLabel" class="filePickLabel">창고 잔액 파일<input id="balanceWarehouseFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="balanceWarehouseFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
+            <span class="compareFilePick">
+              <label id="balanceEcountFileLabel" class="filePickLabel">이카운트 잔액 파일<input id="balanceEcountFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="balanceEcountFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
             <button id="runBalanceCompareBtn" class="btn" type="button">잔액 비교</button>
           </div>
           <div id="balanceCompareStatus" class="small"></div>
@@ -564,9 +582,18 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <div class="moduleBox">
           <h4>월별 매출 비교</h4>
           <div class="moduleToolbar">
-            <label class="filePickLabel">매장 월매출 파일<input id="monthlyStoreFile" type="file" accept=".xlsx,.xls"></label>
-            <label class="filePickLabel">창고 월매출 파일<input id="monthlyWarehouseFile" type="file" accept=".xlsx,.xls"></label>
-            <label class="filePickLabel">이카운트 월매출 파일<input id="monthlyEcountFile" type="file" accept=".xlsx,.xls"></label>
+            <span class="compareFilePick">
+              <label id="monthlyStoreFileLabel" class="filePickLabel">매장 월매출 파일<input id="monthlyStoreFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="monthlyStoreFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
+            <span class="compareFilePick">
+              <label id="monthlyWarehouseFileLabel" class="filePickLabel">창고 월매출 파일<input id="monthlyWarehouseFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="monthlyWarehouseFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
+            <span class="compareFilePick">
+              <label id="monthlyEcountFileLabel" class="filePickLabel">이카운트 월매출 파일<input id="monthlyEcountFile" type="file" accept=".xlsx,.xls"></label>
+              <span id="monthlyEcountFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+            </span>
             <button id="runMonthlyCompareBtn" class="btn" type="button">월매출 비교</button>
           </div>
           <div id="monthlyCompareStatus" class="small"></div>
@@ -1913,7 +1940,40 @@ function autoCombo(){const target=Math.abs(num($('comboTarget').value)),units=ca
 function customerCanonical(row){if(row.code)return 'C:'+norm(row.code);const maps=cloud.customerMaps||{jangki:new Map(),ecount:new Map()},r=resolveCustomer(maps,row.name);if(r.ok)return 'C:'+norm(r.value);return 'N:'+norm(row.name)}
 function aggregateCompare(rows){const m=new Map();for(const r of rows){const k=customerCanonical(r);if(!m.has(k))m.set(k,{key:k,name:r.name||r.code,code:r.code||'',amount:0,loc:r.loc});const x=m.get(k);x.amount+=Number(r.amount||0);if(!x.name&&r.name)x.name=r.name;}return m}
 async function parseCompareFile(file,kind,loc){if(!file)return[];const p=await genericExcelObjects(file);return extractRows(p,kind,loc)}
-async function runCompare(mode){try{if(selectedFiles.customer.length)await buildRuntimeCustomerMaps();let sourceRows=[],ecountRows=[];if(mode==='balance'){const [s,w,e]=await Promise.all([parseCompareFile($('balanceStoreFile').files[0],'balance','store'),parseCompareFile($('balanceWarehouseFile').files[0],'balance','warehouse'),parseCompareFile($('balanceEcountFile').files[0],'balance','')]);sourceRows=[...s,...w];ecountRows=e;$('balanceCompareStatus').textContent=`원본 ${sourceRows.length}행 · 이카운트 ${ecountRows.length}행`;}else{const [s,w,e]=await Promise.all([parseCompareFile($('monthlyStoreFile').files[0],'sales','store'),parseCompareFile($('monthlyWarehouseFile').files[0],'sales','warehouse'),parseCompareFile($('monthlyEcountFile').files[0],'sales','')]);sourceRows=[...s,...w];ecountRows=e;$('monthlyCompareStatus').textContent=`매장 ${s.length}행 · 창고 ${w.length}행 · 이카운트 ${e.length}행`;}if(!sourceRows.length||!ecountRows.length)throw new Error('비교할 원본과 이카운트 파일을 모두 넣어 주세요.');const sm=aggregateCompare(sourceRows),em=aggregateCompare(ecountRows),keys=new Set([...sm.keys(),...em.keys()]),rows=[];for(const k of keys){const s=sm.get(k),e=em.get(k),loc=s?.loc||inferCustomerLoc(k,e?.name||'');let status='일치';if(!s)status='이카운트에만 있음';else if(!e)status='원본에만 있음';else if(Number(s.amount)!==Number(e.amount))status='금액불일치';rows.push({key:k,name:s?.name||e?.name||k,code:k.startsWith('C:')?k.slice(2):'',loc,source:s?.amount??null,ecount:e?.amount??null,diff:(e?.amount??0)-(s?.amount??0),status});}compareState={...compareState,rows,mode};renderCompare()}catch(e){alert(e.message||e)}}
+
+function updateCompareFileSelection(inputId){
+  const input=$(inputId),status=$(inputId+'Status'),label=$(inputId+'Label');
+  if(!input||!status)return;
+  const f=input.files?.[0]||null;
+  if(f){
+    status.textContent=`✓ ${f.name}`;
+    status.title=f.name;
+    status.classList.add('selected');
+    label?.classList.add('compareSelected');
+  }else{
+    status.textContent='선택된 파일 없음';
+    status.title='';
+    status.classList.remove('selected');
+    label?.classList.remove('compareSelected');
+  }
+}
+function setupCompareFileSelectionStatus(){
+  const ids=['balanceStoreFile','balanceWarehouseFile','balanceEcountFile','monthlyStoreFile','monthlyWarehouseFile','monthlyEcountFile'];
+  ids.forEach(id=>{
+    const input=$(id);if(!input)return;
+    input.addEventListener('change',()=>updateCompareFileSelection(id));
+    updateCompareFileSelection(id);
+  });
+}
+async function runCompare(mode){try{
+  if(selectedFiles.customer.length)await buildRuntimeCustomerMaps();
+  let sourceRows=[],ecountRows=[];
+  const ids=mode==='balance'
+    ?['balanceStoreFile','balanceWarehouseFile','balanceEcountFile']
+    :['monthlyStoreFile','monthlyWarehouseFile','monthlyEcountFile'];
+  const missing=ids.filter(id=>!$(id)?.files?.[0]);
+  if(missing.length)throw new Error('비교에 필요한 파일 3개를 모두 선택해 주세요.');
+if(mode==='balance'){const [s,w,e]=await Promise.all([parseCompareFile($('balanceStoreFile').files[0],'balance','store'),parseCompareFile($('balanceWarehouseFile').files[0],'balance','warehouse'),parseCompareFile($('balanceEcountFile').files[0],'balance','')]);sourceRows=[...s,...w];ecountRows=e;$('balanceCompareStatus').textContent=`원본 ${sourceRows.length}행 · 이카운트 ${ecountRows.length}행`;}else{const [s,w,e]=await Promise.all([parseCompareFile($('monthlyStoreFile').files[0],'sales','store'),parseCompareFile($('monthlyWarehouseFile').files[0],'sales','warehouse'),parseCompareFile($('monthlyEcountFile').files[0],'sales','')]);sourceRows=[...s,...w];ecountRows=e;$('monthlyCompareStatus').textContent=`매장 ${s.length}행 · 창고 ${w.length}행 · 이카운트 ${e.length}행`;}if(!sourceRows.length||!ecountRows.length)throw new Error('비교할 원본과 이카운트 파일을 모두 넣어 주세요.');const sm=aggregateCompare(sourceRows),em=aggregateCompare(ecountRows),keys=new Set([...sm.keys(),...em.keys()]),rows=[];for(const k of keys){const s=sm.get(k),e=em.get(k),loc=s?.loc||inferCustomerLoc(k,e?.name||'');let status='일치';if(!s)status='이카운트에만 있음';else if(!e)status='원본에만 있음';else if(Number(s.amount)!==Number(e.amount))status='금액불일치';rows.push({key:k,name:s?.name||e?.name||k,code:k.startsWith('C:')?k.slice(2):'',loc,source:s?.amount??null,ecount:e?.amount??null,diff:(e?.amount??0)-(s?.amount??0),status});}compareState={...compareState,rows,mode};renderCompare()}catch(e){alert(e.message||e)}}
 function inferCustomerLoc(key,name){const code=key.startsWith('C:')?key.slice(2):'',c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(code)||norm(x.name)===norm(name));const b=norm(c?.branch||'')+' '+norm(c?.group||'');if(/창고/.test(b))return'warehouse';if(/매장|동대문|본점|남평화/.test(b))return'store';return''}
 function renderCompare(){const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),all=compareState.rows||[],counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length};$('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span></div>`;$('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본</th><th>이카운트</th><th>차이(이카운트-원본)</th><th>상태</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table>`}
 
@@ -4866,6 +4926,7 @@ setupInnerBoxCollapse();
 setupExplanationToggles();
 setupJobListResize();
 setupTaxListResize();
+setupCompareFileSelectionStatus();
 renderJobList();
 renderAllDraftFiles(); restoreDraftFiles().finally(initFirebase);
 </script>
