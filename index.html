@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.27</title>
+<title>아도라블 매출 자동화 v3.28</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -424,7 +424,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.27 · 미완료 유의사항 자동이월</div>
+      <div class="badge">v3.28 · 잔액비교 규칙교정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div class="dataSafetyActions">
         <button id="saveLatestDataBtn" class="btn" type="button">최신자료 저장</button>
@@ -625,6 +625,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <button id="runBalanceCompareBtn" class="btn" type="button">잔액 비교</button>
           </div>
           <div id="balanceCompareStatus" class="small"></div>
+          <div class="monthlyCompareRule"><b>잔액 비교 규칙</b> · 매장/창고 `최종잔액` ↔ 이카운트 `잔액` 비교 · 반드시 같은 기준일 파일 사용 · S/P·SP / 최종잔액 0원 / 신상마켓 잔액 / 이카운트 정리계정은 비교대상에서 제외 · 저장된 최신 거래처코드·장끼명·거래처명·수동매칭을 우선 사용 · 같은 거래처로 연결되는 원본 여러 행과 이카운트 여러 행은 각각 합산 · 이름이 달라 특수연결된 경우 상세내역에서 연결근거를 표시합니다.</div>
         </div>
         <div class="moduleBox">
           <h4>월별 매출 비교</h4>
@@ -1028,7 +1029,9 @@ function roundAway(n){return n>=0?Math.floor(n+0.5):Math.ceil(n-0.5)}
 function roundUnitIncluded(n){return roundAway(n/1.1)}
 function keyTicket(loc,date,no,cust){return [loc,date,String(no),norm(cust)].join('|')}
 function safeId(s){return encodeURIComponent(norm(s)).slice(0,1400)}
-function isSampleCustomer(customer){return /s\s*[\/.]?\s*p\s*$/i.test(norm(customer))}
+function isSampleCustomer(customer){
+  return /(?:^|[^A-Za-z])s\s*[\/.]?\s*p(?:\s*(?:봄|여름|가을|겨울))?\s*$/i.test(norm(customer))
+}
 function getVatRuleInfo(customer){
   const c=norm(customer);
   if(cloud.vatRules.has(c)) return {mode:cloud.vatRules.get(c),source:'Firebase 저장규칙'};
@@ -2551,20 +2554,336 @@ async function runMonthlySalesCompare(){
   $('monthlyCompareStatus').textContent=`비교대상 매장 ${meta.storeCount}건 · 창고 ${meta.warehouseCount}건 · 이카운트 ${meta.ecountCount}건 · 비교제외 ${meta.excludedCount}건 · 신상마켓 VAT환산 ${meta.vatAdjustedCount}건`;
   compareState={...compareState,rows,mode:'sales',meta,specialOpen:false};renderCompare()
 }
+
+function balanceDateFromFileName(name){
+  const m=/(20\d{2})[-_.]?(\d{2})[-_.]?(\d{2})/.exec(String(name||''));
+  return m?`${m[1]}-${m[2]}-${m[3]}`:'';
+}
+function balanceReportEndDateFromRows(rows){
+  for(const r of (rows||[]).slice(0,8)){
+    const s=(r||[]).map(x=>norm(x)).filter(Boolean).join(' ');
+    const m=/(20\d{2})[\/.-](\d{2})[\/.-](\d{2})\s*~\s*(20\d{2})[\/.-](\d{2})[\/.-](\d{2})/.exec(s);
+    if(m)return `${m[4]}-${m[5]}-${m[6]}`;
+  }
+  return '';
+}
+function balanceMaxDate(rows,dateI){
+  let max='';
+  if(dateI<0)return max;
+  for(const r of rows||[]){
+    const d=ymd(r[dateI])||norm(r[dateI]);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&d>max)max=d;
+  }
+  return max;
+}
+function isBalanceShinsang(name){return /신상마켓/.test(norm(name))}
+function isBalanceEcountClearing(name){
+  const n=norm(name);
+  return n==='(주)우리은행'||n==='은행정리'||n==='입금자명미확인';
+}
+function balanceNameVariants(v){
+  const vals=new Set(monthlyNameVariants(v));
+  let raw=norm(v);
+  if(!raw)return[];
+  const extras=new Set();
+
+  // 현금영수증 보조계정은 원거래처명으로도 연결
+  const noReceipt=raw.replace(/\s*현금영수증\s*$/,'').trim();
+  if(noReceipt&&noReceipt!==raw)for(const x of monthlyNameVariants(noReceipt))extras.add(x);
+
+  // 링크샵/남평화 등 보조 접두어 제거
+  let q=raw;
+  for(let guard=0;guard<6;guard++){
+    const before=q;
+    q=q.replace(/^★[^★]+★/,'').trim();
+    q=q.replace(/^\([^)]*년[^)]*~[^)]*\)/,'').trim();
+    q=q.replace(/^\d{2,4}년\d{1,2}월~/,'').trim();
+    q=q.replace(/^남평화-/,'').replace(/^누죤-/,'').replace(/^링크샵-/,'').replace(/^\(A\)/i,'').trim();
+    if(q===before)break;
+  }
+  if(q)for(const x of monthlyNameVariants(q))extras.add(x);
+
+  // 마지막 괄호 안/밖도 별칭으로 사용
+  const tail=/^(.*)\(([^()]*)\)$/.exec(raw);
+  if(tail){
+    for(const x of monthlyNameVariants(tail[1]))extras.add(x);
+    for(const x of monthlyNameVariants(tail[2]))extras.add(x);
+  }
+
+  for(const x of extras)vals.add(x);
+  return [...vals].filter(Boolean)
+}
+function resolveBalanceCustomerCode(name){
+  const direct=resolveCustomer(cloud.customerMaps||{jangki:new Map(),ecount:new Map()},name);
+  if(direct.ok)return {ok:true,code:norm(direct.value),reason:'저장 거래처코드'};
+
+  const aliases=new Set(balanceNameVariants(name));
+  const matches=[];
+  for(const c of cloud.runtimeCustomers||[]){
+    let hit=false;
+    for(const part of String(c.jangkiName||'').split(',')){
+      if(balanceNameVariants(part).some(a=>aliases.has(a))){hit=true;break}
+    }
+    if(!hit&&balanceNameVariants(c.name||'').some(a=>aliases.has(a)))hit=true;
+    if(hit)matches.push(c);
+  }
+  const codes=[...new Set(matches.map(c=>norm(c.code)).filter(Boolean))];
+  if(codes.length===1)return {ok:true,code:codes[0],reason:'저장 거래처 별칭'};
+  return {ok:false,code:'',reason:''}
+}
+async function parseBalanceSourceSnapshot(file,loc){
+  if(!file)return {rows:[],excluded:[],snapshotDate:'',zeroCount:0,sampleCount:0,shinsangCount:0};
+  const wb=await readWb(file);let found=null;
+  for(const sh of wb.SheetNames){
+    const a=aoaFromSheet(wb,sh);
+    for(let i=0;i<Math.min(20,a.length);i++){
+      const h=(a[i]||[]).map(norm),
+            nameI=h.indexOf('거래처명'),
+            balanceI=h.indexOf('최종잔액'),
+            dateI=h.indexOf('최종거래일');
+      if(nameI>=0&&balanceI>=0){found={a,hi:i,nameI,balanceI,dateI};break}
+    }
+    if(found)break;
+  }
+  if(!found)throw new Error(`${file.name}: '거래처명 / 최종잔액' 열을 찾지 못했습니다.`);
+
+  const rows=[],excluded=[];
+  let zeroCount=0,sampleCount=0,shinsangCount=0;
+  for(const r of found.a.slice(found.hi+1)){
+    const name=norm(r[found.nameI]);if(!name||name==='<합  계>'||name==='총합계'||name==='Grand Total')continue;
+    const amount=num(r[found.balanceI]);if(!Number.isFinite(amount))continue;
+
+    if(amount===0){
+      zeroCount++;excluded.push({loc,name,amount,reason:'최종잔액 0원 · 이카운트 잔액파일 미출력'});continue;
+    }
+    if(isSampleCustomer(name)){
+      sampleCount++;excluded.push({loc,name,amount,reason:'S/P·SP 판매입력 제외 거래처'});continue;
+    }
+    if(isBalanceShinsang(name)){
+      shinsangCount++;excluded.push({loc,name,amount,reason:'신상마켓 잔액 별도확인 · VAT/계정분리로 단순비교 제외'});continue;
+    }
+
+    const cr=resolveBalanceCustomerCode(name);
+    rows.push({
+      name,
+      code:cr.ok?cr.code:'',
+      rawAmount:amount,
+      amount,
+      loc,
+      aliases:balanceNameVariants(name),
+      codeReason:cr.reason||''
+    });
+  }
+  const snapshotDate=balanceDateFromFileName(file.name)||balanceMaxDate(found.a.slice(found.hi+1),found.dateI);
+  return {rows,excluded,snapshotDate,zeroCount,sampleCount,shinsangCount}
+}
+function inferBalanceEcountLoc(row,locText=''){
+  const byCode=monthlyCustomerLocByCode(row.code);if(byCode)return byCode;
+  const s=[locText,row.name,row.jangki].map(norm).join(' ');
+  if(/남평화|신상마켓/.test(s))return'store';
+  if(/\(A\)/i.test(s))return'warehouse';
+  return''
+}
+async function parseBalanceEcountSnapshot(file){
+  if(!file)return {rows:[],excluded:[],reportEndDate:'',shinsangCount:0,clearingCount:0};
+  const wb=await readWb(file);let found=null,allRowsForDate=[];
+  for(const sh of wb.SheetNames){
+    const a=aoaFromSheet(wb,sh);
+    allRowsForDate.push(...a.slice(0,8));
+    for(let i=0;i<Math.min(20,a.length);i++){
+      const h=(a[i]||[]).map(norm),
+            codeI=h.indexOf('거래처코드'),
+            nameI=h.indexOf('거래처명'),
+            jangkiI=h.indexOf('장끼거래처명'),
+            balanceI=h.indexOf('잔액'),
+            locI=h.indexOf('창고/남평화');
+      if(codeI>=0&&nameI>=0&&balanceI>=0){found={a,hi:i,codeI,nameI,jangkiI,balanceI,locI};break}
+    }
+    if(found)break;
+  }
+  if(!found)throw new Error(`${file.name}: 이카운트의 '거래처코드 / 거래처명 / 잔액' 열을 찾지 못했습니다.`);
+
+  const rows=[],excluded=[];
+  let shinsangCount=0,clearingCount=0;
+  for(const r of found.a.slice(found.hi+1)){
+    const code=norm(r[found.codeI]),
+          name=norm(r[found.nameI]),
+          jangki=found.jangkiI>=0?norm(r[found.jangkiI]):'',
+          locText=found.locI>=0?norm(r[found.locI]):'';
+    if(!code&&!name&&!jangki)continue;
+    const amount=num(r[found.balanceI]);if(!Number.isFinite(amount)||amount===0)continue;
+
+    if(isBalanceShinsang(name)||isBalanceShinsang(jangki)){
+      shinsangCount++;excluded.push({loc:'store',name:name||jangki,amount,reason:'신상마켓 잔액 별도확인 · VAT/계정분리로 단순비교 제외'});continue;
+    }
+    if(isBalanceEcountClearing(name)){
+      clearingCount++;excluded.push({loc:'',name,amount,reason:'이카운트 정리계정 · 장끼 거래처 잔액 비교 제외'});continue;
+    }
+
+    const master=(cloud.runtimeCustomers||[]).find(c=>norm(c.code)===code);
+    const aliases=new Set([
+      ...balanceNameVariants(name),
+      ...balanceNameVariants(jangki),
+      ...balanceNameVariants(master?.name||''),
+      ...balanceNameVariants(master?.jangkiName||'')
+    ]);
+    for(const part of String(jangki||'').split(',')){
+      for(const a of balanceNameVariants(part))aliases.add(a);
+    }
+    const row={code,name,jangki,amount,locText};
+    row.loc=inferBalanceEcountLoc(row,locText);
+    row.aliases=[...aliases].filter(Boolean);
+    rows.push(row)
+  }
+  return {
+    rows,excluded,
+    reportEndDate:balanceReportEndDateFromRows(allRowsForDate),
+    shinsangCount,clearingCount
+  }
+}
+function groupBalanceSourceRows(rows){
+  const m=new Map();
+  for(const r of rows){
+    const key=r.code?`${r.loc}|C:${norm(r.code)}`:`${r.loc}|N:${monthlyCompactName(r.name)}`;
+    if(!m.has(key))m.set(key,{
+      key,name:r.name,code:r.code||'',loc:r.loc,amount:0,rawAmount:0,
+      aliases:[],members:[],codeReason:r.codeReason||''
+    });
+    const x=m.get(key);
+    x.amount+=Number(r.amount||0);
+    x.rawAmount+=Number(r.rawAmount||0);
+    x.members.push({name:r.name,amount:Number(r.amount||0)});
+    x.aliases=[...new Set([...x.aliases,...(r.aliases||[])])];
+    if(!x.code&&r.code)x.code=r.code;
+  }
+  return [...m.values()]
+}
+function buildBalanceCompareRows(sources,ecountRows,assignResult){
+  const rows=[];
+  sources.forEach((s,i)=>{
+    const list=assignResult.assigned.get(i)||[];
+    const ecount=list.reduce((sum,x)=>sum+Number(x.e.amount||0),0);
+    let status='일치';
+    if(!list.length)status='원본에만 있음';
+    else if(ecount!==Number(s.amount||0))status='금액불일치';
+
+    const notes=[];
+    if((s.members||[]).length>1){
+      notes.push(`원본 ${s.members.length}행 합산: ${s.members.map(x=>`${x.name} ${Number(x.amount).toLocaleString()}`).join(' + ')}`);
+    }
+    if(list.length>1){
+      notes.push(`이카운트 ${list.length}행 합산: ${list.map(x=>`${x.e.jangki||x.e.name} ${Number(x.e.amount||0).toLocaleString()}`).join(' + ')}`);
+    }
+    const reasons=[...new Set(list.map(x=>x.match.reason).filter(Boolean))];
+    if(reasons.some(x=>x==='유사명 연결'))notes.push('유사명 연결');
+    else if(reasons.some(x=>x==='변경명/포함명 연결'))notes.push('변경명/포함명 연결');
+    else if(reasons.some(x=>x==='거래처명/별칭 일치')&&s.codeReason==='저장 거래처 별칭')notes.push('저장 거래처 별칭 연결');
+
+    const matchDetails=list.map(x=>({
+      code:x.e.code||'',
+      name:x.e.name||'',
+      jangki:x.e.jangki||'',
+      amount:Number(x.e.amount||0),
+      reason:x.match.reason||''
+    }));
+    rows.push({
+      key:`B:${s.key}`,
+      name:(s.members||[]).length>1?`${s.name} 외 ${(s.members||[]).length-1}건`:s.name,
+      code:s.code||'',loc:s.loc,
+      rawSource:Number(s.rawAmount||0),source:Number(s.amount||0),
+      ecount:list.length?ecount:null,
+      diff:(list.length?ecount:0)-Number(s.amount||0),
+      status,note:notes.join(' · '),
+      special:notes.length>0,
+      matchDetails,
+      sourceDetails:s.members||[]
+    })
+  });
+
+  for(const e of assignResult.unassigned){
+    rows.push({
+      key:`BE:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',
+      loc:e.loc||inferBalanceEcountLoc(e,e.locText||''),
+      rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),
+      status:'이카운트에만 있음',
+      note:`이카운트: ${e.name}${e.jangki?' / 장끼 '+e.jangki:''}`,
+      special:false,matchDetails:[]
+    })
+  }
+  for(const a of assignResult.ambiguous){
+    const e=a.e;
+    const candidateNames=a.candidates.map(x=>sources[x.i]?.name).filter(Boolean).slice(0,4);
+    rows.push({
+      key:`BA:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',loc:e.loc||'',
+      rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),
+      status:'매칭확인 필요',
+      note:`동일 우선순위 후보가 여러 개${candidateNames.length?': '+candidateNames.join(', '):''}`,
+      special:false,matchDetails:[]
+    })
+  }
+  return rows
+}
+function balanceDateWarningText(storeDate,warehouseDate,ecountDate){
+  const dates=[storeDate,warehouseDate].filter(Boolean);
+  const sourceDate=dates.length&&dates.every(x=>x===dates[0])?dates[0]:(dates.length?dates.join(' / '):'');
+  if(!sourceDate||!ecountDate||sourceDate===ecountDate)return '';
+  return `기준일 불일치 · 매장/창고 ${sourceDate} · 이카운트 ${ecountDate}`;
+}
 async function runBalanceCompare(){
   const [s,w,e]=await Promise.all([
-    parseCompareFile($('balanceStoreFile').files[0],'balance','store'),
-    parseCompareFile($('balanceWarehouseFile').files[0],'balance','warehouse'),
-    parseCompareFile($('balanceEcountFile').files[0],'balance','')
+    parseBalanceSourceSnapshot($('balanceStoreFile').files[0],'store'),
+    parseBalanceSourceSnapshot($('balanceWarehouseFile').files[0],'warehouse'),
+    parseBalanceEcountSnapshot($('balanceEcountFile').files[0])
   ]);
-  const sourceRows=[...s,...w],sm=aggregateCompare(sourceRows),em=aggregateCompare(e),keys=new Set([...sm.keys(),...em.keys()]),rows=[];
-  $('balanceCompareStatus').textContent=`원본 ${sourceRows.length}행 · 이카운트 ${e.length}행`;
-  for(const k of keys){
-    const sr=sm.get(k),er=em.get(k),loc=sr?.loc||inferCustomerLoc(k,er?.name||'');
-    let status='일치';if(!sr)status='이카운트에만 있음';else if(!er)status='원본에만 있음';else if(Number(sr.amount)!==Number(er.amount))status='금액불일치';
-    rows.push({key:k,name:sr?.name||er?.name||k,code:k.startsWith('C:')?k.slice(2):'',loc,rawSource:sr?.amount??null,source:sr?.amount??null,ecount:er?.amount??null,diff:(er?.amount??0)-(sr?.amount??0),status,note:''})
+
+  const dateWarning=balanceDateWarningText(s.snapshotDate,w.snapshotDate,e.reportEndDate);
+  if(dateWarning){
+    const ok=confirm(
+      `[잔액 비교 기준일 확인]\n\n${dateWarning}\n\n기준일이 다르면 정상 거래도 불일치로 나올 수 있습니다.\n그래도 비교를 계속할까요?`
+    );
+    if(!ok){
+      $('balanceCompareStatus').textContent=dateWarning+' · 비교 중단';
+      return;
+    }
   }
-  compareState={...compareState,rows,mode:'balance',meta:{},specialOpen:false};renderCompare()
+
+  const sources=groupBalanceSourceRows([...s.rows,...w.rows]);
+  const assignResult=assignMonthlyEcountRows(sources,e.rows);
+  const rows=buildBalanceCompareRows(sources,e.rows,assignResult);
+  const excluded=[...s.excluded,...w.excluded,...e.excluded];
+  const meta={
+    storeCount:s.rows.length,
+    warehouseCount:w.rows.length,
+    ecountCount:e.rows.length,
+    excludedCount:excluded.length,
+    excluded,
+    sourceZeroCount:s.zeroCount+w.zeroCount,
+    sampleExcludedCount:s.sampleCount+w.sampleCount,
+    shinsangExcludedCount:s.shinsangCount+w.shinsangCount+e.shinsangCount,
+    ecountClearingExcludedCount:e.clearingCount,
+    sourceTotal:sources.reduce((a,x)=>a+Number(x.amount||0),0),
+    ecountTotal:e.rows.reduce((a,x)=>a+Number(x.amount||0),0),
+    storeDate:s.snapshotDate||'',
+    warehouseDate:w.snapshotDate||'',
+    ecountDate:e.reportEndDate||'',
+    dateWarning
+  };
+
+  const parts=[
+    `비교대상 매장 ${meta.storeCount}건`,
+    `창고 ${meta.warehouseCount}건`,
+    `이카운트 ${meta.ecountCount}건`,
+    `비교제외 ${meta.excludedCount}건`,
+    `S/P·SP ${meta.sampleExcludedCount}건`,
+    `0원 ${meta.sourceZeroCount}건`,
+    `신상마켓 ${meta.shinsangExcludedCount}건`
+  ];
+  if(meta.ecountClearingExcludedCount)parts.push(`정리계정 ${meta.ecountClearingExcludedCount}건`);
+  if(dateWarning)parts.push(`⚠ ${dateWarning}`);
+  $('balanceCompareStatus').textContent=parts.join(' · ');
+
+  compareState={...compareState,rows,mode:'balance',meta,specialOpen:false};
+  renderCompare()
 }
 async function runCompare(mode){
   try{
@@ -2588,7 +2907,7 @@ window.toggleCompareSpecialDetails=function(){
 }
 function renderCompareSpecialDetails(){
   const box=$('compareSpecialDetails');if(!box)return;
-  if(compareState.mode!=='sales'){box.innerHTML='';return}
+  if(compareState.mode!=='sales'&&compareState.mode!=='balance'){box.innerHTML='';return}
   const rows=(compareState.rows||[]).filter(r=>r.special);
   if(!rows.length){box.innerHTML='';return}
   const open=!!compareState.specialOpen;
@@ -2686,7 +3005,7 @@ function downloadCompareExcel(){
   XLSX.utils.book_append_sheet(wb,makeCompareSheet(mismatch),'불일치_확인');
   XLSX.utils.book_append_sheet(wb,makeCompareSheet(special),'특수매칭');
 
-  if(compareState.mode==='sales'){
+  if(compareState.mode==='sales'||compareState.mode==='balance'){
     const excluded=compareState.meta?.excluded||[];
     const exRows=[
       ['구분','거래처','금액','제외사유'],
@@ -2702,7 +3021,7 @@ function downloadCompareExcel(){
     XLSX.utils.book_append_sheet(wb,exWs,'비교제외');
 
     const meta=compareState.meta||{};
-    const summaryRows=[
+    const summaryRows=compareState.mode==='sales'?[
       ['항목','값'],
       ['비교기준','이카운트 합계'],
       ['일치건수',matched.length],
@@ -2715,6 +3034,26 @@ function downloadCompareExcel(){
       ['이카운트 비영(0원 제외) 행수',Number(meta.ecountCount||0)],
       ['원본 비교금액 합계',Number(meta.sourceTotal||0)],
       ['이카운트 합계',Number(meta.ecountTotal||0)]
+    ]:[
+      ['항목','값'],
+      ['비교기준','매장/창고 최종잔액 ↔ 이카운트 잔액'],
+      ['매장 기준일',meta.storeDate||''],
+      ['창고 기준일',meta.warehouseDate||''],
+      ['이카운트 기준일',meta.ecountDate||''],
+      ['기준일 경고',meta.dateWarning||''],
+      ['일치건수',matched.length],
+      ['불일치/확인건수',mismatch.length],
+      ['특수매칭건수',special.length],
+      ['비교제외건수',Number(meta.excludedCount||0)],
+      ['S/P·SP 제외건수',Number(meta.sampleExcludedCount||0)],
+      ['최종잔액 0원 제외건수',Number(meta.sourceZeroCount||0)],
+      ['신상마켓 별도확인 제외건수',Number(meta.shinsangExcludedCount||0)],
+      ['이카운트 정리계정 제외건수',Number(meta.ecountClearingExcludedCount||0)],
+      ['매장 비교대상건수',Number(meta.storeCount||0)],
+      ['창고 비교대상건수',Number(meta.warehouseCount||0)],
+      ['이카운트 비교대상건수',Number(meta.ecountCount||0)],
+      ['원본 잔액 합계',Number(meta.sourceTotal||0)],
+      ['이카운트 잔액 합계',Number(meta.ecountTotal||0)]
     ];
     const sumWs=XLSX.utils.aoa_to_sheet(summaryRows);
     sumWs['!cols']=[{wch:30},{wch:20}];
@@ -2729,13 +3068,17 @@ function downloadCompareExcel(){
 function renderCompare(){
   const rows=(compareState.rows||[]).filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),
         all=compareState.rows||[],counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length},meta=compareState.meta||{};
-  const specialCount=compareState.mode==='sales'?all.filter(r=>r.special).length:0;
-  const metaBadges=compareState.mode==='sales'?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">신상마켓 VAT환산 ${Number(meta.vatAdjustedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 기준</span>`:'';
+  const specialCount=(compareState.mode==='sales'||compareState.mode==='balance')?all.filter(r=>r.special).length:0;
+  const metaBadges=compareState.mode==='sales'
+    ?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">신상마켓 VAT환산 ${Number(meta.vatAdjustedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 기준</span>`
+    :compareState.mode==='balance'
+      ?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">S/P·SP 제외 ${Number(meta.sampleExcludedCount||0)}</span><span class="statusPill">0원 제외 ${Number(meta.sourceZeroCount||0)}</span><span class="statusPill">신상마켓 별도 ${Number(meta.shinsangExcludedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 잔액 기준</span>${meta.dateWarning?'<span class="statusPill bad">기준일 불일치</span>':''}`
+      :'';
   $('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span>${metaBadges}</div>`;
   if(compareState.mode==='sales'){
     $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본금액</th><th>비교금액</th><th>이카운트 합계</th><th>차이(이카운트-비교금액)</th><th>상태</th><th>적용규칙</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td></tr>`).join('')}</tbody></table>`;
   }else{
-    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본</th><th>이카운트</th><th>차이(이카운트-원본)</th><th>상태</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table>`;
+    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본 최종잔액</th><th>이카운트 잔액</th><th>차이(이카운트-원본)</th><th>상태</th><th>적용규칙</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td></tr>`).join('')}</tbody></table>`;
   }
   renderCompareSpecialDetails();
 }
