@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.28</title>
+<title>아도라블 매출 자동화 v3.29</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -91,6 +91,39 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .jobCloseBtn{appearance:none;border:0;background:transparent;font-size:18px;cursor:pointer;color:#64748b}
   .jobListNote{font-size:12px;color:#64748b;margin-bottom:9px;line-height:1.5}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .firebaseSyncStatus{font-size:10px;color:#64748b;font-weight:750}
+  .firebaseSyncStatus.loading{color:#b45309}
+  .firebaseSyncStatus.ok{color:#15803d}
+  .firebaseSyncStatus.error{color:#b91c1c}
+  .workTabs{
+    display:flex;gap:6px;align-items:center;margin:12px 0 10px;padding:5px;
+    border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;
+    position:sticky;top:0;z-index:40;box-shadow:0 3px 12px rgba(15,23,42,.05)
+  }
+  .workTabBtn{
+    flex:1;border:0;border-radius:9px;background:transparent;padding:10px 14px;
+    font-size:14px;font-weight:900;color:#64748b;cursor:pointer
+  }
+  .workTabBtn.active{background:#fff;color:#0f172a;box-shadow:0 1px 5px rgba(15,23,42,.12)}
+  .workTabBtn small{display:block;font-size:10px;font-weight:650;color:#94a3b8;margin-top:2px}
+  .workTabBtn.active small{color:#64748b}
+  .workTabHidden{display:none!important}
+  .taxCheckMainBox{position:relative}
+  .taxMonthLoadingBanner{
+    display:flex;align-items:center;gap:8px;margin:8px 0 10px;padding:9px 11px;
+    border:1px solid #fde68a;border-radius:9px;background:#fffbeb;color:#92400e;
+    font-size:12px;font-weight:850
+  }
+  .taxLoadingSpinner{
+    width:14px;height:14px;border:2px solid #fcd34d;border-top-color:#b45309;
+    border-radius:50%;animation:taxSpin .8s linear infinite;flex:0 0 auto
+  }
+  @keyframes taxSpin{to{transform:rotate(360deg)}}
+  .taxCheckMainBox.taxMonthLoading>.taxCheckStack,
+  .taxCheckMainBox.taxMonthLoading>.moduleBox{
+    opacity:.48;pointer-events:none;filter:saturate(.75)
+  }
+
   .dataSafetyActions{display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap;max-width:620px}
   .dataSafetyActions .btn{padding:6px 9px;font-size:10px;min-height:28px;border-radius:7px}
   .dataSafetyStatus{font-size:10px;color:#64748b;text-align:right;max-width:620px;line-height:1.35}
@@ -424,8 +457,9 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.28 · 잔액비교 규칙교정</div>
+      <div class="badge">v3.29 · 업무탭·Firebase 로딩표시</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
+      <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
         <button id="saveLatestDataBtn" class="btn" type="button">최신자료 저장</button>
         <button id="downloadBackupDataBtn" class="btn light" type="button">백업 데이터 다운로드</button>
@@ -434,6 +468,17 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
       <div id="dataSafetyStatus" class="dataSafetyStatus">수동 저장본 확인 중…</div>
     </div>
+  </div>
+
+  <div id="workTabs" class="workTabs">
+    <button id="salesWorkTabBtn" class="workTabBtn active" type="button" data-work-tab="sales">
+      매출변환
+      <small>변환 · 현금영수증 · 월마감 · 거래처 비교</small>
+    </button>
+    <button id="taxWorkTabBtn" class="workTabBtn" type="button" data-work-tab="tax">
+      세금계산서
+      <small>사업자등록증 · 유의사항 · 월별 매입/매출 정리</small>
+    </button>
   </div>
 
   <div id="baseDataGroup" class="baseDataGroup">
@@ -663,7 +708,11 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
   <div id="taxInvoiceCheckSection" class="section">
     <h3>세금계산서 발행 전 점검</h3>
-    <div class="box">
+    <div class="box taxCheckMainBox">
+      <div id="taxMonthLoadingBanner" class="taxMonthLoadingBanner hidden">
+        <span class="taxLoadingSpinner"></span>
+        <span id="taxMonthLoadingText">월별 Firebase 자료 불러오는 중…</span>
+      </div>
       <div class="hint">Firebase에 저장된 최신 거래처리스트를 기준으로 거래처계층그룹이 <b>동대문점/본점</b>인 거래처 중 임시코드(1000000 또는 2000000 시작)와 휴업·폐업 거래처를 추출합니다. 별도 요청제외목록에 등록된 거래처는 사업자등록증 요청대상에서 제외하며, 전월 미수취 거래처가 다음 달 정식코드로 바뀌면 자동완료 처리합니다.</div>
       <div class="moduleToolbar">
         <label>점검월 <input id="taxCheckMonth" type="month"></label>
@@ -1351,7 +1400,23 @@ function initFirebase(){
   try{
     if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey || String(window.FIREBASE_CONFIG.apiKey).includes('PASTE_')) throw new Error('firebase-config.js에 Firebase 설정값을 입력해 주세요.');
     app=firebase.initializeApp(window.FIREBASE_CONFIG); auth=firebase.auth(); db=firebase.firestore();
-    auth.onAuthStateChanged(async u=>{user=u||null; updateAuthUI(); if(user){await loadCloudData();} else {resetCloud();}});
+    auth.onAuthStateChanged(async u=>{
+      user=u||null;
+      updateAuthUI();
+      if(user){
+        setFirebaseSyncStatus('Firebase 데이터 불러오는 중…','loading');
+        try{
+          await loadCloudData();
+        }catch(e){
+          cloud.ready=false;
+          updateAuthUI();
+          setFirebaseSyncStatus('Firebase 데이터 불러오기 실패 · 새로고침 또는 네트워크 확인','error');
+          showError(e);
+        }
+      }else{
+        resetCloud();
+      }
+    });
   }catch(e){$('authStatus').textContent='Firebase 연결 오류: '+e.message; $('loginBtn').disabled=true; $('signupBtn').disabled=true; $('statusBox').innerHTML='<p class="warn"><b>Firebase 연결 오류:</b> '+esc(e.message)+'</p>';}
 }
 function updateAuthUI(){
@@ -1370,7 +1435,7 @@ function updateAuthUI(){
   if($('restoreBackupDataFile'))$('restoreBackupDataFile').disabled=!on;
   $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
 }
-function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.');}
+function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 
 async function loadCustomerMasterFromFirebase(){
@@ -1431,6 +1496,9 @@ function rebuildCustomerMapsFromEntries(entries){
 }
 
 async function loadCloudData(){
+  cloud.ready=false;
+  updateAuthUI();
+  setFirebaseSyncStatus('Firebase 데이터 불러오는 중…','loading');
   $('statusBox').innerHTML='<p>Firebase 기준정보를 불러오는 중입니다...</p>';
   const [is,as,cas,vs,cm]=await Promise.all([
     userCol('items').get(),
@@ -1446,7 +1514,6 @@ async function loadCloudData(){
   cloud.customerAliases=new Map(cas.docs.map(d=>[norm(d.data().alias),d.data()]));
   cloud.vatRules=new Map(vs.docs.map(d=>[norm(d.data().customer),d.data().mode]));
   rebuildCloudMaps();
-  cloud.ready=true;
   updateMasterStats();
   updateAuthUI();
   await loadRemoteMenuPrefs();
@@ -1462,8 +1529,12 @@ async function loadCloudData(){
   const _taxMonth=$('taxCheckMonth')?.value;
   if(_taxMonth)await loadTaxMonth(_taxMonth);
   if(_taxMigrated&&$('taxScanStatus'))$('taxScanStatus').textContent='기존 2026년 9월 월초작업을 8월 자료로 이동했습니다.';
+  cloud.ready=true;
+  updateAuthUI();
   $('statusBox').innerHTML=`<p class="ok">✓ Firebase 기준정보 동기화 완료: 거래처 ${cloud.customers.length.toLocaleString()}개 · 품목 ${cloud.items.length.toLocaleString()}개 · 수동매칭 ${cloud.aliases.size.toLocaleString()}개</p>`;
   if($('autosaveStatus')&&$('autosaveStatus').textContent==='자동저장 대기')$('autosaveStatus').textContent='자동저장 준비됨';
+  const now=new Date();
+  setFirebaseSyncStatus(`✓ Firebase 데이터 불러오기 완료 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,'ok');
   await loadLatestDataSaveStatus();
 }
 function rebuildCloudMaps(){
@@ -3224,40 +3295,65 @@ async function migrateLegacyTaxNotesV326(){
 }
 async function loadTaxMonth(month){
   if(!user||!month)return;
-  const snap=await userCol('taxInvoiceChecks').doc(month).get();
-  taxCheckState=snap.exists?{month,...snap.data()}:{month,bizRegs:[],closed:[],notes:[],bizRegStateArchive:{},closedStateArchive:{}};
-  const carryResult=await carryForwardMonthlyTaxNotes(month,taxCheckState.notes||[]);
-  taxCheckState.notes=carryResult.notes;
-  rememberCurrentTaxCheckStates();
+  const requestId=++taxMonthLoadSeq;
+  setTaxMonthLoading(true,month);
+  if($('taxScanStatus'))$('taxScanStatus').textContent=`${taxMonthDisplay(month)} 자료 불러오는 중…`;
 
-  const beforeBiz=(taxCheckState.bizRegs||[]).length;
-  const beforeClosed=(taxCheckState.closed||[]).length;
+  try{
+    const snap=await userCol('taxInvoiceChecks').doc(month).get();
+    if(requestId!==taxMonthLoadSeq)return;
 
-  taxCheckState.bizRegs=(taxCheckState.bizRegs||[]).filter(r=>{
-    if(r.excluded)return true;
-    return !isBizRegRequestExcluded(r);
-  });
-  taxCheckState.closed=(taxCheckState.closed||[]).filter(r=>{
-    if(r.excluded)return true;
-    return !isBizRegRequestExcluded(r);
-  });
+    const nextState=snap.exists
+      ?{month,...snap.data()}
+      :{month,bizRegs:[],closed:[],notes:[],bizRegStateArchive:{},closedStateArchive:{}};
 
-  const removedBiz=beforeBiz-taxCheckState.bizRegs.length;
-  const removedClosed=beforeClosed-taxCheckState.closed.length;
-  if(removedBiz>0||removedClosed>0||carryResult.added>0)await saveTaxMonth();
+    const carryResult=await carryForwardMonthlyTaxNotes(month,nextState.notes||[]);
+    if(requestId!==taxMonthLoadSeq)return;
+    nextState.notes=carryResult.notes;
 
-  renderTaxCheck();
-  await loadTaxBookMonth(month);
+    nextState.bizRegStateArchive=mergeTaxCheckArchive(nextState.bizRegStateArchive,nextState.bizRegs||[]);
+    nextState.closedStateArchive=mergeTaxCheckArchive(nextState.closedStateArchive,nextState.closed||[]);
 
-  if((removedBiz>0||removedClosed>0||carryResult.added>0)&&$('taxScanStatus')){
+    const beforeBiz=(nextState.bizRegs||[]).length;
+    const beforeClosed=(nextState.closed||[]).length;
+    nextState.bizRegs=(nextState.bizRegs||[]).filter(r=>{
+      if(r.excluded)return true;
+      return !isBizRegRequestExcluded(r);
+    });
+    nextState.closed=(nextState.closed||[]).filter(r=>{
+      if(r.excluded)return true;
+      return !isBizRegRequestExcluded(r);
+    });
+
+    if(requestId!==taxMonthLoadSeq)return;
+    taxCheckState=nextState;
+
+    const removedBiz=beforeBiz-taxCheckState.bizRegs.length;
+    const removedClosed=beforeClosed-taxCheckState.closed.length;
+    if(removedBiz>0||removedClosed>0||carryResult.added>0){
+      await saveTaxMonth();
+      if(requestId!==taxMonthLoadSeq)return;
+    }
+
+    renderTaxCheck();
+    const loadedBook=await loadTaxBookMonth(month,requestId);
+    if(!loadedBook||requestId!==taxMonthLoadSeq)return;
+
     const parts=[];
     if(removedBiz>0)parts.push(`사업자등록증 요청 ${removedBiz}곳 정리`);
     if(removedClosed>0)parts.push(`휴·폐업 확인 ${removedClosed}곳 정리`);
     if(carryResult.added>0)parts.push(`미완료 유의사항 ${carryResult.added}건 이월`);
-    $('taxScanStatus').textContent=parts.join(' · ');
+    parts.push(`${taxMonthDisplay(month)} Firebase 자료 불러오기 완료`);
+    if($('taxScanStatus'))$('taxScanStatus').textContent=parts.join(' · ');
+  }catch(e){
+    if(requestId===taxMonthLoadSeq&&$('taxScanStatus')){
+      $('taxScanStatus').textContent=`${taxMonthDisplay(month)} 자료 불러오기 실패: ${e.message||e}`;
+    }
+    throw e;
+  }finally{
+    if(requestId===taxMonthLoadSeq)setTaxMonthLoading(false,month);
   }
 }
-
 function exclusionMatchesCustomer(x,c){
   const xc=norm(x?.code),xn=norm(x?.name),xj=norm(x?.jangkiName),
         cc=norm(c?.code),cn=norm(c?.name),cj=norm(c?.jangkiName);
@@ -3926,19 +4022,24 @@ async function loadTaxYearBooks(year){
     .map(d=>({month:d.id,...d.data()}));
 }
 
-async function loadTaxBookMonth(month){
-  if(!user||!month)return;
+async function loadTaxBookMonth(month,requestId=null){
+  if(!user||!month)return false;
+  const isCurrent=()=>requestId===null||requestId===taxMonthLoadSeq;
+
   await loadTaxPurchaseMasters();
+  if(!isCurrent())return false;
 
   const ref=userCol('taxMonthlyBooks').doc(month);
   const snap=await ref.get();
+  if(!isCurrent())return false;
+
   const book=snap.exists?{month,...snap.data()}:{
     month,purchases:[],salesTax:0,salesCash:0,
     purchaseTotalOverride:null,historicalSummary:false
   };
   if(!Array.isArray(book.purchases))book.purchases=[];
 
-  taxBookState={
+  const nextBookState={
     month,
     purchases:book.purchases,
     salesTax:Number(book.salesTax||0),
@@ -3948,9 +4049,34 @@ async function loadTaxBookMonth(month){
     historicalSummary:!!book.historicalSummary
   };
 
-  await loadTaxYearBooks(month.slice(0,4));
+  const yearSnap=await userCol('taxMonthlyBooks').get();
+  if(!isCurrent())return false;
+  const nextYearBooks=yearSnap.docs
+    .filter(d=>String(d.id).startsWith(month.slice(0,4)+'-'))
+    .map(d=>({month:d.id,...d.data()}));
+
+  const prev=taxShiftMonth(month,-1);
+  let nextPrev={month:'',salesTax:0,salesCash:0,purchaseTotal:0,purchaseEditable:false};
+  if(prev){
+    const prevSnap=await userCol('taxMonthlyBooks').doc(prev).get();
+    if(!isCurrent())return false;
+    const d=prevSnap.exists?(prevSnap.data()||{}):{};
+    nextPrev={
+      month:prev,
+      salesTax:Number(d.salesTax||0),
+      salesCash:Number(d.salesCash||0),
+      purchaseTotal:taxBookPurchaseTotal({month:prev,...d}),
+      purchaseEditable:prev==='2026-07'
+    };
+  }
+
+  if(!isCurrent())return false;
+  taxBookState=nextBookState;
+  taxYearBooks=nextYearBooks;
+  taxPrevSalesState=nextPrev;
   renderTaxBook();
-  await loadPreviousTaxSalesForCurrentMonth();
+  renderPreviousTaxSales();
+  return true;
 }
 function syncCurrentTaxBookToYear(){
   const idx=taxYearBooks.findIndex(x=>x.month===taxBookState.month);
@@ -5509,6 +5635,9 @@ async function showJobSalesDetail(id,date,loc){
 async function downloadJobOutput(id,type){try{await activateJob(id);if(type==='sales')downloadSales(id);else if(type==='cash')downloadCash(id);else if(type==='receipt')await downloadCashReceipt(id)}catch(e){showError(e)}}
 function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle');if(!v||!h)return;const saved=Number(localStorage.getItem(JOB_LIST_HEIGHT_KEY));if(saved>=150&&saved<=720)v.style.height=saved+'px';h.addEventListener('pointerdown',e=>{e.preventDefault();const y=e.clientY,hh=v.getBoundingClientRect().height;h.setPointerCapture(e.pointerId);const move=ev=>v.style.height=Math.max(150,Math.min(720,hh+(ev.clientY-y)))+'px';const up=ev=>{h.releasePointerCapture(ev.pointerId);localStorage.setItem(JOB_LIST_HEIGHT_KEY,String(Math.round(v.getBoundingClientRect().height)));h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up)};h.addEventListener('pointermove',move);h.addEventListener('pointerup',up)})}
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
+const WORK_TAB_KEY='autoecount-ay-work-tab-v1';
+let activeWorkTab='sales';
+let taxMonthLoadSeq=0;
 const MENU_PREF_KEY='autoecount-ay-menu-prefs-v1';
 const MENU_DEFAULT_ORDER=[
   'jobs','reviewGroup','receipt','generalLedger','cashClose','amountCompare','taxInvoiceCheck','vatAuto','results'
@@ -5518,6 +5647,59 @@ let menuBoard=null;
 let reviewBoard=null;
 let menuSaveTimer=null;
 
+
+function applyWorkTab(tab,save=true){
+  tab=tab==='tax'?'tax':'sales';
+  activeWorkTab=tab;
+  document.querySelectorAll('[data-work-tab]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.workTab===tab);
+  });
+
+  const base=$('baseDataGroup');
+  if(base)base.classList.toggle('workTabHidden',tab!=='sales');
+  const toolbar=$('menuToolbar');
+  if(toolbar)toolbar.classList.toggle('workTabHidden',tab!=='sales');
+
+  if(menuBoard){
+    for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
+      const target=p.dataset.workTab||'sales';
+      p.classList.toggle('workTabHidden',target!==tab);
+    }
+  }
+  if(save){
+    try{localStorage.setItem(WORK_TAB_KEY,tab)}catch(e){}
+  }
+}
+function setupWorkTabs(){
+  document.querySelectorAll('#workTabs [data-work-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>applyWorkTab(btn.dataset.workTab,true));
+  });
+  let saved='sales';
+  try{
+    const v=localStorage.getItem(WORK_TAB_KEY);
+    if(v==='tax'||v==='sales')saved=v;
+  }catch(e){}
+  applyWorkTab(saved,false);
+}
+function setFirebaseSyncStatus(text,type=''){
+  const el=$('firebaseSyncStatus');if(!el)return;
+  el.textContent=text||'';
+  el.classList.toggle('loading',type==='loading');
+  el.classList.toggle('ok',type==='ok');
+  el.classList.toggle('error',type==='error');
+}
+function taxMonthDisplay(month){
+  const m=/^(\d{4})-(\d{2})$/.exec(String(month||''));
+  return m?`${Number(m[2])}월`:(month||'선택월');
+}
+function setTaxMonthLoading(loading,month=''){
+  const box=document.querySelector('#taxInvoiceCheckSection .taxCheckMainBox'),
+        banner=$('taxMonthLoadingBanner'),
+        text=$('taxMonthLoadingText');
+  box?.classList.toggle('taxMonthLoading',!!loading);
+  banner?.classList.toggle('hidden',!loading);
+  if(text&&loading)text.textContent=`${taxMonthDisplay(month)} Firebase 자료 불러오는 중… 기존 화면을 유지합니다.`;
+}
 function getLocalMenuPrefs(){
   try{
     const v=JSON.parse(localStorage.getItem(MENU_PREF_KEY)||'null');
@@ -5668,7 +5850,7 @@ function toggleMenuPanel(panel){
 
 function moveMenuPanel(panel,dir){
   if(!panel||!menuBoard)return;
-  const visible=[...menuBoard.querySelectorAll(':scope > .menuPanel')];
+  const visible=[...menuBoard.querySelectorAll(':scope > .menuPanel:not(.workTabHidden):not(.source-hidden)')];
   const i=visible.indexOf(panel);
   if(i<0)return;
   const j=i+dir;
@@ -5690,6 +5872,7 @@ function makeMenuPanel(id,title,source){
   const panel=document.createElement('div');
   panel.className='menuPanel';
   panel.dataset.menuId=id;
+  panel.dataset.workTab=id==='taxInvoiceCheck'?'tax':'sales';
 
   const header=document.createElement('div');
   header.className='menuHeader';
@@ -6131,6 +6314,7 @@ function setupMenuSystem(){
   menuBoard.id='menuBoard';
 
   const toolbar=document.createElement('div');
+  toolbar.id='menuToolbar';
   toolbar.className='menuToolbar';
   toolbar.innerHTML='<div class="small explainSource">작업 메뉴는 제목줄 클릭으로 접기/펴기, 드래그 또는 ▲▼로 순서를 바꿀 수 있습니다. 검수 항목은 검수 박스 안에서 별도로 순서를 바꿀 수 있습니다.</div>';
 
@@ -6192,6 +6376,7 @@ function setupMenuSystem(){
     reviewOrder:[...REVIEW_DEFAULT_ORDER],
     reviewCollapsed:defaultReviewCollapsed
   });
+  applyWorkTab(activeWorkTab,false);
 }
 function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"><b>오류:</b> '+esc(e.message||e)+'</p>'}
 
@@ -6230,12 +6415,17 @@ $('compareMismatchOnlyBtn').onclick=()=>{compareState.mismatchOnly=!compareState
 $('downloadBackupDataBtn').onclick=()=>downloadOperationalBackup().catch(e=>setDataSafetyStatus('백업 다운로드 실패: '+(e.message||e),'error'));
 $('restoreBackupDataFile').addEventListener('change',()=>{const f=$('restoreBackupDataFile').files[0];if(f)restoreOperationalBackupFile(f).catch(e=>{alert(e.message||e);setDataSafetyStatus('복원 실패: '+(e.message||e),'error')});$('restoreBackupDataFile').value=''});
 $('restoreLatestSnapshotBtn').onclick=()=>restoreLatestManualSnapshot().catch(e=>{alert(e.message||e);setDataSafetyStatus('최근 저장본 복원 실패: '+(e.message||e),'error')});
-$('taxCheckMonth').addEventListener('change',()=>{try{localStorage.setItem(TAX_LAST_MONTH_KEY,$('taxCheckMonth').value)}catch(e){}loadTaxMonth($('taxCheckMonth').value)});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
+$('taxCheckMonth').addEventListener('change',()=>{
+  const month=$('taxCheckMonth').value;
+  try{localStorage.setItem(TAX_LAST_MONTH_KEY,month)}catch(e){}
+  loadTaxMonth(month).catch(e=>alert('월별 자료를 불러오지 못했습니다.\n'+(e.message||e)));
+});$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('tempCustomerSearch').addEventListener('input',renderTaxCheck);$('closedCustomerSearch').addEventListener('input',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupBaseDataGroup();
 setupFixedTopCards();
 setupMenuSystem();
+setupWorkTabs();
 setupInnerBoxCollapse();
 setupExplanationToggles();
 setupJobListResize();
