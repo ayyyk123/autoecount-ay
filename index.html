@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.30</title>
+<title>아도라블 매출 자동화 v3.31</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -482,7 +482,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.30 · 요청·휴폐업 통합목록</div>
+      <div class="badge">v3.31 · 현금영수증 일괄날짜 유지</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -951,6 +951,8 @@ let app=null,auth=null,db=null,user=null;
 let cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()};
 let state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null};
 let currentReceiptConfirmations={};
+let currentReceiptDraftDates={};
+let currentReceiptBulkDate='';
 let currentBizRegConditionalReviews={};
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalStartDate='20260907';
 let cashCloseState={purchase:null,collection:null,purchaseRows:[],collectionRows:[],purchaseTotal:0,collectionTotal:0,purchaseDates:[],comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
@@ -1884,26 +1886,90 @@ function applyAllSalesMemos(){
     for(const entryId of a.entryIds||[]){const i=meta.findIndex(x=>x.first&&x.ticketKey===entryId);if(i>=0)state.salesRows[i][16]=appendMemoText(state.salesRows[i][16],memo);}
   }
 }
+async function saveReceiptDraftState(){
+  if(!user)return;
+  if(!activeJobId)activeJobId=jobIdForCurrentState();
+  if(!activeJobId)return;
+  await cloudJobDoc(activeJobId).set({
+    receiptDraftDates:currentReceiptDraftDates,
+    receiptBulkDate:currentReceiptBulkDate||'',
+    updatedAtMs:Date.now(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+}
 async function saveReceiptConfirmation(id,confirmed,issueDate){
   if(!activeJobId)activeJobId=jobIdForCurrentState();
   if(confirmed&&!issueDate)throw new Error('발급일을 먼저 선택해 주세요.');
-  if(confirmed)currentReceiptConfirmations[id]={confirmed:true,issueDate:dateInputToYmd(issueDate),updatedAtMs:Date.now()};else delete currentReceiptConfirmations[id];
+
+  if(issueDate)currentReceiptDraftDates[id]=issueDate;
+  if(confirmed){
+    currentReceiptConfirmations[id]={
+      confirmed:true,
+      issueDate:dateInputToYmd(issueDate),
+      updatedAtMs:Date.now()
+    };
+  }else{
+    delete currentReceiptConfirmations[id];
+  }
+
   applyAllSalesMemos();
   if(user&&activeJobId){
     const pending=receiptConfirmationPendingCount();
     const snap=await cloudJobDoc(activeJobId).get(),d=snap.exists?snap.data():{};
     const metrics={...(d.metrics||jobMetrics(state)),receiptConfirmPending:pending};
-    await cloudJobDoc(activeJobId).set({receiptConfirmations:currentReceiptConfirmations,receiptConfirmedCount:(state.cashReceiptRows||[]).length-pending,receiptConfirmPending:pending,metrics,updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await cloudJobDoc(activeJobId).set({
+      receiptConfirmations:currentReceiptConfirmations,
+      receiptDraftDates:currentReceiptDraftDates,
+      receiptBulkDate:currentReceiptBulkDate||'',
+      receiptConfirmedCount:(state.cashReceiptRows||[]).length-pending,
+      receiptConfirmPending:pending,
+      metrics,
+      updatedAtMs:Date.now(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
     await refreshJobCache();
   }
   finishRender();
 }
 window.onReceiptCheck=async function(id,el){
-  try{const dateEl=document.getElementById('receiptDate_'+safeDomId(id));const v=dateEl?.value||'';if(el.checked&&!v){el.checked=false;throw new Error('이 건의 자진발급 날짜를 먼저 선택해 주세요.');}await saveReceiptConfirmation(id,el.checked,v);}catch(e){alert(e.message||e)}
+  try{
+    const dateEl=document.getElementById('receiptDate_'+safeDomId(id));
+    const v=dateEl?.value||currentReceiptDraftDates[id]||'';
+    if(el.checked&&!v){
+      el.checked=false;
+      throw new Error('이 건의 자진발급 날짜를 먼저 선택해 주세요.');
+    }
+    if(v)currentReceiptDraftDates[id]=v;
+    await saveReceiptConfirmation(id,el.checked,v);
+  }catch(e){alert(e.message||e)}
 }
 function safeDomId(s){return simpleHash(String(s))}
-window.onReceiptDateChange=function(id,v){const c=currentReceiptConfirmations[id];if(c?.confirmed)saveReceiptConfirmation(id,true,v).catch(e=>alert(e.message||e))}
-function applyBulkReceiptDate(){const v=$('receiptBulkDate')?.value;if(!v){alert('일괄 적용할 발급일을 선택해 주세요.');return}for(const r of state.cashReceiptRows||[]){const el=$('receiptDate_'+safeDomId(r.id));if(el&&!currentReceiptConfirmations[r.id]?.confirmed)el.value=v;}}
+window.onReceiptDateChange=function(id,v){
+  if(v)currentReceiptDraftDates[id]=v;
+  else delete currentReceiptDraftDates[id];
+  const c=currentReceiptConfirmations[id];
+  if(c?.confirmed){
+    saveReceiptConfirmation(id,true,v).catch(e=>alert(e.message||e));
+  }else{
+    saveReceiptDraftState().catch(e=>console.warn('현금영수증 임시 발급일 저장 실패',e));
+  }
+}
+window.onReceiptBulkDateChange=function(v){
+  currentReceiptBulkDate=v||'';
+  saveReceiptDraftState().catch(e=>console.warn('현금영수증 일괄 발급일 저장 실패',e));
+}
+async function applyBulkReceiptDate(){
+  const v=$('receiptBulkDate')?.value||currentReceiptBulkDate;
+  if(!v){alert('일괄 적용할 발급일을 선택해 주세요.');return}
+  currentReceiptBulkDate=v;
+  for(const r of state.cashReceiptRows||[]){
+    if(currentReceiptConfirmations[r.id]?.confirmed)continue;
+    currentReceiptDraftDates[r.id]=v;
+    const el=$('receiptDate_'+safeDomId(r.id));
+    if(el)el.value=v;
+  }
+  try{await saveReceiptDraftState()}catch(e){console.warn('현금영수증 일괄 발급일 저장 실패',e)}
+}
 window.applyBulkReceiptDate=applyBulkReceiptDate;
 function renderReceiptSummary(rows,warnings){
   const sec=$('receiptSection'),box=$('receiptSummary');
@@ -1912,9 +1978,9 @@ function renderReceiptSummary(rows,warnings){
   const m=v=>Number(v||0).toLocaleString('ko-KR'),pending=rows.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed).length,total=rows.reduce((s,r)=>s+r.total,0);
   let h=`<p><b>발급대상 ${rows.length.toLocaleString()}건 · 총 ${m(total)}원</b> · ${pending?`<span class="statusPill warn">발급확인 ${pending}건 남음</span>`:'<span class="statusPill ok">전건 발급확인 완료</span>'}</p>`;
   if(rows.length){
-    h+=`<div class="receiptConfirmTop"><label>발급일 일괄선택 <input id="receiptBulkDate" type="date"></label><button type="button" class="btn light" onclick="applyBulkReceiptDate()">미확인 건 날짜 일괄적용</button><span class="small">홈택스 실제 발급을 확인한 뒤 건별 체크하세요. 전건 확인 전에는 판매입력 다운로드가 잠깁니다.</span></div>`;
+    h+=`<div class="receiptConfirmTop"><label>발급일 일괄선택 <input id="receiptBulkDate" type="date" value="${escAttr(currentReceiptBulkDate||'')}" onchange="onReceiptBulkDateChange(this.value)"></label><button type="button" class="btn light" onclick="applyBulkReceiptDate()">미확인 건 날짜 일괄적용</button><span class="small">홈택스 실제 발급을 확인한 뒤 건별 체크하세요. 체크해도 미확인 건에 일괄적용한 날짜는 그대로 유지됩니다.</span></div>`;
     h+='<table><thead><tr><th>발급완료</th><th>발급일</th><th>일자</th><th>No.</th><th>총거래금액</th><th>공급가액</th><th>부가세액</th><th>판매 적요 반영</th></tr></thead><tbody>';
-    for(const r of rows){const c=currentReceiptConfirmations[r.id]||{},dom=safeDomId(r.id),issueInput=ymdToInput(c.issueDate||'');h+=`<tr class="${c.confirmed?'receiptDoneRow':''}"><td><input type="checkbox" ${c.confirmed?'checked':''} onchange="onReceiptCheck('${escAttr(r.id)}',this)"></td><td><input id="receiptDate_${dom}" class="receiptRowDate" type="date" value="${issueInput}" onchange="onReceiptDateChange('${escAttr(r.id)}',this.value)"></td><td>${r.date}</td><td>${r.no}</td><td>${m(r.total)}</td><td>${m(r.supply)}</td><td>${m(r.tax)}</td><td>${c.confirmed?`<b>${esc(c.issueDate)}/자진발급</b>`:'-'}</td></tr>`;}
+    for(const r of rows){const c=currentReceiptConfirmations[r.id]||{},dom=safeDomId(r.id),issueInput=c.confirmed?ymdToInput(c.issueDate||''):(currentReceiptDraftDates[r.id]||'');h+=`<tr class="${c.confirmed?'receiptDoneRow':''}"><td><input type="checkbox" ${c.confirmed?'checked':''} onchange="onReceiptCheck('${escAttr(r.id)}',this)"></td><td><input id="receiptDate_${dom}" class="receiptRowDate" type="date" value="${escAttr(issueInput)}" onchange="onReceiptDateChange('${escAttr(r.id)}',this.value)"></td><td>${r.date}</td><td>${r.no}</td><td>${m(r.total)}</td><td>${m(r.supply)}</td><td>${m(r.tax)}</td><td>${c.confirmed?`<b>${esc(c.issueDate)}/자진발급</b>`:'-'}</td></tr>`;}
     h+='</tbody></table>';
   }
   if(warnings.length){h+='<p class="warn"><b>자동 제외된 확인 필요 건</b></p><ul>';for(const w of warnings)h+=`<li>${esc(w)}</li>`;h+='</ul>';}
@@ -5320,6 +5386,11 @@ async function processAll(ticketOverrides={}){try{
   $('statusBox').innerHTML='<p>장끼 파일을 읽고 변환 중입니다...</p>';
   const targetId=jobIdForCurrentState(),existing=await cloudJobDoc(targetId).get();
   currentReceiptConfirmations=existing.exists?{...(existing.data().receiptConfirmations||{})}:{};
+  currentReceiptDraftDates=existing.exists?{...(existing.data().receiptDraftDates||{})}:{};
+  currentReceiptBulkDate=existing.exists?String(existing.data().receiptBulkDate||''):'';
+  for(const [id,c] of Object.entries(currentReceiptConfirmations)){
+    if(c?.issueDate&&!currentReceiptDraftDates[id])currentReceiptDraftDates[id]=ymdToInput(c.issueDate);
+  }
   currentBizRegConditionalReviews=existing.exists?{...(existing.data().bizRegConditionalReviews||{})}:{};
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
@@ -6507,7 +6578,7 @@ document.addEventListener('click',e=>{
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
-$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
+$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptBulkDate=''; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 
 // 신규 월마감/원장 기능 이벤트
 $('saveGeneralStartBtn').onclick=()=>saveGeneralStartDate().catch(e=>alert(e.message||e));
