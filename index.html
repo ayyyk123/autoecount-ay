@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.34</title>
+<title>아도라블 매출 자동화 v3.35</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -474,6 +474,41 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#f3f4f6}.pill.warn{background:#fff7ed;color:#9a3412}.pill.ok{background:#ecfdf5;color:#065f46}
   .hidden{display:none}.footer{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.6}.mono{font-family:Consolas,monospace}.small{font-size:12px;color:var(--muted)}
   @media(max-width:850px){.grid:not(.topFixedGrid),.stats{grid-template-columns:1fr}.badge{display:inline-block}}
+
+  /* ===== v3.35 미수관리 ===== */
+  .arWorkArea{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+  .arHero{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:14px}
+  .arHero h2{font-size:19px;margin:0 0 5px}.arHero p{margin:0;color:#64748b;font-size:12px;line-height:1.55}
+  .arHistoryStatus{font-size:11px;line-height:1.55;color:#475569;text-align:right;max-width:440px}
+  .arSetupGrid{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:10px}
+  .arMiniCard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+  .arMiniCard h3{font-size:14px;margin:0 0 6px}.arMiniCard .hint{font-size:11px;margin-bottom:8px}
+  .arFileInput{font-size:11px;width:100%;padding:7px;border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc}
+  .arFileNames{font-size:10px;color:#64748b;line-height:1.45;margin-top:5px;max-height:48px;overflow:auto}
+  .arTopControls{display:flex;gap:7px;align-items:end;flex-wrap:wrap}
+  .arField{display:flex;flex-direction:column;gap:4px}.arField label{font-size:10px;color:#64748b;font-weight:800}
+  .arField input,.arField select{height:32px;padding:5px 7px;font-size:12px;border:1px solid #cbd5e1;border-radius:7px;background:#fff}
+  .arActions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.arActions .btn{padding:8px 11px;font-size:12px;border-radius:8px}
+  .arNotice{font-size:11px;line-height:1.55;color:#64748b;margin-top:7px}.arNotice strong{color:#334155}
+  .arSummary{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:7px}
+  .arSummary>div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 10px}.arSummary small{display:block;color:#64748b;font-size:10px}.arSummary b{display:block;font-size:18px;margin-top:3px}
+  .arToolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .arToolbar input[type="search"]{min-width:220px;height:31px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px}
+  .arFilterBtn{border:1px solid #dbe2ea;background:#fff;color:#475569;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:800;cursor:pointer}
+  .arFilterBtn.active{background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .arFilterBtn span{opacity:.75;margin-left:3px}
+  .arCompactTable{max-height:590px;overflow:auto;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+  .arCompactTable table{font-size:11px;min-width:1650px}.arCompactTable th,.arCompactTable td{padding:5px 5px;vertical-align:middle;white-space:nowrap}.arCompactTable th{z-index:2}
+  .arCompactTable td.arName{white-space:normal;min-width:150px;line-height:1.25}.arCompactTable td.arReason{white-space:normal;min-width:180px;max-width:260px;line-height:1.3}
+  .arCompactTable input[type="checkbox"]{width:14px;height:14px}.arTinyInput{height:27px!important;padding:3px 5px!important;font-size:11px!important;border-radius:6px!important;max-width:120px}.arNoteInput{width:190px;max-width:190px}
+  .arStatus{display:inline-flex;align-items:center;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:850}.arStatus.contact{background:#fee2e2;color:#991b1b}.arStatus.review{background:#ffedd5;color:#9a3412}.arStatus.wait{background:#e0f2fe;color:#075985}.arStatus.excluded{background:#f1f5f9;color:#64748b}.arStatus.paid{background:#dcfce7;color:#166534}.arStatus.sample{background:#ede9fe;color:#6d28d9}
+  .arCandidate{font-size:10px;color:#15803d;font-weight:900}.arRemainBad{color:#b91c1c;font-weight:850}.arRemainOk{color:#15803d;font-weight:850}
+  .arSectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.arSectionHead h3{margin:0;font-size:15px}
+  .arExportButtons{display:flex;gap:6px;flex-wrap:wrap}.arExportButtons .btn{padding:7px 10px;font-size:11px}
+  .arWeekHint{font-size:11px;color:#64748b;line-height:1.5}
+  .arLoading{opacity:.55;pointer-events:none}
+  @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
+
 </style>
 </head>
 <body>
@@ -501,7 +536,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.34 · 매입목록 엑셀저장</div>
+      <div class="badge">v3.35 · 미수관리·주간입금체크</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -523,6 +558,99 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       세금계산서
       <small>사업자등록증 · 유의사항 · 월별 매입/매출 정리</small>
     </button>
+    <button id="arWorkTabBtn" class="workTabBtn" type="button" data-work-tab="ar">
+      미수관리
+      <small>월요일 자동정리 · 주간 입금체크 · 공유엑셀</small>
+    </button>
+  </div>
+
+
+
+  <div id="arWorkArea" class="arWorkArea workTabHidden">
+    <div class="arHero">
+      <div>
+        <h2>미수관리</h2>
+        <p>월요일 미수잔액 + 판매내역 + 입금내역을 자동분석하고, 확실하지 않은 건은 날짜를 확정하지 않고 <b>○/○경부터로 추정</b>으로 남깁니다.<br>정리 후에는 그 주 동안 물건출고 X · 입금완료 · 연락완료 · 재연락일 · 특이사항을 계속 관리할 수 있습니다.</p>
+      </div>
+      <div id="arHistoryStatus" class="arHistoryStatus">로그인 후 저장된 판매·입금 이력을 불러옵니다.</div>
+    </div>
+
+    <div class="arSetupGrid">
+      <div class="arMiniCard">
+        <h3>① 월요일 미수잔액</h3>
+        <div class="hint">현재 사용 중인 미수 정리파일 또는 거래처별 잔액 파일을 넣으세요. `기초채권/재고매출/수금합계/잔액`이 있으면 이월잔액도 그대로 연결합니다.</div>
+        <input id="arBalanceFile" class="arFileInput" type="file" accept=".xlsx,.xls">
+        <div id="arBalanceFileNames" class="arFileNames">선택된 파일 없음</div>
+      </div>
+      <div class="arMiniCard">
+        <h3>② 판매 거래내역</h3>
+        <div class="hint">여러 파일을 한꺼번에 선택해도 됩니다. 같은 장끼번호의 모든 행을 묶고, 어느 행에든 적요가 있으면 장끼 전체 메모로 인식합니다.</div>
+        <input id="arSalesFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
+        <div id="arSalesFileNames" class="arFileNames">선택된 파일 없음</div>
+      </div>
+      <div class="arMiniCard">
+        <h3>③ 입금 거래내역</h3>
+        <div class="hint">판매와 마찬가지로 여러 파일을 선택할 수 있습니다. 처음엔 1/1~현재 전체, 이후엔 최근 1~2개월을 겹쳐 넣어도 최신자료로 해당 기간을 교체합니다.</div>
+        <input id="arPaymentFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
+        <div id="arPaymentFileNames" class="arFileNames">선택된 파일 없음</div>
+      </div>
+    </div>
+
+    <div class="arMiniCard">
+      <div class="arTopControls">
+        <div class="arField"><label>정리 기준일</label><input id="arRunDate" type="date"></div>
+        <div class="arField"><label>저장된 주간정리</label><select id="arWeekSelect"><option value="">저장된 주간정리 없음</option></select></div>
+        <button id="arLoadWeekBtn" class="btn light" type="button">선택주 불러오기</button>
+        <button id="arSyncHistoryBtn" class="btn light" type="button">판매·입금 자료 동기화</button>
+        <button id="arRunBtn" class="btn" type="button">월요일 미수 자동정리</button>
+      </div>
+      <div class="arNotice"><strong>수정 대비:</strong> 이후 주에는 최근 자료를 겹쳐 넣어도 됩니다. 프로그램은 이번에 넣은 판매/입금 파일의 날짜구간을 Firebase의 최신 정규화 거래이력으로 교체하므로, 지난주 거래가 뒤늦게 수정된 경우도 다시 반영됩니다.</div>
+      <div id="arRunStatus" class="arNotice"></div>
+    </div>
+
+    <div id="arSummary" class="arSummary">
+      <div><small>기준 미수</small><b id="arSumBalance">0원</b></div>
+      <div><small>확인필요</small><b id="arSumReview">0</b></div>
+      <div><small>연락대상</small><b id="arSumContact">0</b></div>
+      <div><small>정상대기/제외</small><b id="arSumWait">0</b></div>
+      <div><small>입금완료 후보</small><b id="arSumCandidate">0</b></div>
+      <div><small>입금완료</small><b id="arSumPaid">0</b></div>
+    </div>
+
+    <div class="arMiniCard">
+      <div class="arSectionHead">
+        <h3>월요일 자동정리 결과</h3>
+        <div class="arExportButtons">
+          <button id="arExportWarehouseBtn" class="btn light" type="button">창고 담당자용 엑셀</button>
+          <button id="arExportNampBtn" class="btn light" type="button">남평화 담당자용 엑셀</button>
+          <button id="arExportAllBtn" class="btn light" type="button">대표용 전체 엑셀</button>
+        </div>
+      </div>
+      <div class="arToolbar">
+        <input id="arSearch" type="search" placeholder="거래처명 · 코드 · 메모 검색">
+        <button class="arFilterBtn active" data-ar-filter="all">전체 <span id="arCntAll">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="review">확인필요 <span id="arCntReview">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="contact">연락대상 <span id="arCntContact">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="wait">정상대기 <span id="arCntWait">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="sample">샘플 <span id="arCntSample">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="paid">입금완료 <span id="arCntPaid">0</span></button>
+        <button class="arFilterBtn" data-ar-filter="shipx">출고X <span id="arCntShipX">0</span></button>
+        <select id="arLocationFilter" class="arTinyInput"><option value="all">창고+남평화</option><option value="warehouse">창고</option><option value="nampyeonghwa">남평화</option></select>
+      </div>
+      <div id="arResultTable" class="arCompactTable"><div class="jobEmpty">미수 자동정리를 실행하면 결과가 표시됩니다.</div></div>
+    </div>
+
+    <div class="arMiniCard">
+      <div class="arSectionHead">
+        <div><h3>주간 입금체크</h3><div class="arWeekHint">월요일 정리목록을 그대로 이어서 관리합니다. 주중 새 입금파일을 넣으면 월요일 기준 미수에 대해 추가 입금액과 남은 관리잔액을 계산하고, 완결된 거래처는 `입금완료 후보`로 표시합니다.</div></div>
+      </div>
+      <div class="arTopControls">
+        <div class="arField grow"><label>주중 새 입금파일</label><input id="arMidweekPaymentFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple></div>
+        <button id="arApplyMidweekBtn" class="btn" type="button">주중 입금 반영</button>
+      </div>
+      <div id="arMidweekFileNames" class="arFileNames">선택된 파일 없음</div>
+      <div id="arWeeklyTable" class="arCompactTable" style="margin-top:8px"><div class="jobEmpty">저장된 주간정리를 불러오거나 월요일 자동정리를 실행해 주세요.</div></div>
+    </div>
   </div>
 
   <div id="baseDataGroup" class="baseDataGroup">
@@ -994,6 +1122,10 @@ let taxPurchaseFilter=localStorage.getItem('autoecount-ay-tax-purchase-filter-v1
 let taxPurchaseSearch=localStorage.getItem('autoecount-ay-tax-purchase-search-v1')||'';
 let taxYearBooks=[];
 let taxPrevSalesState={month:'',salesTax:0,salesCash:0,purchaseTotal:0,purchaseEditable:false};
+const AR_LAST_WEEK_KEY='autoecount-ay-ar-last-week-v1';
+const AR_FILTER_KEY='autoecount-ay-ar-filter-v1';
+let arState={sales:[],payments:[],historyMeta:null,weeks:[],activeWeek:'',weekMeta:null,weekRows:[],actions:new Map(),customerSettings:new Map(),filter:'all',location:'all',search:'',loading:false};
+let arSelectedFiles={balance:null,sales:[],payments:[],midweek:[]};
 const TAX_HISTORY_2026=[{"month":"2026-01","salesTax":277714001,"salesCash":6807845,"purchase":242023594},{"month":"2026-02","salesTax":318286325,"salesCash":6778227,"purchase":622682032},{"month":"2026-03","salesTax":689165515,"salesCash":18976291,"purchase":298690486},{"month":"2026-04","salesTax":693013290,"salesCash":13236973,"purchase":660433281},{"month":"2026-05","salesTax":657112348,"salesCash":17253582,"purchase":472480167},{"month":"2026-06","salesTax":617992386,"salesCash":15228100,"purchase":318624886},{"month":"2026-07","salesTax":529128089,"salesCash":8260827,"purchase":197673259}];
 const TAX_LAST_MONTH_KEY='autoecount-ay-tax-last-month-v1';
 const DEFAULT_TAX_PURCHASE_MASTERS=[
@@ -1205,13 +1337,20 @@ const OPERATIONAL_BACKUP_COLLECTIONS=[
   'taxMonthlyBooks',
   'generalOpeningBalances',
   'generalReceiptActions',
-  'generalReceiptTransactions'
+  'generalReceiptTransactions',
+  'arHistoryChunks',
+  'arWeeks',
+  'arWeekChunks',
+  'arWeekActions',
+  'arCustomerSettings'
 ];
 const OPERATIONAL_BACKUP_LOCAL_KEYS=[
   'autoecount-ay-menu-prefs-v1',
   'autoecount-ay-tax-list-heights-v1',
   'autoecount-ay-job-list-height-v1',
-  'autoecount-ay-tax-last-month-v1'
+  'autoecount-ay-tax-last-month-v1',
+  'autoecount-ay-ar-last-week-v1',
+  'autoecount-ay-ar-filter-v1'
 ];
 const MANUAL_SNAPSHOT_KEEP=5;
 const MANUAL_SNAPSHOT_CHUNK_CHARS=180000;
@@ -1595,6 +1734,7 @@ async function loadCloudData(){
   await refreshJobCache();
   await loadGeneralLedgerData();
   await loadTaxPurchaseMasters();
+  await loadArData();
   await seedConditionalBizRegExclusionsV307();
   await loadBizRegDynamicExclusions();
   await migrateLegacyTaxNotesV326();
@@ -6041,7 +6181,7 @@ let menuSaveTimer=null;
 
 
 function applyWorkTab(tab,save=true){
-  tab=tab==='tax'?'tax':'sales';
+  tab=['sales','tax','ar'].includes(tab)?tab:'sales';
   activeWorkTab=tab;
   document.querySelectorAll('[data-work-tab]').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.workTab===tab);
@@ -6051,6 +6191,8 @@ function applyWorkTab(tab,save=true){
   if(base)base.classList.toggle('workTabHidden',tab!=='sales');
   const toolbar=$('menuToolbar');
   if(toolbar)toolbar.classList.toggle('workTabHidden',tab!=='sales');
+  const arArea=$('arWorkArea');
+  if(arArea)arArea.classList.toggle('workTabHidden',tab!=='ar');
 
   if(menuBoard){
     for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
@@ -6069,7 +6211,7 @@ function setupWorkTabs(){
   let saved='sales';
   try{
     const v=localStorage.getItem(WORK_TAB_KEY);
-    if(v==='tax'||v==='sales')saved=v;
+    if(v==='tax'||v==='sales'||v==='ar')saved=v;
   }catch(e){}
   applyWorkTab(saved,false);
 }
@@ -6770,6 +6912,209 @@ function setupMenuSystem(){
   });
   applyWorkTab(activeWorkTab,false);
 }
+
+
+// ===== v3.35 미수관리 =====
+function arMoney(v){return Math.round(Number(v||0)).toLocaleString('ko-KR')+'원'}
+function arIsoToYmd(v){return norm(v).replace(/-/g,'').slice(0,8)}
+function arYmdToIso(v){v=ymd(v);return v?`${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`:''}
+function arShortDate(v){v=ymd(v);return v?`${Number(v.slice(4,6))}/${Number(v.slice(6,8))}`:''}
+function arDateObj(v){v=ymd(v);if(!v)return null;return new Date(Number(v.slice(0,4)),Number(v.slice(4,6))-1,Number(v.slice(6,8)))}
+function arDateDiffDays(a,b){const x=arDateObj(a),y=arDateObj(b);return x&&y?Math.round((y-x)/86400000):0}
+function arPrevSunday(run){const d=arDateObj(run);if(!d)return '';const dow=d.getDay();const diff=dow===0?7:dow;d.setDate(d.getDate()-diff);return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`}
+function arOneMonthPassed(sampleDate,cutoff){const s=arDateObj(sampleDate),c=arDateObj(cutoff);if(!s||!c)return false;const y=s.getFullYear(),m=s.getMonth()+1,day=s.getDate();const last=new Date(y,m+1,0).getDate();const next=new Date(y,m,Math.min(day,last));return c>=next}
+function arCustomerMaster(code){return (cloud.customers||[]).find(x=>norm(x.code)===norm(code))||null}
+function arLocationFrom(row){const loc=norm(row.locationRaw);if(/남평화/.test(loc))return 'nampyeonghwa';const c=arCustomerMaster(row.code);return c&&isNampyeonghwaCustomer(c)?'nampyeonghwa':'warehouse'}
+function arLocationLabel(v){return v==='nampyeonghwa'?'남평화':'창고'}
+function arStatusLabel(row){if(row.action?.paymentComplete)return '입금완료';if(row.status==='review')return '확인필요';if(row.status==='contact')return '연락대상';if(row.status==='wait')return '정상대기';return '자동제외'}
+function arStatusClass(row){if(row.action?.paymentComplete)return 'paid';return row.status||'excluded'}
+function arSafeCode(code){return safeId(norm(code)||'no-code')}
+function arFileListText(files){return files&&files.length?files.map(f=>f.name).join(' · '):'선택된 파일 없음'}
+function arSetLoading(on,text=''){
+  arState.loading=!!on;$('arWorkArea')?.classList.toggle('arLoading',!!on);
+  if(text&&$('arRunStatus'))$('arRunStatus').textContent=text;
+}
+function arPickIndex(headers,names){const h=headers.map(norm);for(const n of names){const i=h.indexOf(n);if(i>=0)return i}return -1}
+function arFindHeaderByAliases(rows,requiredGroups){for(let i=0;i<Math.min(rows.length,35);i++){const h=(rows[i]||[]).map(norm);if(requiredGroups.every(g=>g.some(x=>h.includes(x))))return i}return -1}
+function arMergeIntervals(intervals){const xs=(intervals||[]).filter(x=>x.min&&x.max).sort((a,b)=>a.min.localeCompare(b.min));const out=[];for(const x of xs){const last=out[out.length-1];if(last&&x.min<=last.max){if(x.max>last.max)last.max=x.max}else out.push({...x})}return out}
+function arInIntervals(date,intervals){return (intervals||[]).some(x=>date>=x.min&&date<=x.max)}
+
+async function parseArSalesFiles(files){
+  const slipMap=new Map(),intervals=[];
+  for(const file of [...files]){
+    const wb=await readWb(file);let fmin='',fmax='',found=false;
+    for(const sh of wb.SheetNames){
+      const a=aoaFromSheet(wb,sh);const hi=arFindHeaderByAliases(a,[['일자'],['거래처코드'],['공급가액']]);if(hi<0)continue;found=true;
+      const h=a[hi].map(norm),dateI=arPickIndex(h,['일자']),seqI=arPickIndex(h,['순번','No.','NO.','No','전표번호']),codeI=arPickIndex(h,['거래처코드','거래처']),nameI=arPickIndex(h,['거래처명']),supI=arPickIndex(h,['공급가액','공급가']),taxI=arPickIndex(h,['부가세','세액']),memoI=arPickIndex(h,['적요','적요명','메모']);
+      for(const r of a.slice(hi+1)){
+        const date=ymd(r[dateI]),code=norm(r[codeI]);if(!date||!code)continue;
+        if(!fmin||date<fmin)fmin=date;if(!fmax||date>fmax)fmax=date;
+        const seq=seqI>=0?norm(r[seqI]):'',name=nameI>=0?norm(r[nameI]):'';
+        const key=[date,seq,code].join('|');let o=slipMap.get(key);if(!o)o={key,date,seq,code,name,amount:0,memos:[],rowCount:0};
+        o.amount+=num(r[supI])+(taxI>=0?num(r[taxI]):0);o.rowCount++;
+        const memo=memoI>=0?norm(r[memoI]):'';if(memo&&!o.memos.includes(memo))o.memos.push(memo);
+        if(!o.name&&name)o.name=name;slipMap.set(key,o);
+      }
+    }
+    if(!found)throw new Error(`${file.name}: 판매자료 헤더(일자/거래처코드/공급가액)를 찾지 못했습니다.`);
+    if(fmin&&fmax)intervals.push({min:fmin,max:fmax});
+  }
+  const rows=[...slipMap.values()].map(o=>({...o,amount:Math.round(o.amount),memo:o.memos.join(' / '),sample:/sample|샘플/i.test(o.memos.join(' '))})).sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key));
+  return {rows,intervals:arMergeIntervals(intervals)};
+}
+async function parseArPaymentFiles(files){
+  const map=new Map(),intervals=[];
+  for(const file of [...files]){
+    const wb=await readWb(file);let fmin='',fmax='',found=false;
+    for(const sh of wb.SheetNames){
+      const a=aoaFromSheet(wb,sh);const hi=arFindHeaderByAliases(a,[['일자'],['거래처','거래처코드'],['금액']]);if(hi<0)continue;found=true;
+      const h=a[hi].map(norm),dateI=arPickIndex(h,['일자']),seqI=arPickIndex(h,['순번','No.','NO.','No']),codeI=arPickIndex(h,['거래처','거래처코드']),nameI=arPickIndex(h,['거래처명']),amtI=arPickIndex(h,['금액','입금액']),memoI=arPickIndex(h,['적요명','적요','메모']);
+      for(const r of a.slice(hi+1)){
+        const date=ymd(r[dateI]),code=norm(r[codeI]);if(!date||!code)continue;
+        if(!fmin||date<fmin)fmin=date;if(!fmax||date>fmax)fmax=date;
+        const seq=seqI>=0?norm(r[seqI]):'',name=nameI>=0?norm(r[nameI]):'',amount=Math.round(num(r[amtI])),memo=memoI>=0?norm(r[memoI]):'';
+        const key=[date,seq,code].join('|');const prev=map.get(key);
+        if(prev){prev.amount+=amount;if(memo&&!prev.memo.includes(memo))prev.memo=[prev.memo,memo].filter(Boolean).join(' / ');if(!prev.name&&name)prev.name=name}
+        else map.set(key,{key,date,seq,code,name,amount,memo});
+      }
+    }
+    if(!found)throw new Error(`${file.name}: 입금자료 헤더(일자/거래처/금액)를 찾지 못했습니다.`);
+    if(fmin&&fmax)intervals.push({min:fmin,max:fmax});
+  }
+  return {rows:[...map.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key)),intervals:arMergeIntervals(intervals)};
+}
+function parseArBalanceFile(wb){
+  let best=null;
+  for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh);const hi=arFindHeaderByAliases(a,[['거래처코드'],['거래처명'],['잔액','미수잔액']]);if(hi>=0){best={a,hi,sh};if(/정리전/.test(sh))break}}
+  if(!best)throw new Error('미수잔액 파일에서 거래처코드/거래처명/잔액 헤더를 찾지 못했습니다.');
+  const h=best.a[best.hi].map(norm),pick=(x)=>arPickIndex(h,x);
+  const dayI=pick(['입금지정요일','입금요일']),locI=pick(['창고/남평화','구분','매장/창고']),codeI=pick(['거래처코드']),nameI=pick(['거래처명']),jangkiI=pick(['장끼거래처명']),openingI=pick(['기초채권','이월잔액']),salesI=pick(['재고매출','매출']),receiptI=pick(['수금합계','입금합계','수금']),balanceI=pick(['잔액','미수잔액']);
+  const rows=[];
+  for(const r of best.a.slice(best.hi+1)){
+    const code=norm(r[codeI]),name=norm(r[nameI]);if(!code||!name)continue;
+    const rawBalance=r[balanceI];if(rawBalance==null||rawBalance==='')continue;
+    rows.push({paymentDay:dayI>=0?norm(r[dayI]):'',locationRaw:locI>=0?norm(r[locI]):'',code,name,jangkiName:jangkiI>=0?norm(r[jangkiI]):'',carryover:openingI>=0?Math.round(num(r[openingI])):null,periodSales:salesI>=0?Math.round(num(r[salesI])):null,periodReceipts:receiptI>=0?Math.round(num(r[receiptI])):null,balance:Math.round(num(rawBalance))});
+  }
+  const periodText=norm(best.a[0]?.[0]);return {rows,periodText,sheet:best.sh};
+}
+
+async function saveArHistory(){
+  if(!user)return;const version=String(Date.now()),all=[...arState.sales.map(x=>({t:'s',...x})),...arState.payments.map(x=>({t:'p',...x}))],CHUNK=160;
+  for(let p=0;p<all.length;p+=CHUNK){const idx=Math.floor(p/CHUNK),id=`${version}_${String(idx).padStart(5,'0')}`;await userCol('arHistoryChunks').doc(id).set({version,index:idx,rows:all.slice(p,p+CHUNK)});}
+  const dates=all.map(x=>x.date).filter(Boolean).sort();const meta={version,salesCount:arState.sales.length,paymentCount:arState.payments.length,minDate:dates[0]||'',maxDate:dates[dates.length-1]||'',updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  await userCol('settings').doc('arHistoryMeta').set(meta,{merge:true});arState.historyMeta={...meta,updatedAt:null};
+  try{const old=await userCol('arHistoryChunks').get();const del=old.docs.filter(d=>String(d.data()?.version||'')!==version);for(let p=0;p<del.length;p+=350){const b=db.batch();for(const d of del.slice(p,p+350))b.delete(d.ref);await b.commit()}}catch(e){console.warn('미수 이력 이전청크 정리 실패',e)}
+  renderArHistoryStatus();
+}
+async function syncArHistoryFromSelected(salesFiles,paymentFiles){
+  if(!user)throw new Error('로그인이 필요합니다.');let changed=false;
+  if(salesFiles?.length){const parsed=await parseArSalesFiles(salesFiles);arState.sales=arState.sales.filter(x=>!arInIntervals(x.date,parsed.intervals));const m=new Map(arState.sales.map(x=>[x.key,x]));for(const x of parsed.rows)m.set(x.key,x);arState.sales=[...m.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key));changed=true}
+  if(paymentFiles?.length){const parsed=await parseArPaymentFiles(paymentFiles);arState.payments=arState.payments.filter(x=>!arInIntervals(x.date,parsed.intervals));const m=new Map(arState.payments.map(x=>[x.key,x]));for(const x of parsed.rows)m.set(x.key,x);arState.payments=[...m.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key));changed=true}
+  if(!changed)throw new Error('동기화할 판매 또는 입금 파일을 선택해 주세요.');await saveArHistory();return true;
+}
+async function loadArHistory(){
+  arState.sales=[];arState.payments=[];arState.historyMeta=null;if(!user)return;
+  const metaSnap=await userCol('settings').doc('arHistoryMeta').get();if(!metaSnap.exists){renderArHistoryStatus();return}const meta=metaSnap.data()||{},version=String(meta.version||'');if(!version)return;
+  const snap=await userCol('arHistoryChunks').where('version','==',version).get();const docs=snap.docs.map(d=>d.data()).sort((a,b)=>Number(a.index||0)-Number(b.index||0));
+  for(const d of docs)for(const x of d.rows||[]){if(x.t==='s'){const {t,...r}=x;arState.sales.push(r)}else if(x.t==='p'){const {t,...r}=x;arState.payments.push(r)}}
+  arState.historyMeta=meta;renderArHistoryStatus();
+}
+function renderArHistoryStatus(){const el=$('arHistoryStatus');if(!el)return;const m=arState.historyMeta;if(!m){el.textContent='저장된 미수 판매·입금 이력 없음 · 첫 실행은 1/1~현재 전체자료 권장';return}el.innerHTML=`Firebase 정규화 이력 · 판매장끼 <b>${Number(m.salesCount||0).toLocaleString()}</b>건 · 입금 <b>${Number(m.paymentCount||0).toLocaleString()}</b>건<br>${arShortDate(m.minDate)} ~ ${arShortDate(m.maxDate)} · 원본 엑셀파일 자체는 저장하지 않음`;}
+
+async function loadArCustomerSettings(){arState.customerSettings=new Map();if(!user)return;const snap=await userCol('arCustomerSettings').get();for(const d of snap.docs){const x=d.data()||{};arState.customerSettings.set(norm(x.code||d.id),x)}}
+async function saveArCustomerSetting(code,patch){if(!user)return;code=norm(code);const prev=arState.customerSettings.get(code)||{},next={...prev,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};arState.customerSettings.set(code,{...prev,...patch});await userCol('arCustomerSettings').doc(arSafeCode(code)).set({code,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+
+function arPaymentDayNumber(text){text=norm(text);if(/요일답장필요/.test(text))return null;if(/당일/.test(text))return 0;if(/월/.test(text))return 1;if(/화/.test(text))return 2;if(/수/.test(text))return 3;if(/목/.test(text))return 4;if(/금/.test(text))return 5;if(/토/.test(text))return 6;if(/일/.test(text))return 7;return null}
+function arTransactionsFor(code,cutoff){const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff),payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff);return {sales,payments}}
+function arLastPayment(code,through){const p=arState.payments.filter(x=>x.code===code&&x.date<=through).sort((a,b)=>b.date.localeCompare(a.date));return p[0]?.date||''}
+function arEstimateOutstandingStart(code,target,cutoff){
+  if(target<=0)return {label:'',exact:true,date:'',diff:0};const {sales,payments}=arTransactionsFor(code,cutoff),daily=new Map();
+  for(const x of sales){const d=daily.get(x.date)||0;daily.set(x.date,d+x.amount)}for(const x of payments){const d=daily.get(x.date)||0;daily.set(x.date,d-x.amount)}
+  const dates=[...daily.keys()].sort((a,b)=>b.localeCompare(a));let cum=0,lastDate='';
+  for(const date of dates){cum+=daily.get(date)||0;lastDate=date;if(cum===target)return {label:`${arShortDate(date)}부터`,exact:true,date,diff:0,cum};if(cum>target)return {label:`${arShortDate(date)}경부터로 추정`,exact:false,date,diff:cum-target,cum};}
+  if(lastDate)return {label:`${arShortDate(lastDate)} 이전부터로 추정`,exact:false,date:lastDate,diff:target-cum,cum};return {label:'거래이력 부족',exact:false,date:'',diff:target,cum:0};
+}
+function arFindSampleMatch(code,target,cutoff){
+  if(target<=0)return null;const samples=arState.sales.filter(x=>x.code===code&&x.sample&&x.amount>0&&x.date<=cutoff);if(!samples.length)return null;
+  const byDate=new Map();for(const x of samples)byDate.set(x.date,(byDate.get(x.date)||0)+x.amount);
+  const exactDates=[...byDate.entries()].filter(([,a])=>Math.round(a)===Math.round(target)).sort((a,b)=>b[0].localeCompare(a[0]));
+  if(exactDates.length){const [date,amount]=exactDates[0];return {date,amount,old:arOneMonthPassed(date,cutoff),source:'해당일 SAMPLE 장끼합계와 미수잔액 일치'}}
+  const one=samples.filter(x=>Math.round(x.amount)===Math.round(target)).sort((a,b)=>b.date.localeCompare(a.date))[0];if(one)return {date:one.date,amount:one.amount,old:arOneMonthPassed(one.date,cutoff),source:'SAMPLE 장끼금액과 미수잔액 일치'};
+  return null;
+}
+function arPaymentsAfter(code,cutoff,through='99999999'){return arState.payments.filter(x=>x.code===code&&x.date>cutoff&&x.date<=through).reduce((s,x)=>s+x.amount,0)}
+function arSalesOn(code,date){return arState.sales.filter(x=>x.code===code&&x.date===date).reduce((s,x)=>s+x.amount,0)}
+function arLatestHistoryDate(){const d=[...arState.sales.map(x=>x.date),...arState.payments.map(x=>x.date)].filter(Boolean).sort();return d[d.length-1]||''}
+function arClassifyRow(b,runDate,cutoff){
+  const setting=arState.customerSettings.get(norm(b.code))||{},paymentDay=norm(setting.paymentDay||b.paymentDay),location=arLocationFrom(b),permanentExclude=!!setting.permanentExclude;
+  const baseBalance=Math.round(b.balance||0),latest=arLatestHistoryDate()||runDate,weekPaid=arPaymentsAfter(b.code,cutoff,latest),remaining=Math.max(0,baseBalance-weekPaid),lastPayment=arLastPayment(b.code,latest),est=arEstimateOutstandingStart(b.code,baseBalance,cutoff),sample=arFindSampleMatch(b.code,baseBalance,cutoff);
+  const sundaySales=Math.max(0,arSalesOn(b.code,cutoff)),olderAmount=Math.max(0,baseBalance-sundaySales),fileDiff=(b.carryover==null||b.periodSales==null||b.periodReceipts==null)?null:Math.round((b.carryover+b.periodSales-b.periodReceipts)-baseBalance);
+  let status='contact',reason='미수 확인 필요';
+  if(Math.abs(baseBalance)<1000){status='excluded';reason='1,000원 미만 자동제외'}
+  else if(permanentExclude){status='excluded';reason='못 받는 미수 확정 · 영구제외'}
+  else if(fileDiff!=null&&fileDiff!==0){status='review';reason=`미수파일 계산불일치 ${arMoney(fileDiff)} · 거래내역 확인 필요`}
+  else if(sample){if(sample.old){status='contact';reason=`${arShortDate(sample.date)} SAMPLE · 1개월 경과 · 반납요청`}else{status='excluded';reason=`${arShortDate(sample.date)} SAMPLE 금액 일치 · 1개월 미만 연락제외`}}
+  else if(!est.exact){status='review';reason=`${est.label} · 잔액과 거래흐름 정확히 일치하지 않음${est.diff?` (차이 ${arMoney(est.diff)})`:''}`}
+  else {
+    const due=arPaymentDayNumber(paymentDay);const runObj=arDateObj(runDate),runDow=runObj?((runObj.getDay()+6)%7)+1:1;
+    if(/요일답장필요/.test(paymentDay)){status='review';reason='입금요일 답장/확인 필요'}
+    else if(olderAmount>0){status='contact';reason=`이전 주기 미수 ${arMoney(olderAmount)} 남음`}
+    else if(due===0){status=remaining>0?'contact':'wait';reason=remaining>0?'당일입금 거래처 · 미입금잔액 있음':'당일입금 완결'}
+    else if(due===1){status=remaining>0?'contact':'wait';reason=remaining>0?'월요일 입금 거래처 · 일요일 금액까지 완결 필요':'월요일 입금 완결'}
+    else if(due&&runDow<due){status='wait';reason=`${paymentDay} 입금예정 · 아직 입금요일 전`}
+    else if(due&&runDow>=due){status=remaining>0?'contact':'wait';reason=remaining>0?`${paymentDay} 입금일 경과 · 미입금잔액 있음`:`${paymentDay} 입금 완결`}
+    else {status='wait';reason='이번 일요일 발생분만 남음 · 다음 정산주기 대기'}
+  }
+  return {...b,weekKey:runDate,runDate,cutoff,paymentDay,location,permanentExclude,baseBalance,weekPaid,remaining,lastPayment,outstandingLabel:est.label,outstandingExact:est.exact,outstandingDate:est.date,outstandingDiff:est.diff,sampleMatch:sample,status,reason,fileDiff,sundaySales,olderAmount,action:{}};
+}
+
+async function saveArWeekBase(runDate,cutoff,rows,periodText=''){
+  if(!user)throw new Error('로그인이 필요합니다.');const weekKey=runDate,version=String(Date.now()),CHUNK=110;
+  for(let p=0;p<rows.length;p+=CHUNK){const idx=Math.floor(p/CHUNK);await userCol('arWeekChunks').doc(`${safeId(weekKey)}_${version}_${String(idx).padStart(4,'0')}`).set({weekKey,version,index:idx,rows:rows.slice(p,p+CHUNK)});}
+  const meta={weekKey,version,runDate,cutoff,periodText,rowCount:rows.length,totalBalance:rows.reduce((s,x)=>s+x.baseBalance,0),createdAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('arWeeks').doc(safeId(weekKey)).set(meta,{merge:true});
+  try{const old=await userCol('arWeekChunks').where('weekKey','==',weekKey).get();const del=old.docs.filter(d=>String(d.data()?.version||'')!==version);for(let p=0;p<del.length;p+=350){const b=db.batch();for(const d of del.slice(p,p+350))b.delete(d.ref);await b.commit()}}catch(e){console.warn('이전 미수 주간청크 정리 실패',e)}
+  arState.weekMeta=meta;arState.activeWeek=weekKey;arState.weekRows=rows;try{localStorage.setItem(AR_LAST_WEEK_KEY,weekKey)}catch(e){}await loadArWeeksIndex();await loadArWeekActions(weekKey);refreshArWeekPayments();renderArAll();
+}
+async function loadArWeeksIndex(){arState.weeks=[];if(!user)return;const snap=await userCol('arWeeks').get();arState.weeks=snap.docs.map(d=>d.data()).sort((a,b)=>String(b.runDate||'').localeCompare(String(a.runDate||'')));const sel=$('arWeekSelect');if(sel){const current=arState.activeWeek||sel.value;sel.innerHTML='<option value="">저장된 주간정리 선택</option>'+arState.weeks.map(w=>`<option value="${escAttr(w.weekKey)}">${arYmdToIso(w.runDate)} · ${Number(w.rowCount||0).toLocaleString()}곳</option>`).join('');if(current&&arState.weeks.some(w=>w.weekKey===current))sel.value=current}}
+async function loadArWeekActions(weekKey){arState.actions=new Map();if(!user||!weekKey)return;const snap=await userCol('arWeekActions').where('weekKey','==',weekKey).get();for(const d of snap.docs){const x=d.data()||{};arState.actions.set(norm(x.code),x)}}
+async function loadArWeek(weekKey){if(!user||!weekKey)return;arSetLoading(true,'저장된 주간정리를 불러오는 중…');try{const metaSnap=await userCol('arWeeks').doc(safeId(weekKey)).get();if(!metaSnap.exists)throw new Error('선택한 주간정리를 찾지 못했습니다.');const meta=metaSnap.data()||{},version=String(meta.version||'');const snap=await userCol('arWeekChunks').where('weekKey','==',weekKey).get();const docs=snap.docs.map(d=>d.data()).filter(x=>String(x.version||'')===version).sort((a,b)=>Number(a.index||0)-Number(b.index||0));const rows=[];for(const d of docs)rows.push(...(d.rows||[]));arState.activeWeek=weekKey;arState.weekMeta=meta;arState.weekRows=rows;await loadArWeekActions(weekKey);refreshArWeekPayments();if($('arRunDate'))$('arRunDate').value=arYmdToIso(meta.runDate);if($('arWeekSelect'))$('arWeekSelect').value=weekKey;try{localStorage.setItem(AR_LAST_WEEK_KEY,weekKey)}catch(e){}renderArAll();$('arRunStatus').textContent=`${arYmdToIso(meta.runDate)} 주간정리를 불러왔습니다.`}finally{arSetLoading(false)}}
+async function saveArAction(code,patch){if(!user||!arState.activeWeek)return;code=norm(code);const prev=arState.actions.get(code)||{},next={...prev,...patch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};arState.actions.set(code,next);await userCol('arWeekActions').doc(safeId(`${arState.activeWeek}|${code}`)).set({...next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});refreshArWeekPayments();renderArAll();}
+function refreshArWeekPayments(){const latest=arLatestHistoryDate();for(const r of arState.weekRows){r.weekPaid=arPaymentsAfter(r.code,r.cutoff,latest||'99999999');r.remaining=Math.max(0,Number(r.baseBalance||0)-r.weekPaid);r.lastPayment=arLastPayment(r.code,latest||r.runDate);r.action=arState.actions.get(norm(r.code))||{};r.paidCandidate=r.baseBalance>0&&r.remaining<=0&&!r.action.paymentComplete}}
+
+function arRowMatchesFilter(r){const f=arState.filter,action=r.action||{};if(arState.location!=='all'&&r.location!==arState.location)return false;const q=norm(arState.search).toLowerCase();if(q&&!([r.code,r.name,r.jangkiName,r.reason,action.note,r.paymentDay].join(' ').toLowerCase().includes(q)))return false;if(f==='all')return true;if(f==='paid')return !!action.paymentComplete;if(f==='shipx')return !!action.shipmentStop;if(f==='sample')return !!r.sampleMatch;if(f==='review')return r.status==='review'&&!action.paymentComplete;if(f==='contact')return r.status==='contact'&&!action.paymentComplete;if(f==='wait')return (r.status==='wait'||r.status==='excluded')&&!action.paymentComplete;return true}
+function arCounts(){const rows=arState.weekRows||[];return {all:rows.length,review:rows.filter(x=>x.status==='review'&&!x.action?.paymentComplete).length,contact:rows.filter(x=>x.status==='contact'&&!x.action?.paymentComplete).length,wait:rows.filter(x=>(x.status==='wait'||x.status==='excluded')&&!x.action?.paymentComplete).length,sample:rows.filter(x=>x.sampleMatch).length,paid:rows.filter(x=>x.action?.paymentComplete).length,shipx:rows.filter(x=>x.action?.shipmentStop).length,candidate:rows.filter(x=>x.paidCandidate).length}}
+function renderArSummary(){const c=arCounts(),rows=arState.weekRows||[];$('arSumBalance').textContent=arMoney(rows.reduce((s,x)=>s+Number(x.baseBalance||0),0));$('arSumReview').textContent=c.review;$('arSumContact').textContent=c.contact;$('arSumWait').textContent=c.wait;$('arSumCandidate').textContent=c.candidate;$('arSumPaid').textContent=c.paid;for(const [id,k] of [['arCntAll','all'],['arCntReview','review'],['arCntContact','contact'],['arCntWait','wait'],['arCntSample','sample'],['arCntPaid','paid'],['arCntShipX','shipx']])if($(id))$(id).textContent=c[k]||0;document.querySelectorAll('[data-ar-filter]').forEach(b=>b.classList.toggle('active',b.dataset.arFilter===arState.filter))}
+function renderArResultTable(){const box=$('arResultTable');if(!box)return;const rows=(arState.weekRows||[]).filter(arRowMatchesFilter).sort((a,b)=>{const rank=x=>x.action?.paymentComplete?9:x.status==='review'?0:x.status==='contact'?1:x.status==='wait'?3:4;return rank(a)-rank(b)||Number(b.baseBalance||0)-Number(a.baseBalance||0)});if(!rows.length){box.innerHTML='<div class="jobEmpty">현재 필터에 해당하는 거래처가 없습니다.</div>';return}
+  box.innerHTML=`<table><thead><tr><th>구분</th><th>입금요일</th><th>거래처</th><th>이월잔액</th><th>기준미수</th><th>주중입금</th><th>남은금액</th><th>마지막입금</th><th>미수시점</th><th>판정</th><th>물건출고X</th><th>입금완료</th><th>연락완료</th><th>재연락일</th><th>특이사항</th><th>영구제외</th></tr></thead><tbody>${rows.map(r=>{const a=r.action||{},sample=r.sampleMatch?`${arShortDate(r.sampleMatch.date)} SAMPLE${r.sampleMatch.old?' · 1개월↑':''}`:'';return `<tr><td>${arLocationLabel(r.location)}</td><td><input class="arTinyInput" value="${escAttr(r.paymentDay||'')}" onchange="arEditPaymentDay('${escAttr(r.code)}',this.value)"></td><td class="arName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}${r.jangkiName?' · '+esc(r.jangkiName):''}</span>${sample?`<br><span class="arStatus sample">${esc(sample)}</span>`:''}</td><td>${r.carryover==null?'-':arMoney(r.carryover)}</td><td><b>${arMoney(r.baseBalance)}</b></td><td>${arMoney(r.weekPaid)}</td><td class="${r.remaining>0?'arRemainBad':'arRemainOk'}">${arMoney(r.remaining)}${r.paidCandidate?'<br><span class="arCandidate">입금완료 후보</span>':''}</td><td>${r.lastPayment?arShortDate(r.lastPayment):'-'}</td><td>${esc(r.outstandingLabel||'-')}</td><td class="arReason"><span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span><br>${esc(r.reason||'')}</td><td><input type="checkbox" ${a.shipmentStop?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','shipmentStop',this.checked)"></td><td><input type="checkbox" ${a.paymentComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','paymentComplete',this.checked)"></td><td><input type="checkbox" ${a.contactComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','contactComplete',this.checked)"></td><td><input class="arTinyInput" type="date" value="${escAttr(a.recontactDate||'')}" onchange="arToggleAction('${escAttr(r.code)}','recontactDate',this.value)"></td><td><input class="arTinyInput arNoteInput" value="${escAttr(a.note||'')}" placeholder="특이사항" onchange="arToggleAction('${escAttr(r.code)}','note',this.value)"></td><td><input type="checkbox" ${r.permanentExclude?'checked':''} onchange="arTogglePermanentExclude('${escAttr(r.code)}',this.checked)"></td></tr>`}).join('')}</tbody></table>`;
+}
+function renderArWeeklyTable(){const box=$('arWeeklyTable');if(!box)return;const rows=(arState.weekRows||[]).filter(r=>r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete).sort((a,b)=>Number(b.remaining||0)-Number(a.remaining||0));if(!rows.length){box.innerHTML='<div class="jobEmpty">주간 관리대상이 없습니다.</div>';return}box.innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>입금요일</th><th>월요일 기준미수</th><th>주중입금</th><th>미입금잔액</th><th>상태</th><th>물건출고X</th><th>입금완료</th><th>연락완료</th><th>재연락일</th><th>특이사항</th></tr></thead><tbody>${rows.map(r=>{const a=r.action||{};return `<tr><td>${arLocationLabel(r.location)}</td><td class="arName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}</span></td><td>${esc(r.paymentDay||'-')}</td><td>${arMoney(r.baseBalance)}</td><td>${arMoney(r.weekPaid)}</td><td class="${r.remaining>0?'arRemainBad':'arRemainOk'}">${arMoney(r.remaining)}</td><td>${a.paymentComplete?'<span class="arStatus paid">입금완료</span>':r.paidCandidate?'<span class="arStatus paid">입금완료 후보</span>':`<span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span>`}</td><td><input type="checkbox" ${a.shipmentStop?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','shipmentStop',this.checked)"></td><td><input type="checkbox" ${a.paymentComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','paymentComplete',this.checked)"></td><td><input type="checkbox" ${a.contactComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','contactComplete',this.checked)"></td><td><input class="arTinyInput" type="date" value="${escAttr(a.recontactDate||'')}" onchange="arToggleAction('${escAttr(r.code)}','recontactDate',this.value)"></td><td><input class="arTinyInput arNoteInput" value="${escAttr(a.note||'')}" onchange="arToggleAction('${escAttr(r.code)}','note',this.value)"></td></tr>`}).join('')}</tbody></table>`}
+function renderArAll(){refreshArWeekPayments();renderArSummary();renderArResultTable();renderArWeeklyTable()}
+function arReclassifyCode(code){const i=arState.weekRows.findIndex(r=>r.code===code);if(i<0)return;const old=arState.weekRows[i],next=arClassifyRow(old,old.runDate,old.cutoff);next.action=arState.actions.get(norm(code))||old.action||{};arState.weekRows[i]=next;}
+window.arToggleAction=(code,key,value)=>saveArAction(code,{[key]:value}).catch(e=>alert(e.message||e));
+window.arEditPaymentDay=(code,value)=>saveArCustomerSetting(code,{paymentDay:norm(value)}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
+window.arTogglePermanentExclude=(code,value)=>saveArCustomerSetting(code,{permanentExclude:!!value}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
+
+function arExportRows(location=null,includeExcluded=false){return (arState.weekRows||[]).filter(r=>(!location||r.location===location)&&(includeExcluded||r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete)).map(r=>{const a=r.action||{};return {'구분':arLocationLabel(r.location),'입금요일':r.paymentDay||'','거래처코드':r.code,'거래처명':r.name,'장끼거래처명':r.jangkiName||'','이월잔액':r.carryover==null?'':r.carryover,'재고매출':r.periodSales==null?'':r.periodSales,'수금합계':r.periodReceipts==null?'':r.periodReceipts,'기준미수잔액':r.baseBalance,'주중추가입금':r.weekPaid,'미입금잔액':r.remaining,'마지막입금':r.lastPayment?arYmdToIso(r.lastPayment):'','미수잔액시점':r.outstandingLabel||'','판정':arStatusLabel(r),'연락/확인사유':r.reason||'','샘플':r.sampleMatch?`${arYmdToIso(r.sampleMatch.date)} SAMPLE${r.sampleMatch.old?' / 1개월경과':''}`:'','물건출고X':a.shipmentStop?'O':'','입금완료':a.paymentComplete?'O':r.paidCandidate?'후보':'','연락완료':a.contactComplete?'O':'','재연락일':a.recontactDate||'','특이사항':a.note||'','영구제외':r.permanentExclude?'O':''}})}
+function arMakeSheet(rows){const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'안내':'해당 거래처 없음'}]);ws['!cols']=[{wch:9},{wch:13},{wch:17},{wch:28},{wch:25},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:13},{wch:20},{wch:13},{wch:34},{wch:22},{wch:11},{wch:11},{wch:11},{wch:13},{wch:34},{wch:10}];ws['!autofilter']={ref:ws['!ref']||'A1:A1'};return ws}
+function exportArExcel(mode){if(!arState.weekRows.length){alert('저장할 주간 미수정리가 없습니다.');return}const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value),suffix=date||'미수정리';if(mode==='warehouse'){XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false)),'창고');XLSX.writeFile(wb,`미수정리_창고담당자_${suffix}.xlsx`);return}if(mode==='nampyeonghwa'){XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false)),'남평화');XLSX.writeFile(wb,`미수정리_남평화담당자_${suffix}.xlsx`);return}XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,false)),'전체');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false)),'창고');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false)),'남평화');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,true).filter(x=>x['판정']==='자동제외')),'자동제외내역');XLSX.writeFile(wb,`미수정리_대표용전체_${suffix}.xlsx`)}
+
+async function runArMonday(){
+  if(!user)throw new Error('로그인이 필요합니다.');if(!arSelectedFiles.balance)throw new Error('월요일 미수잔액 파일을 선택해 주세요.');const runDate=arIsoToYmd($('arRunDate').value);if(!runDate)throw new Error('정리 기준일을 선택해 주세요.');arSetLoading(true,'미수자료 분석 중…');
+  try{if(arSelectedFiles.sales.length||arSelectedFiles.payments.length){$('arRunStatus').textContent='판매·입금 최신자료를 먼저 Firebase 거래이력에 동기화하는 중…';await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments)}if(!arState.sales.length&&!arState.payments.length)throw new Error('판매·입금 거래이력이 없습니다. 첫 실행은 1/1~현재 전체 판매·입금 자료를 함께 넣어 주세요.');const parsed=parseArBalanceFile(await readWb(arSelectedFiles.balance)),cutoff=arPrevSunday(runDate),rows=parsed.rows.map(b=>arClassifyRow(b,runDate,cutoff));await saveArWeekBase(runDate,cutoff,rows,parsed.periodText);$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} 정리완료 · 기준잔액 ${rows.length.toLocaleString()}곳 · 판매/입금 분석 기준 ${arShortDate(cutoff)}까지 · 주중 입금은 별도 체크표에서 계속 반영됩니다.`}finally{arSetLoading(false)}}
+async function applyArMidweek(){if(!arSelectedFiles.midweek.length)throw new Error('주중 새 입금파일을 선택해 주세요.');if(!arState.activeWeek)throw new Error('먼저 월요일 정리결과를 불러와 주세요.');arSetLoading(true,'주중 입금자료 동기화 중…');try{await syncArHistoryFromSelected([],arSelectedFiles.midweek);refreshArWeekPayments();renderArAll();$('arRunStatus').textContent=`✓ 주중 입금 반영 완료 · 입금완료 후보 ${arCounts().candidate}곳`;arSelectedFiles.midweek=[];$('arMidweekPaymentFiles').value='';$('arMidweekFileNames').textContent='선택된 파일 없음'}finally{arSetLoading(false)}}
+async function loadArData(){if(!user)return;try{await Promise.all([loadArHistory(),loadArCustomerSettings(),loadArWeeksIndex()]);let week='';try{week=localStorage.getItem(AR_LAST_WEEK_KEY)||''}catch(e){}if(!week&&arState.weeks.length)week=arState.weeks[0].weekKey;if(week&&arState.weeks.some(x=>x.weekKey===week))await loadArWeek(week);else renderArAll()}catch(e){console.warn('미수관리 Firebase 불러오기 실패',e);if($('arHistoryStatus'))$('arHistoryStatus').textContent='미수관리 Firebase 자료 불러오기 실패: '+(e.message||e)}}
+function setupArUI(){
+  const bindFiles=(id,key,labelId,multiple=true)=>{$(id)?.addEventListener('change',e=>{let arr=[...e.target.files];const seen=new Set();arr=arr.filter(f=>{const k=`${f.name}|${f.size}|${f.lastModified}`;if(seen.has(k))return false;seen.add(k);return true});if(multiple)arSelectedFiles[key]=arr;else arSelectedFiles[key]=arr[0]||null;$(labelId).textContent=multiple?arFileListText(arr):(arr[0]?.name||'선택된 파일 없음')})};
+  bindFiles('arBalanceFile','balance','arBalanceFileNames',false);bindFiles('arSalesFiles','sales','arSalesFileNames',true);bindFiles('arPaymentFiles','payments','arPaymentFileNames',true);bindFiles('arMidweekPaymentFiles','midweek','arMidweekFileNames',true);
+  $('arSyncHistoryBtn').onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments);$('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
+  $('arRunBtn').onclick=()=>runArMonday().catch(e=>alert(e.message||e));$('arApplyMidweekBtn').onclick=()=>applyArMidweek().catch(e=>alert(e.message||e));$('arLoadWeekBtn').onclick=()=>loadArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));
+  $('arSearch').addEventListener('input',e=>{arState.search=e.target.value||'';renderArResultTable()});$('arLocationFilter').addEventListener('change',e=>{arState.location=e.target.value||'all';renderArResultTable()});document.querySelectorAll('[data-ar-filter]').forEach(b=>b.addEventListener('click',()=>{arState.filter=b.dataset.arFilter||'all';try{localStorage.setItem(AR_FILTER_KEY,arState.filter)}catch(e){}renderArSummary();renderArResultTable()}));
+  $('arExportWarehouseBtn').onclick=()=>exportArExcel('warehouse');$('arExportNampBtn').onclick=()=>exportArExcel('nampyeonghwa');$('arExportAllBtn').onclick=()=>exportArExcel('all');
+  try{const f=localStorage.getItem(AR_FILTER_KEY);if(['all','review','contact','wait','sample','paid','shipx'].includes(f||''))arState.filter=f}catch(e){}
+  renderArAll();
+}
+
+
 function showError(e){console.error(e); $('statusBox').innerHTML='<p class="bad"><b>오류:</b> '+esc(e.message||e)+'</p>'}
 
 
@@ -6812,8 +7157,9 @@ $('taxCheckMonth').addEventListener('change',()=>{
   try{localStorage.setItem(TAX_LAST_MONTH_KEY,month)}catch(e){}
   loadTaxMonth(month).catch(e=>alert('월별 자료를 불러오지 못했습니다.\n'+(e.message||e)));
 });$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('taxCustomerSearch').addEventListener('input',renderTaxCheck);$('taxCustomerTypeFilter').addEventListener('change',renderTaxCheck);$('taxCustomerProcessFilter').addEventListener('change',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxPurchaseSearch').value=taxPurchaseSearch;$('taxPurchaseSearch').addEventListener('input',e=>{taxPurchaseSearch=e.target.value||'';localStorage.setItem('autoecount-ay-tax-purchase-search-v1',taxPurchaseSearch);renderTaxPurchaseList()});document.querySelectorAll('[data-tax-purchase-filter]').forEach(btn=>btn.addEventListener('click',()=>{taxPurchaseFilter=btn.dataset.taxPurchaseFilter||'all';localStorage.setItem('autoecount-ay-tax-purchase-filter-v1',taxPurchaseFilter);renderTaxPurchaseList()}));$('downloadTaxPurchaseListBtn').onclick=downloadFilteredTaxPurchaseExcel;$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
-(function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
+(function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);if($('arRunDate')){const md=new Date(d);const dow=md.getDay();const back=dow===0?6:dow-1;md.setDate(md.getDate()-back);$('arRunDate').value=`${md.getFullYear()}-${String(md.getMonth()+1).padStart(2,'0')}-${String(md.getDate()).padStart(2,'0')}`;}let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
+setupArUI();
 setupBaseDataGroup();
 setupFixedTopCards();
 setupMenuSystem();
