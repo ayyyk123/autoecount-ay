@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.38</title>
+<title>아도라블 매출 자동화 v3.39</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -537,6 +537,9 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .shinsangMap{display:flex;gap:5px;align-items:center;min-width:300px}.shinsangMap select{max-width:220px;padding:5px 6px;font-size:10px}.shinsangMap .btn{padding:5px 7px;font-size:10px}
   .shinsangMoney{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.shinsangDesc{max-width:280px;white-space:normal;line-height:1.35;color:#475569}
   @media(max-width:900px){.shinsangSummary{grid-template-columns:repeat(2,1fr)}.shinsangToolbar{align-items:stretch}.shinsangToolbar label{width:100%}}
+  .shinsangHowto{margin:8px 0 10px;padding:9px 10px;border:1px solid #c7d2fe;border-radius:9px;background:#eef2ff;font-size:11px;line-height:1.55;color:#3730a3}
+  .shinsangReviewCell{min-width:105px;text-align:center}.shinsangReviewCheck{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;white-space:nowrap}.shinsangReviewCheck input{width:15px;height:15px}.shinsangReviewMemo{width:100%;min-width:150px;max-width:240px;padding:5px 6px!important;font-size:10px!important;border-radius:6px!important}.shinsangTable tr.reviewDone td{background:#f0fdf4}.shinsangReviewSaved{font-size:9px;color:#15803d;margin-top:2px}.shinsangHistoryDetail{margin-top:7px;padding:8px;border:1px solid #dbeafe;border-radius:8px;background:#fff;text-align:left;font-size:10px;line-height:1.45}.shinsangHistoryDetail table{min-width:0;font-size:10px}.shinsangHistoryDetail th,.shinsangHistoryDetail td{padding:4px 5px;position:static}.shinsangHistoryDetail .memo{white-space:pre-wrap;min-width:120px}.shinsangHistoryProgress{color:#4338ca;font-weight:800}
+  .genericFileUi{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;max-width:100%}.genericFileChip{display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:4px 6px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:10px;color:#475569}.genericFileChip .gfname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.genericFileChip button{border:0;background:transparent;color:#64748b;cursor:pointer;padding:0 1px;font-size:14px;line-height:1}.genericFileChip button:hover{color:#dc2626}.filePickLabel.fileDragReady{border-style:dashed}.filePickLabel.fileDragReady::after{content:'↧';font-size:11px;color:#6366f1}.filePickLabel.fileDragOver,.genericDropTarget.fileDragOver{outline:2px dashed #6366f1;outline-offset:2px;background:#eef2ff!important}.genericDropTarget{transition:.12s}
   @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
 
 </style>
@@ -566,7 +569,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.38 · 신상마켓 월별 맞춤 기록·결과보관</div>
+      <div class="badge">v3.39 · 신상마켓 확인완료·메모·전체 파일 드래그첨부</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -932,9 +935,10 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         </span>
         <button id="runShinsangCompareBtn" class="btn" type="button">입금 · 매출 비교</button>
         <button id="downloadShinsangCompareBtn" class="btn light" type="button" disabled>비교결과 엑셀</button>
-        <button id="confirmShinsangCompareBtn" class="btn" type="button" disabled>일치확인 완료 + 결과보관</button>
+        <button id="confirmShinsangCompareBtn" class="btn" type="button" disabled>월 확인완료 + 결과보관</button>
       </div>
       <div class="shinsangRule"><b>비교 규칙</b> · 매출은 `공급가액` 기준 · 입금은 `입금` 금액 기준 · 동일 거래처의 여러 입금은 합산 · 입금 기재내용은 `신마` 접두어를 떼고 거래처명과 연결 · 거래처코드/거래처명이 파일에 있으면 그것을 최우선 사용 · 이름이 다르면 수동으로 한 번 매칭해 Firebase에 저장하면 다음부터 자동 연결 · 한 파일에 `신상마켓 매출액`/`입금내역` 두 시트가 함께 있어도 파일 하나만 넣어서 비교할 수 있습니다.</div>
+      <div class="shinsangHowto"><b>확인필요가 뜬 다음</b> · 이카운트 거래내역을 확인해서 맞춘 건은 각 행의 <b>확인완료</b>를 체크하고 필요한 내용을 메모하세요. 모든 확인필요 건이 체크되면 <b>월 확인완료 + 결과보관</b> 버튼이 활성화됩니다. 체크·메모는 Firebase에 저장되어 다시 열어도 유지됩니다.</div>
       <div id="shinsangCompareStatus" class="small"></div>
       <div id="shinsangCompareSummary" class="shinsangSummary"></div>
       <div class="monthlyCompareHistoryBox">
@@ -948,7 +952,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button class="btn light" type="button" data-shinsang-filter="amount">금액불일치</button>
         <button class="btn light" type="button" data-shinsang-filter="missing">입금없음</button>
         <button class="btn light" type="button" data-shinsang-filter="unmatched">입금 매칭필요</button>
-        <input id="shinsangCompareSearch" type="text" placeholder="거래처명 · 코드 · 입금기재내용 검색">
+        <button class="btn light" type="button" data-shinsang-filter="reviewed">확인완료</button>
+        <input id="shinsangCompareSearch" type="text" placeholder="거래처명 · 코드 · 입금기재내용 · 메모 검색">
         <span id="shinsangCompareCount" class="small"></span>
       </div>
       <div id="shinsangCompareTable" class="shinsangTableWrap"></div>
@@ -1194,7 +1199,8 @@ let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpe
 let monthlyCompareHistory=[];
 let shinsangDepositAliases=new Map();
 let shinsangCompareHistory=[];
-let shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{}};
+let shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};
+let shinsangHistoryOpenMonths=new Set();
 const SHINSANG_COMPARE_MONTH_KEY='autoecount-ay-shinsang-compare-month-v1';
 const SHINSANG_COMPARE_FILE_CHUNK=650000;
 let taxCheckState={month:'',bizRegs:[],closed:[],notes:[]};
@@ -1356,6 +1362,32 @@ function setupDropZone(kind,inputId,dropId){
   ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();drop.classList.add('dragover');}));
   ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();drop.classList.remove('dragover');}));
   drop.addEventListener('drop',async e=>await addFiles(kind,e.dataTransfer.files));
+}
+function genericFileAccepted(input,file){
+  const accept=(input.accept||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);if(!accept.length)return true;
+  const name=(file.name||'').toLowerCase(),type=(file.type||'').toLowerCase();return accept.some(a=>a.startsWith('.')?name.endsWith(a):a.endsWith('/*')?type.startsWith(a.slice(0,-1)):type===a);
+}
+function genericSetInputFiles(input,files){
+  try{const dt=new DataTransfer();for(const f of files)dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));return true}catch(e){console.warn('파일 목록 갱신 실패',e);return false}
+}
+function genericFileUiBox(input){return document.querySelector(`.genericFileUi[data-for="${CSS.escape(input.id)}"]`)}
+function renderGenericFileInput(input){
+  const box=genericFileUiBox(input);if(!box)return;const files=[...(input.files||[])];
+  box.innerHTML=files.map((f,i)=>`<span class="genericFileChip" title="${escAttr(f.name)}"><span class="gfname">${esc(f.name)}</span><button type="button" data-file-remove="${i}" aria-label="첨부 취소">×</button></span>`).join('');
+  box.querySelectorAll('[data-file-remove]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const idx=Number(btn.dataset.fileRemove),left=[...(input.files||[])].filter((_,i)=>i!==idx);genericSetInputFiles(input,left)}));
+}
+function setupGenericFileInputs(){
+  const skip=new Set(['jangkiFiles','customerFile','itemFile']);
+  document.querySelectorAll('input[type="file"][id]').forEach(input=>{
+    if(skip.has(input.id)||input.dataset.genericFileReady==='1')return;input.dataset.genericFileReady='1';
+    const anyLabel=input.closest('label'),label=input.closest('label.filePickLabel'),host=(anyLabel?.parentElement)||input.parentElement;if(!host)return;
+    let box=document.createElement('div');box.className='genericFileUi';box.dataset.for=input.id;host.appendChild(box);
+    const target=anyLabel||input;target.classList.add('genericDropTarget');if(label)label.classList.add('fileDragReady');target.title=(target.title?target.title+' · ':'')+'파일을 여기로 드래그해서 첨부할 수 있습니다.';
+    ['dragenter','dragover'].forEach(ev=>target.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();target.classList.add('fileDragOver')}));
+    ['dragleave','drop'].forEach(ev=>target.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();target.classList.remove('fileDragOver')}));
+    target.addEventListener('drop',e=>{const incoming=[...(e.dataTransfer?.files||[])].filter(f=>genericFileAccepted(input,f));if(!incoming.length)return;const current=input.multiple?[...(input.files||[])]:[],seen=new Set(current.map(fileKey)),merged=[...current];for(const f of incoming){const k=fileKey(f);if(!seen.has(k)){merged.push(f);seen.add(k)}}genericSetInputFiles(input,input.multiple?merged:incoming.slice(0,1))});
+    input.addEventListener('change',()=>{renderGenericFileInput(input);setTimeout(()=>renderGenericFileInput(input),0)});renderGenericFileInput(input);
+  });
 }
 
 const $=id=>document.getElementById(id);
@@ -1525,7 +1557,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.38',
+    appVersion:'v3.39',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -1738,7 +1770,7 @@ function updateAuthUI(){
   if($('restoreBackupDataFile'))$('restoreBackupDataFile').disabled=!on;
   $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
 }
-function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{}};renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
+function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};shinsangHistoryOpenMonths=new Set();renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 
 async function loadCustomerMasterFromFirebase(){
@@ -3742,7 +3774,7 @@ function renderCompare(){
   renderCompareSpecialDetails();
 }
 
-// ===== 신상마켓 입금 · 매출 공급가액 비교 v3.38 =====
+// ===== 신상마켓 입금 · 매출 공급가액 비교 v3.39 =====
 function shinsangCompact(v){
   let s=norm(v);try{s=s.normalize('NFKC')}catch(e){}
   return s.toLowerCase().replace(/[^0-9a-z가-힣]/gi,'');
@@ -3844,6 +3876,34 @@ function shinsangResolveDeposit(dep,sales,index){
   }
   return {i:-1,reason:candidate.size>1?'동일명 후보 여러 개':'매칭 필요'};
 }
+function shinsangReviewKey(r){
+  if(!r)return'';
+  if(r.type==='sales')return safeId(`sales|${norm(r.code)||shinsangCompact(r.name||r.jangki||r.key)}`);
+  const d=r.dep||r.deposits?.[0]||{};return safeId(`deposit|${shinsangCompact(d.desc||r.name||r.key)}|${norm(d.code)}|${Number(d.amount||r.deposit||0)}`);
+}
+function shinsangReviewFor(r){const k=shinsangReviewKey(r);return (shinsangCompareState.reviews||{})[k]||{key:k,done:false,memo:''}}
+function shinsangReviewsFromHistory(month){
+  const h=shinsangCompareHistoryByMonth(month),out={};
+  for(const x of (h?.reviews||[])){if(x?.key)out[x.key]={key:x.key,done:!!x.done,memo:String(x.memo||''),updatedAtMs:Number(x.updatedAtMs||0)}}
+  return out;
+}
+function applyShinsangSavedReviews(month){shinsangCompareState.reviews=shinsangReviewsFromHistory(month)}
+function shinsangReviewSnapshot(){return Object.values(shinsangCompareState.reviews||{}).filter(x=>x&&(x.done||String(x.memo||'').trim())).map(x=>({key:x.key,done:!!x.done,memo:String(x.memo||''),updatedAtMs:Number(x.updatedAtMs||Date.now())}))}
+async function persistShinsangReviews(){
+  const month=$('shinsangCompareMonth')?.value||'';if(!user||!/^[0-9]{4}-[0-9]{2}$/.test(month))return;
+  const reviews=shinsangReviewSnapshot();
+  await userCol('shinsangCompareHistory').doc(month).set({month,reviews,confirmed:false,reviewUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  const idx=(shinsangCompareHistory||[]).findIndex(x=>x.month===month);const current={...(idx>=0?shinsangCompareHistory[idx]:{}),month,reviews,confirmed:false};
+  if(idx>=0)shinsangCompareHistory[idx]=current;else shinsangCompareHistory.push(current);
+  renderShinsangCompareHistory();
+}
+async function updateShinsangReview(key,patch){
+  if(!shinsangCompareState.reviews)shinsangCompareState.reviews={};
+  const cur=shinsangCompareState.reviews[key]||{key,done:false,memo:''};shinsangCompareState.reviews[key]={...cur,...patch,key,updatedAtMs:Date.now()};
+  renderShinsangCompare();
+  try{await persistShinsangReviews()}catch(e){console.warn('신상마켓 확인상태 저장 실패',e);$('shinsangCompareStatus').innerHTML=`<span class="bad">확인상태 저장 실패: ${esc(e.message||e)}</span>`}
+}
+function shinsangUnresolvedRows(){return (shinsangCompareState.rows||[]).filter(r=>r.status!=='일치'&&!shinsangReviewFor(r).done)}
 function rebuildShinsangCompareRows(){
   const sales=shinsangCompareState.sales||[],deps=shinsangCompareState.deposits||[],idx=shinsangSalesIndex(sales),assigned=new Map(),unmatched=[];
   for(const d of deps){const m=shinsangResolveDeposit(d,sales,idx);if(m.i>=0){if(!assigned.has(m.i))assigned.set(m.i,[]);assigned.get(m.i).push({...d,matchReason:m.reason})}else unmatched.push({...d,matchReason:m.reason})}
@@ -3859,36 +3919,42 @@ function rebuildShinsangCompareRows(){
 }
 function shinsangStatusBadge(status){const cls=status==='일치'?'ok':status==='입금 매칭필요'?'warn':'bad';return `<span class="shinsangBadge ${cls}">${esc(status)}</span>`}
 function shinsangRowVisible(r){
-  const f=shinsangCompareState.filter||'mismatch';
-  if(f==='mismatch'&&r.status==='일치')return false;
+  const f=shinsangCompareState.filter||'mismatch',review=shinsangReviewFor(r);
+  if(f==='mismatch'&&(r.status==='일치'||review.done))return false;
+  if(f==='reviewed'&&!review.done)return false;
   if(f==='match'&&r.status!=='일치')return false;
   if(f==='amount'&&r.status!=='금액불일치')return false;
   if(f==='missing'&&r.status!=='입금없음')return false;
   if(f==='unmatched'&&r.status!=='입금 매칭필요')return false;
   const q=shinsangCompact(shinsangCompareState.search);if(!q)return true;
-  return shinsangCompact([r.code,r.name,r.jangki,...(r.deposits||[]).map(x=>x.desc)].join(' ')).includes(q);
+  return shinsangCompact([r.code,r.name,r.jangki,...(r.deposits||[]).map(x=>x.desc),review.memo].join(' ')).includes(q);
 }
 function renderShinsangCompare(){
   const sum=$('shinsangCompareSummary'),table=$('shinsangCompareTable'),count=$('shinsangCompareCount');if(!sum||!table)return;
   const rows=shinsangCompareState.rows||[],salesRows=rows.filter(r=>r.type==='sales'),unmatched=rows.filter(r=>r.type==='unmatched');
-  const totalSales=salesRows.reduce((a,b)=>a+Number(b.sales||0),0),totalDep=salesRows.reduce((a,b)=>a+Number(b.deposit||0),0),diff=totalDep-totalSales,matched=salesRows.filter(r=>r.status==='일치').length,problems=salesRows.filter(r=>r.status!=='일치').length+unmatched.length;
-  if($('confirmShinsangCompareBtn'))$('confirmShinsangCompareBtn').disabled=!rows.length||problems>0;
-  sum.innerHTML=rows.length?`<div><small>매출 공급가액</small><b>${totalSales.toLocaleString()}원</b></div><div><small>연결된 입금합계</small><b>${totalDep.toLocaleString()}원</b></div><div><small>전체 차이</small><b class="${diff===0?'ok':'bad'}">${diff.toLocaleString()}원</b></div><div><small>일치 거래처</small><b>${matched.toLocaleString()}곳</b></div><div><small>확인필요</small><b class="${problems?'bad':'ok'}">${problems.toLocaleString()}건</b></div>`:'';
-  const visible=rows.filter(shinsangRowVisible);if(count)count.textContent=rows.length?`표시 ${visible.length.toLocaleString()} / ${rows.length.toLocaleString()}`:'';
+  const totalSales=salesRows.reduce((a,b)=>a+Number(b.sales||0),0),totalDep=salesRows.reduce((a,b)=>a+Number(b.deposit||0),0),diff=totalDep-totalSales,matched=salesRows.filter(r=>r.status==='일치').length;
+  const problemRows=rows.filter(r=>r.status!=='일치'),reviewed=problemRows.filter(r=>shinsangReviewFor(r).done).length,unresolved=problemRows.length-reviewed;
+  if($('confirmShinsangCompareBtn'))$('confirmShinsangCompareBtn').disabled=!rows.length||unresolved>0;
+  sum.innerHTML=rows.length?`<div><small>매출 공급가액</small><b>${totalSales.toLocaleString()}원</b></div><div><small>연결된 입금합계</small><b>${totalDep.toLocaleString()}원</b></div><div><small>전체 차이</small><b class="${diff===0?'ok':'bad'}">${diff.toLocaleString()}원</b></div><div><small>자동일치</small><b>${matched.toLocaleString()}곳</b></div><div><small>확인필요</small><b class="${unresolved?'bad':'ok'}">${unresolved.toLocaleString()}건${reviewed?` · 완료 ${reviewed.toLocaleString()}`:''}</b></div>`:'';
+  const visible=rows.filter(shinsangRowVisible);if(count)count.textContent=rows.length?`표시 ${visible.length.toLocaleString()} / ${rows.length.toLocaleString()} · 미완료 ${unresolved.toLocaleString()}`:'';
   document.querySelectorAll('[data-shinsang-filter]').forEach(b=>b.classList.toggle('active',b.dataset.shinsangFilter===shinsangCompareState.filter));
   if(!rows.length){table.innerHTML='<div class="jobEmpty">매출액/입금내역 파일을 넣고 비교해 주세요.</div>';return}
-  let h='<table class="shinsangTable"><thead><tr><th>상태</th><th>거래처</th><th>거래처코드</th><th>매출 공급가액</th><th>입금합계</th><th>차이</th><th>입금 기재내용</th><th>연결근거 / 매칭</th></tr></thead><tbody>';
+  let h='<table class="shinsangTable"><thead><tr><th>상태</th><th>거래처</th><th>거래처코드</th><th>매출 공급가액</th><th>입금합계</th><th>차이</th><th>입금 기재내용</th><th>연결근거 / 매칭</th><th>확인완료</th><th>메모</th></tr></thead><tbody>';
   for(const r of visible){
-    const desc=(r.deposits||[]).map(d=>`${d.desc||'(기재내용 없음)'} ${Number(d.amount||0).toLocaleString()}원`).join(' + ');
+    const review=shinsangReviewFor(r),key=shinsangReviewKey(r),desc=(r.deposits||[]).map(d=>`${d.desc||'(기재내용 없음)'} ${Number(d.amount||0).toLocaleString()}원`).join(' + ');
     let action=esc(r.reason||'');
     if(r.status==='입금 매칭필요'){
       const dep=r.dep||r.deposits?.[0];
       const opts=(shinsangCompareState.sales||[]).slice().sort((a,b)=>norm(a.name).localeCompare(norm(b.name),'ko')).map(x=>`<option value="${escAttr(x.code||x.key)}">${esc(x.name||x.jangki)}${x.code?' · '+esc(x.code):''}</option>`).join('');
       action=`<div class="shinsangMap"><select id="shinsangMap_${escAttr(dep.id)}"><option value="">거래처 선택</option>${opts}</select><button class="btn light" type="button" onclick="saveShinsangDepositAlias('${escAttr(dep.id)}')">영구매칭</button></div>`;
     }
-    h+=`<tr><td>${shinsangStatusBadge(r.status)}</td><td><b>${esc(r.name||'(매칭 전 입금)')}</b>${r.jangki&&r.jangki!==r.name?`<div class="small">${esc(r.jangki)}</div>`:''}</td><td>${esc(r.code||'')}</td><td class="shinsangMoney">${r.sales==null?'':Number(r.sales).toLocaleString()}</td><td class="shinsangMoney">${Number(r.deposit||0).toLocaleString()}</td><td class="shinsangMoney ${Number(r.diff||0)===0?'ok':'bad'}">${Number(r.diff||0).toLocaleString()}</td><td class="shinsangDesc">${esc(desc)}</td><td>${action}</td></tr>`;
+    const reviewCell=r.status==='일치'?'<span class="shinsangBadge ok">자동일치</span>':`<label class="shinsangReviewCheck"><input type="checkbox" data-shinsang-review-check="${escAttr(key)}" ${review.done?'checked':''}>확인완료</label>${review.done?'<div class="shinsangReviewSaved">✓ 저장됨</div>':''}`;
+    const memoCell=r.status==='일치'?'<span class="small">-</span>':`<input class="shinsangReviewMemo" type="text" data-shinsang-review-memo="${escAttr(key)}" value="${escAttr(review.memo||'')}" placeholder="확인내용 / 수정내용 메모">`;
+    h+=`<tr class="${review.done?'reviewDone':''}"><td>${shinsangStatusBadge(r.status)}</td><td><b>${esc(r.name||'(매칭 전 입금)')}</b>${r.jangki&&r.jangki!==r.name?`<div class="small">${esc(r.jangki)}</div>`:''}</td><td>${esc(r.code||'')}</td><td class="shinsangMoney">${r.sales==null?'':Number(r.sales).toLocaleString()}</td><td class="shinsangMoney">${Number(r.deposit||0).toLocaleString()}</td><td class="shinsangMoney ${Number(r.diff||0)===0?'ok':'bad'}">${Number(r.diff||0).toLocaleString()}</td><td class="shinsangDesc">${esc(desc)}</td><td>${action}</td><td class="shinsangReviewCell">${reviewCell}</td><td>${memoCell}</td></tr>`;
   }
   h+='</tbody></table>';table.innerHTML=h;
+  table.querySelectorAll('[data-shinsang-review-check]').forEach(el=>el.addEventListener('change',()=>updateShinsangReview(el.dataset.shinsangReviewCheck,{done:!!el.checked})));
+  table.querySelectorAll('[data-shinsang-review-memo]').forEach(el=>el.addEventListener('change',()=>updateShinsangReview(el.dataset.shinsangReviewMemo,{memo:el.value||''})));
 }
 async function loadShinsangDepositAliases(){
   shinsangDepositAliases=new Map();if(!user)return;
@@ -3920,14 +3986,27 @@ function renderShinsangCompareHistory(){
   for(let m=1;m<=12;m++){
     const month=`${year}-${String(m).padStart(2,'0')}`,x=shinsangCompareHistoryByMonth(month);
     if(!x){items.push(`<div class="monthlyHistoryItem"><div class="mhTop"><b>${m}월</b><span class="statusPill">미확인</span></div><div class="mhMeta">맞춤 기록 없음</div></div>`);continue}
-    const checked=monthlyHistoryCheckedText(x),matched=Number(x.matchedCount||0),salesTotal=Number(x.salesTotal||0),depositTotal=Number(x.depositTotal||0);
+    const reviews=Array.isArray(x.reviews)?x.reviews:[],reviewDone=reviews.filter(r=>r?.done).length;
+    if(!x.confirmed){
+      const progress=reviewDone?`확인완료 ${reviewDone.toLocaleString()}건 저장됨`:'맞춤 기록 없음';
+      items.push(`<div class="monthlyHistoryItem"><div class="mhTop"><b>${m}월</b><span class="statusPill ${reviewDone?'warn':''}">${reviewDone?'확인중':'미확인'}</span></div><div class="mhMeta ${reviewDone?'shinsangHistoryProgress':''}">${progress}</div></div>`);continue;
+    }
+    const checked=monthlyHistoryCheckedText(x),autoMatched=Number(x.autoMatchedCount??x.matchedCount??0),manual=Number(x.manualConfirmedCount??(x.reviewItems||[]).length),salesTotal=Number(x.salesTotal||0),depositTotal=Number(x.depositTotal||0);
     const fileBtn=x.fileAvailable?`<button class="btn light" type="button" onclick="downloadSavedShinsangCompareFile('${month}')">결과파일 다시받기</button>`:'';
+    const detailBtn=`<button class="btn light" type="button" onclick="toggleShinsangHistoryDetails('${month}')">${shinsangHistoryOpenMonths.has(month)?'확인내역 접기':'확인완료 내역'}</button>`;
     const fileMeta=x.fileAvailable?`${esc(x.fileName||'결과파일 보관됨')} · ${Math.max(1,Math.round(Number(x.fileBytes||0)/1024)).toLocaleString()}KB`:'결과파일 없음';
-    const money=matched||salesTotal||depositTotal?`일치 ${matched.toLocaleString()}곳 · 매출 ${salesTotal.toLocaleString()} · 입금 ${depositTotal.toLocaleString()}`:'확인완료';
-    items.push(`<div class="monthlyHistoryItem ok"><div class="mhTop"><b>${m}월</b><span class="statusPill ok">✓ 일치확인</span></div><div class="mhMeta">${esc(checked||'확인일 기록')}<br>${esc(money)}<br>${fileMeta}</div>${fileBtn?`<div class="mhBtns">${fileBtn}</div>`:''}</div>`);
+    let detail='';
+    if(shinsangHistoryOpenMonths.has(month)){
+      const reviewItems=Array.isArray(x.reviewItems)?x.reviewItems:[];
+      const body=reviewItems.length?`<table><thead><tr><th>거래처</th><th>원래 상태</th><th>매출</th><th>입금</th><th>차이</th><th>메모</th></tr></thead><tbody>${reviewItems.map(r=>`<tr><td>${esc(r.name||r.code||'(매칭 전 입금)')}</td><td>${esc(r.status||'')}</td><td class="shinsangMoney">${r.sales==null?'':Number(r.sales||0).toLocaleString()}</td><td class="shinsangMoney">${Number(r.deposit||0).toLocaleString()}</td><td class="shinsangMoney">${Number(r.diff||0).toLocaleString()}</td><td class="memo">${esc(r.memo||'(메모 없음)')}</td></tr>`).join('')}</tbody></table>`:'<div>수동 확인한 내역 없음 · 전 거래처가 자동으로 금액 일치했습니다.</div>';
+      detail=`<div class="shinsangHistoryDetail"><b>확인완료 내역</b><div class="small">자동일치 ${autoMatched.toLocaleString()}곳 · 수동확인 ${manual.toLocaleString()}건</div>${body}</div>`;
+    }
+    items.push(`<div class="monthlyHistoryItem ok"><div class="mhTop"><b>${m}월</b><span class="statusPill ok">✓ 확인완료</span></div><div class="mhMeta">${esc(checked||'확인일 기록')}<br>자동일치 ${autoMatched.toLocaleString()}곳 · 수동확인 ${manual.toLocaleString()}건<br>매출 ${salesTotal.toLocaleString()} · 입금 ${depositTotal.toLocaleString()}<br>${fileMeta}</div><div class="mhBtns">${detailBtn}${fileBtn}</div>${detail}</div>`);
   }
   box.innerHTML=items.join('');
 }
+window.toggleShinsangHistoryDetails=function(month){if(shinsangHistoryOpenMonths.has(month))shinsangHistoryOpenMonths.delete(month);else shinsangHistoryOpenMonths.add(month);renderShinsangCompareHistory()}
+
 async function deleteOldShinsangCompareFileChunks(month,keepVersion=''){
   const snap=await userCol('shinsangCompareFiles').get();
   const old=snap.docs.filter(d=>{const x=d.data()||{};return x.month===month&&String(x.version||'')!==String(keepVersion||'')});
@@ -3936,19 +4015,21 @@ async function deleteOldShinsangCompareFileChunks(month,keepVersion=''){
 function buildShinsangCompareWorkbook(){
   const rows=shinsangCompareState.rows||[];if(!rows.length)throw new Error('먼저 신상마켓 입금·매출 비교를 실행해 주세요.');
   const month=$('shinsangCompareMonth')?.value||'';
-  const result=[['비교월',month],[],['상태','거래처코드','거래처명','장끼거래처명','매출 공급가액','입금합계','차이','입금 기재내용','연결근거']];
+  const result=[['비교월',month],[],['상태','확인완료','확인메모','거래처코드','거래처명','장끼거래처명','매출 공급가액','입금합계','차이','입금 기재내용','연결근거']];
   const details=[['비교월',month],[],['거래처코드','거래처명','기재내용','입금액','연결근거']];
   for(const r of rows){
-    result.push([r.status,r.code||'',r.name||'',r.jangki||'',r.sales==null?'':Number(r.sales||0),Number(r.deposit||0),Number(r.diff||0),(r.deposits||[]).map(d=>d.desc).join(' / '),r.reason||'']);
+    const rv=shinsangReviewFor(r);result.push([r.status,r.status==='일치'?'자동일치':rv.done?'확인완료':'미확인',rv.memo||'',r.code||'',r.name||'',r.jangki||'',r.sales==null?'':Number(r.sales||0),Number(r.deposit||0),Number(r.diff||0),(r.deposits||[]).map(d=>d.desc).join(' / '),r.reason||'']);
     for(const d of r.deposits||[])details.push([r.code||d.code||'',r.name||d.name||'',d.desc||'',Number(d.amount||0),d.matchReason||r.reason||'']);
   }
-  const salesRows=rows.filter(r=>r.type==='sales'),unmatched=rows.filter(r=>r.type==='unmatched');
+  const salesRows=rows.filter(r=>r.type==='sales'),unmatched=rows.filter(r=>r.type==='unmatched'),manual=rows.filter(r=>r.status!=='일치'&&shinsangReviewFor(r).done),unresolved=rows.filter(r=>r.status!=='일치'&&!shinsangReviewFor(r).done);
   const summary=[
     ['비교월',month],
-    ['일치 거래처',salesRows.filter(r=>r.status==='일치').length],
-    ['금액불일치',salesRows.filter(r=>r.status==='금액불일치').length],
-    ['입금없음',salesRows.filter(r=>r.status==='입금없음').length],
-    ['입금 매칭필요',unmatched.length],
+    ['자동일치 거래처',salesRows.filter(r=>r.status==='일치').length],
+    ['수동 확인완료',manual.length],
+    ['미확인 남음',unresolved.length],
+    ['금액불일치 원본건수',salesRows.filter(r=>r.status==='금액불일치').length],
+    ['입금없음 원본건수',salesRows.filter(r=>r.status==='입금없음').length],
+    ['입금 매칭필요 원본건수',unmatched.length],
     ['매출 공급가액 합계',salesRows.reduce((a,b)=>a+Number(b.sales||0),0)],
     ['연결된 입금 합계',salesRows.reduce((a,b)=>a+Number(b.deposit||0),0)],
     ['전체 차이',salesRows.reduce((a,b)=>a+Number(b.diff||0),0)],
@@ -3956,7 +4037,7 @@ function buildShinsangCompareWorkbook(){
     ['입금 원본파일',(shinsangCompareState.meta?.depositFiles||[]).join(' / ')]
   ];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(result),wd=XLSX.utils.aoa_to_sheet(details),wm=XLSX.utils.aoa_to_sheet(summary);
-  ws['!cols']=[{wch:16},{wch:20},{wch:34},{wch:30},{wch:16},{wch:16},{wch:14},{wch:45},{wch:24}];wd['!cols']=[{wch:20},{wch:34},{wch:35},{wch:16},{wch:24}];wm['!cols']=[{wch:22},{wch:80}];
+  ws['!cols']=[{wch:16},{wch:12},{wch:32},{wch:20},{wch:34},{wch:30},{wch:16},{wch:16},{wch:14},{wch:45},{wch:24}];wd['!cols']=[{wch:20},{wch:34},{wch:35},{wch:16},{wch:24}];wm['!cols']=[{wch:22},{wch:80}];
   XLSX.utils.book_append_sheet(wb,wm,'확인요약');XLSX.utils.book_append_sheet(wb,ws,'비교결과');XLSX.utils.book_append_sheet(wb,wd,'입금상세');return wb;
 }
 async function saveShinsangCompareResultFile(month,wb,fileName){
@@ -3973,20 +4054,21 @@ async function saveShinsangCompareResultFile(month,wb,fileName){
 async function confirmShinsangCompare(){
   if(!user)throw new Error('로그인이 필요합니다.');
   const rows=shinsangCompareState.rows||[];if(!rows.length)throw new Error('먼저 신상마켓 입금·매출 비교를 실행해 주세요.');
-  const month=$('shinsangCompareMonth')?.value||'';if(!/^\d{4}-\d{2}$/.test(month))throw new Error('비교월을 선택해 주세요.');
-  const mismatch=rows.filter(r=>r.status!=='일치');if(mismatch.length)throw new Error(`아직 불일치/확인 항목이 ${mismatch.length}건 있습니다. 전부 맞춘 뒤 확인완료해 주세요.`);
-  const salesRows=rows.filter(r=>r.type==='sales'),salesTotal=salesRows.reduce((a,b)=>a+Number(b.sales||0),0),depositTotal=salesRows.reduce((a,b)=>a+Number(b.deposit||0),0);
-  const wb=buildShinsangCompareWorkbook(),now=Date.now(),fileName=`신상마켓_입금매출비교_${month.replace('-','')}_일치확인_${new Date(now).toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
+  const month=$('shinsangCompareMonth')?.value||'';if(!/^[0-9]{4}-[0-9]{2}$/.test(month))throw new Error('비교월을 선택해 주세요.');
+  const unresolved=shinsangUnresolvedRows();if(unresolved.length)throw new Error(`아직 확인완료하지 않은 항목이 ${unresolved.length}건 있습니다. 이카운트 확인 후 각 행의 확인완료를 체크해 주세요.`);
+  const salesRows=rows.filter(r=>r.type==='sales'),autoMatched=salesRows.filter(r=>r.status==='일치'),problemRows=rows.filter(r=>r.status!=='일치'),salesTotal=salesRows.reduce((a,b)=>a+Number(b.sales||0),0),depositTotal=salesRows.reduce((a,b)=>a+Number(b.deposit||0),0);
+  const reviewItems=problemRows.map(r=>{const rv=shinsangReviewFor(r);return {key:shinsangReviewKey(r),code:r.code||'',name:r.name||'',jangki:r.jangki||'',status:r.status||'',sales:r.sales==null?null:Number(r.sales||0),deposit:Number(r.deposit||0),diff:Number(r.diff||0),descriptions:(r.deposits||[]).map(d=>d.desc||'').filter(Boolean),memo:rv.memo||'',confirmed:true,confirmedAtMs:Number(rv.updatedAtMs||Date.now())}});
+  const wb=buildShinsangCompareWorkbook(),now=Date.now(),fileName=`신상마켓_입금매출비교_${month.replace('-','')}_확인완료_${new Date(now).toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
   const file=await saveShinsangCompareResultFile(month,wb,fileName),meta=shinsangCompareState.meta||{};
   await userCol('shinsangCompareHistory').doc(month).set({
-    month,status:'confirmed',confirmed:true,allMatched:true,note:'신상마켓 입금합계와 매출 공급가액 전 거래처 일치 확인',
-    checkedAtMs:now,checkedAt:firebase.firestore.FieldValue.serverTimestamp(),matchedCount:salesRows.length,mismatchCount:0,
-    salesTotal,depositTotal,salesRows:Number(meta.salesRows||0),depositRows:Number(meta.depositRows||0),sourceFiles:{sales:meta.salesFiles||[],deposit:meta.depositFiles||[]},
+    month,status:'confirmed',confirmed:true,allMatched:problemRows.length===0,note:'신상마켓 입금합계와 매출 공급가액 월 확인 완료',
+    checkedAtMs:now,checkedAt:firebase.firestore.FieldValue.serverTimestamp(),matchedCount:autoMatched.length,autoMatchedCount:autoMatched.length,manualConfirmedCount:problemRows.length,remainingCount:0,mismatchCount:problemRows.length,
+    reviews:shinsangReviewSnapshot(),reviewItems,salesTotal,depositTotal,salesRows:Number(meta.salesRows||0),depositRows:Number(meta.depositRows||0),sourceFiles:{sales:meta.salesFiles||[],deposit:meta.depositFiles||[]},
     fileAvailable:true,fileName,fileVersion:file.version,fileChunkCount:file.chunkCount,fileBytes:file.bytes,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
-  await loadShinsangCompareHistory();
-  $('shinsangCompareStatus').textContent=`✓ ${month} 신상마켓 입금·매출 일치확인 저장 완료 · 결과파일 Firebase 보관`;
-  alert(`${month} 신상마켓 맞춤 기록과 결과 엑셀을 저장했습니다.`);
+  shinsangHistoryOpenMonths.add(month);await loadShinsangCompareHistory();
+  $('shinsangCompareStatus').textContent=`✓ ${month} 확인완료 저장 · 자동일치 ${autoMatched.length}곳 · 수동확인 ${problemRows.length}건 · 결과파일 Firebase 보관`;
+  alert(`${month} 신상마켓 확인완료 기록과 메모, 결과 엑셀을 저장했습니다.`);
 }
 window.downloadSavedShinsangCompareFile=async function(month){
   try{
@@ -4007,9 +4089,10 @@ async function runShinsangCompare(){
     $('shinsangCompareStatus').textContent='파일을 읽고 거래처별 금액을 합산하는 중…';
     const [s,d]=await Promise.all([parseShinsangSalesFiles(salesInput),parseShinsangDepositFiles(depositInput)]);
     shinsangCompareState.sales=s.rows;shinsangCompareState.deposits=d.rows;shinsangCompareState.meta={compareMonth:$('shinsangCompareMonth')?.value||'',salesRows:s.sourceRows,depositRows:d.sourceRows,salesFiles:salesInput.map(f=>f.name),depositFiles:depositInput.map(f=>f.name)};
+    applyShinsangSavedReviews($('shinsangCompareMonth')?.value||'');
     rebuildShinsangCompareRows();
-    const problems=shinsangCompareState.rows.filter(r=>r.status!=='일치').length;
-    $('shinsangCompareStatus').innerHTML=`<span class="${problems?'bad':'ok'}">${problems?`확인필요 ${problems.toLocaleString()}건`:'✓ 전체 거래처 금액 일치'}</span> · 매출 ${s.rows.length.toLocaleString()}거래처 · 입금 ${d.rows.length.toLocaleString()}건`;
+    const problems=shinsangUnresolvedRows().length,reviewed=shinsangCompareState.rows.filter(r=>r.status!=='일치'&&shinsangReviewFor(r).done).length;
+    $('shinsangCompareStatus').innerHTML=`<span class="${problems?'bad':'ok'}">${problems?`확인필요 ${problems.toLocaleString()}건`:'✓ 확인필요 처리 완료'}</span>${reviewed?` · 확인완료 ${reviewed.toLocaleString()}건`:''} · 매출 ${s.rows.length.toLocaleString()}거래처 · 입금 ${d.rows.length.toLocaleString()}건`;
     $('downloadShinsangCompareBtn').disabled=false;
   }catch(e){$('shinsangCompareStatus').innerHTML=`<span class="bad">${esc(e.message||e)}</span>`;shinsangCompareState.rows=[];renderShinsangCompare();$('downloadShinsangCompareBtn').disabled=true;}
 }
@@ -4023,7 +4106,7 @@ function setupShinsangCompareUI(){
   $('runShinsangCompareBtn')?.addEventListener('click',runShinsangCompare);$('downloadShinsangCompareBtn')?.addEventListener('click',downloadShinsangCompareExcel);$('confirmShinsangCompareBtn')?.addEventListener('click',()=>confirmShinsangCompare().catch(e=>alert(e.message||e)));
   document.querySelectorAll('[data-shinsang-filter]').forEach(b=>b.addEventListener('click',()=>{shinsangCompareState.filter=b.dataset.shinsangFilter||'all';renderShinsangCompare()}));
   search?.addEventListener('input',e=>{shinsangCompareState.search=e.target.value||'';renderShinsangCompare()});
-  month?.addEventListener('change',()=>{try{localStorage.setItem(SHINSANG_COMPARE_MONTH_KEY,month.value||'')}catch(e){}renderShinsangCompareHistory()});
+  month?.addEventListener('change',()=>{try{localStorage.setItem(SHINSANG_COMPARE_MONTH_KEY,month.value||'')}catch(e){}applyShinsangSavedReviews(month.value||'');renderShinsangCompareHistory();renderShinsangCompare()});
   update();renderShinsangCompareHistory();renderShinsangCompare();
 }
 
@@ -7649,6 +7732,7 @@ $('taxCheckMonth').addEventListener('change',()=>{
 });$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('taxCustomerSearch').addEventListener('input',renderTaxCheck);$('taxCustomerTypeFilter').addEventListener('change',renderTaxCheck);$('taxCustomerProcessFilter').addEventListener('change',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxPurchaseSearch').value=taxPurchaseSearch;$('taxPurchaseSearch').addEventListener('input',e=>{taxPurchaseSearch=e.target.value||'';localStorage.setItem('autoecount-ay-tax-purchase-search-v1',taxPurchaseSearch);renderTaxPurchaseList()});document.querySelectorAll('[data-tax-purchase-filter]').forEach(btn=>btn.addEventListener('click',()=>{taxPurchaseFilter=btn.dataset.taxPurchaseFilter||'all';localStorage.setItem('autoecount-ay-tax-purchase-filter-v1',taxPurchaseFilter);renderTaxPurchaseList()}));$('downloadTaxPurchaseListBtn').onclick=downloadFilteredTaxPurchaseExcel;$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
 (function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);if($('monthlyCompareMonth')){const prev=new Date(d.getFullYear(),d.getMonth()-1,1);let cm=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;try{const saved=localStorage.getItem(MONTHLY_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))cm=saved}catch(e){}$('monthlyCompareMonth').value=cm;}if($('arRunDate')){const md=new Date(d);const dow=md.getDay();const back=dow===0?6:dow-1;md.setDate(md.getDate()-back);$('arRunDate').value=`${md.getFullYear()}-${String(md.getMonth()+1).padStart(2,'0')}-${String(md.getDate()).padStart(2,'0')}`;}let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}if($('shinsangCompareMonth')){let sm=month;try{const saved=localStorage.getItem(SHINSANG_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))sm=saved}catch(e){}$('shinsangCompareMonth').value=sm;}$('generalCutoffDate').value=today;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
+setupGenericFileInputs();
 setupArUI();
 setupShinsangCompareUI();
 setupBaseDataGroup();
