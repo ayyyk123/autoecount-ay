@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.42</title>
+<title>아도라블 매출 자동화 v3.44</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -224,6 +224,14 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .receiptConfirmTop input[type="date"],.receiptRowDate{border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px}
   .receiptDoneRow{background:#f0fdf4}
   .receiptMemoPreview{font-size:11px;color:#64748b;margin-top:3px}
+  .vatRuleManager{margin:10px 0 0;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;padding:10px 12px}
+  .vatRuleManager summary{cursor:pointer;font-weight:900;color:#1e3a8a;user-select:none}
+  .vatRuleManager .ruleStatus{font-size:12px;color:#475569;margin-top:6px}
+  .vatRuleManager .ruleStatus.ok{color:#166534}.vatRuleManager .ruleStatus.bad{color:#991b1b}
+  .receiptReconcile{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 9px}
+  .receiptReconcile span{display:inline-flex;align-items:center;border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;color:#475569}
+  .receiptReconcile span.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+  .receiptReconcile span.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
   .ledgerSummary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0}
   .ledgerSummary>div{border:1px solid #e2e8f0;border-radius:10px;padding:9px;background:#fafafa}.ledgerSummary small{display:block;color:#64748b}.ledgerSummary b{font-size:16px}
   .ledgerAction{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -569,7 +577,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.42 · 신상마켓 거래처별 최종 확정금액</div>
+      <div class="badge">v3.45 · 현금영수증 판매기준 바로잡기 · 과거목록/재다운로드</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -697,6 +705,31 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="card"><h2>거래처리스트 업데이트</h2><div class="hint">이카운트의 <b>최신 전체 거래처리스트</b>를 기준정보로 저장합니다. 새 거래처 등록·코드변경·휴폐업 반영 등 거래처정보가 바뀌었을 때 새 파일을 넣고 <b>거래처 업데이트</b>를 누르세요. 저장된 최신 기준정보는 매출변환, 월초 세금계산서 점검, 거래처 비교에 공통으로 사용합니다.</div><input class="file hidden" id="customerFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="customerDrop"><div class="dztext"><b>최신 거래처리스트 선택</b> 또는 여기로 끌어다 놓으세요.</div></div><div class="filechips" id="customerChips"></div><div class="actions"><button class="btn light" id="importCustomerBtn" disabled>거래처 업데이트</button></div><div id="customerStat" class="masterstat small">저장된 거래처 기준정보 없음</div></div>
     <div class="card"><h2>품목 기준정보 업데이트</h2><div class="hint">최초 1회 또는 품목이 추가·수정됐을 때만 올립니다. 여러 파일을 넣으면 순서대로 병합하며 <b>같은 코드는 나중 파일 값으로 업데이트</b>됩니다. 미매칭 품목은 아래 검수 화면에서 직접 영구 매칭할 수 있습니다.</div><input class="file hidden" id="itemFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="itemDrop"><div class="dztext"><b>파일 선택</b> 또는 품목 엑셀을 끌어다 놓으세요.</div></div><div class="filechips" id="itemChips"></div><div class="actions"><button class="btn light" id="importItemBtn" disabled>품목 업데이트</button></div><div id="itemStat" class="masterstat small">저장 0개 · 수동매칭 0개</div></div>
   </div>
+      <details class="vatRuleManager" id="vatRuleManagerBox">
+        <summary>VAT 거래처 기본규칙 관리 · 거래처별 1.1 계산 직접 변경</summary>
+        <div class="hint" style="margin-top:8px">거래처코드 또는 거래처명을 선택하고 기본규칙을 저장하면 다음 변환부터 Firebase 저장규칙이 가장 우선 적용됩니다. <b>부가세 포함</b>은 단가÷1.1, <b>부가세 별도</b>는 단가 그대로입니다.</div>
+        <div class="moduleToolbar">
+          <input id="vatRuleCustomerInput" class="grow" list="customerChoices" placeholder="거래처코드 또는 거래처명 (예: 2592600918)">
+          <select id="vatRuleModeInput">
+            <option value="included">부가세 포함 → 단가÷1.1</option>
+            <option value="separate">부가세 별도 → 단가 그대로</option>
+          </select>
+          <button id="vatRuleLookupBtn" class="btn light" type="button">현재규칙 보기</button>
+          <button id="vatRuleSaveBtn" class="btn" type="button">기본규칙 저장</button>
+          <button id="vatRuleDeleteBtn" class="btn light" type="button">내 저장규칙 삭제</button>
+        </div>
+        <div id="vatRuleManagerStatus" class="ruleStatus">거래처를 선택하면 현재 적용규칙을 확인할 수 있습니다.</div>
+      </details>
+      <details class="vatRuleManager" id="itemRuleManagerBox">
+        <summary>품목 수동매칭 규칙 보기 · 저장된 품목 연결 확인</summary>
+        <div class="hint" style="margin-top:8px">검수 화면에서 <b>앞으로 이 품목으로 매칭</b>으로 저장한 규칙을 보여줍니다. 장끼 품목명이 어떤 이카운트 품목코드·품목명으로 연결되는지 확인할 수 있고, 잘못 저장한 규칙은 여기서 삭제할 수 있습니다.</div>
+        <div class="moduleToolbar">
+          <input id="itemRuleSearchInput" class="grow" placeholder="장끼 품목명 · 이카운트 품목코드 · 품목명 검색">
+          <button id="itemRuleRefreshBtn" class="btn light" type="button">목록 새로고침</button>
+        </div>
+        <div id="itemRuleManagerStatus" class="ruleStatus">저장된 품목 수동매칭 규칙을 불러오면 여기에 표시됩니다.</div>
+        <div id="itemRuleManagerList" style="margin-top:8px;max-height:360px;overflow:auto"></div>
+      </details>
       <div class="baseDataActions">
         <button class="btn" id="processBtn" disabled>자동 변환·검수</button>
         <button class="btn light" id="reviewBtn" disabled>검수보고서 다운로드</button>
@@ -743,7 +776,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   <div id="receiptSection" class="section hidden">
     <h3>현금영수증 일괄발급 대상</h3>
     <div class="box">
-      <div class="hint">매장 일별정산에서 거래처명이 <b>일반거래처</b>이고 현금액이 0보다 큰 건을 자동 추출합니다. 용도구분 0, 발급수단번호 010-000-1234로 작성합니다.</div>
+      <div class="hint"><b>현금영수증 발급기준은 입금·수금이 아니라 판매내역의 거래처명이 정확히 ‘일반거래처’인 판매 장끼입니다.</b> 판매일 기준으로 발급대상을 만들며, 입금일·이월잔액·수금 여부는 발급대상 금액에 전혀 반영하지 않습니다. 용도구분 0, 발급수단번호 010-000-1234로 작성합니다.</div>
       <div id="receiptSummary"></div>
     </div>
   </div>
@@ -1132,7 +1165,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 <script>
 const SALES_HEADERS=['일자','순번','거래처코드','거래처명','출하창고','거래유형','통화','환율','품목코드','품목명','규격','수량','단가','외화금액','공급가액','부가세','적요','생산전표생성'];
 const CASH_HEADERS=['일자','순번','돈들어온 계좌코드','계정코드(대변)','거래처','거래처명','금액','수수료','적요명'];
-const LEARNED_VAT_RULES={'(에이제트)착한주름':'included','STR':'included','강릉바코드':'included','글루미아이즈':'included','까스통(가스통)':'included','남자다잉':'included','넘버세븐':'included','녹트':'included','대전바코드':'included','더로엘':'included','도로시2':'included','루반트':'included','르멘느':'included','르블랑':'included','마이클로드':'included','멜팅브라운':'included','모더니즘':'included','미스터네이비':'included','믹스이천':'included','바띠소띠':'included','베이지온유구로디지털단지':'included','보다':'included','부산대코튼':'included','부산미꼬장':'included','부평아델':'included','빛날':'included','서면파브로(오늘)':'included','엔젤샵':'included','연신내걸':'included','옷미녀':'included','우모르':'included','월화수옷장(비디컴퍼니)':'included','웨어투웨어':'included','유월드':'included','유토피아':'included','의정부더마티니':'included','일반-YAPI':'included','일반-광주벨리':'included','일반-남포써니':'included','일반-목동고고':'included','일반-사사':'included','일반-서윤':'included','일반-이어르':'included','일반-제주캄톤':'included','일반-차원ck':'included','일반-캐슬/NOIA':'included','일반-퍼플':'included','일반거래처':'included','저스트루트':'included','제이코코러브':'included','지니슬로우':'included','카일라상상미':'included','코니트':'included','코코마랑':'included','쿼터(엠코퍼레이션)':'included','클로데이':'included','티에스스튜디오':'included','티제이':'included','포인트룩':'separate','프린세스':'included','하우온':'included','훈트':'included'};
+const LEARNED_VAT_RULES={'(에이제트)착한주름':'included','STR':'included','강릉바코드':'included','글루미아이즈':'included','까스통(가스통)':'included','남자다잉':'included','넘버세븐':'included','녹트':'included','대전바코드':'included','더로엘':'included','도로시2':'included','루반트':'included','르멘느':'included','르블랑':'included','마이클로드':'included','멜팅브라운':'included','모더니즘':'included','미스터네이비':'included','믹스이천':'included','바띠소띠':'included','베이지온유구로디지털단지':'included','보다':'included','부산대코튼':'included','부산미꼬장':'included','부평아델':'included','빛날':'included','서면파브로(오늘)':'included','엔젤샵':'included','연신내걸':'included','옷미녀':'included','우모르':'included','월화수옷장(비디컴퍼니)':'included','웨어투웨어':'included','유월드':'included','유토피아':'included','의정부더마티니':'included','일반-YAPI':'included','일반-광주벨리':'included','일반-남포써니':'included','일반-목동고고':'included','일반-사사':'included','일반-서윤':'included','일반-이어르':'included','일반-제주캄톤':'included','일반-차원ck':'included','일반-캐슬/NOIA':'included','일반-퍼플':'included','일반거래처':'included','저스트루트':'included','제이코코러브':'included','지니슬로우':'included','카일라상상미':'included','코니트':'included','코코마랑':'included','쿼터(엠코퍼레이션)':'included','클로데이':'included','티에스스튜디오':'included','티제이':'included','포인트룩':'included','프린세스':'included','하우온':'included','훈트':'included'};
 
 
 const DEFAULT_BIZ_REG_REQUEST_EXCLUSIONS=[{"code":"1000000029","name":"맨즈셀렉"},{"code":"1000000034","name":"슈아이-빅사이즈"},{"code":"1000000059","name":"일반거래처"},{"code":"1000000066","name":"에포드 브랜드"},{"code":"1000000082","name":"경성대슈트룸(+구스)"},{"code":"10000001000","name":"S11-더멋"},{"code":"10000001001","name":"S11-벨루스"},{"code":"10000001002","name":"S11-버니로우"},{"code":"10000001003","name":"S11-더클립"},{"code":"10000001004","name":"S11-라룸"},{"code":"10000001005","name":"S11-인챈트미"},{"code":"10000001006","name":"S11-르헤르"},{"code":"10000001007","name":"S11-라띠모어"},{"code":"10000001008","name":"S11-소녀레시피"},{"code":"10000001009","name":"S11-모엣"},{"code":"10000001010","name":"S11-슈가걸"},{"code":"10000001011","name":"S11-제이앤로"},{"code":"10000001012","name":"S11-디스코살롱"},{"code":"10000001013","name":"S11-빈블"},{"code":"10000001014","name":"S11-달리호텔"},{"code":"10000001015","name":"S11-샌프룩"},{"code":"10000001016","name":"S11-만다린트리"},{"code":"10000001017","name":"S11-단미프로젝트"},{"code":"10000001018","name":"S11-미닝아웃"},{"code":"10000001019","name":"S11-잇수다"},{"code":"10000001020","name":"S11-러빈위드"},{"code":"10000001021","name":"S11-나이브실루엣"},{"code":"10000001022","name":"S11-앤드오브"},{"code":"10000001023","name":"S11-에이티즈서울"},{"code":"10000001024","name":"S11-로빈유"},{"code":"10000001025","name":"S11-광주로고"},{"code":"10000001026","name":"S11-심플이즈베스트"},{"code":"10000001027","name":"S11-위드후이린"},{"code":"10000001028","name":"S11-하이클래식"},{"code":"10000001029","name":"S11-룩스유"},{"code":"10000001030","name":"S11-벨류스"},{"code":"10000001031","name":"S11-1월8일"},{"code":"10000001032","name":"S11-피키피키샵"},{"code":"10000001033","name":"S11-로아시스"},{"code":"10000001034","name":"S11-니까"},{"code":"10000001035","name":"S11-벨라데이"},{"code":"10000001036","name":"S11-어베인"},{"code":"10000001037","name":"S12-제이탐탐"},{"code":"10000001038","name":"S12-리즈러버"},{"code":"10000001039","name":"S12-언블랭크"},{"code":"10000001040","name":"S1-원더원더"},{"code":"10000001041","name":"S1-오브던"},{"code":"10000001042","name":"S1-가나다란"},{"code":"10000001043","name":"S1-크러시제이"},{"code":"10000001044","name":"S1-니아룸"},{"code":"10000001045","name":"S1-린다샵"},{"code":"10000001046","name":"S1-멜로우어썸"},{"code":"10000001047","name":"S1-에이딘에이블"},{"code":"10000001048","name":"S1-원주에이트"},{"code":"10000001049","name":"S1-이쁜걸"},{"code":"10000001050","name":"S1-프롬데이원"},{"code":"10000001051","name":"S1-데얼쉬이즈"},{"code":"10000001052","name":"S1-디스코살롱"},{"code":"10000001053","name":"S1-메이룸"},{"code":"10000001054","name":"S1-위드니노"},{"code":"10000001055","name":"S1-유랜"},{"code":"10000001056","name":"S1-모어라운드"},{"code":"10000001057","name":"S1-메이비베이비"},{"code":"10000001058","name":"S1-나이브실루엣"},{"code":"10000001059","name":"S1-프릴리"},{"code":"10000001060","name":"S1-룩스유"},{"code":"10000001061","name":"S1-빈블"},{"code":"10000001062","name":"S1-에오브"},{"code":"10000001063","name":"S1-만다린트리"},{"code":"10000001064","name":"S1-샌프룩"},{"code":"10000001065","name":"S1-뉴모즈"},{"code":"10000001066","name":"S1-미닝아웃"},{"code":"10000001067","name":"S1-데이인"},{"code":"10000001068","name":"S1-프렌치오브"},{"code":"10000001069","name":"S1-언더라임"},{"code":"10000001070","name":"S1-어나더오브젝트"},{"code":"10000001071","name":"S10-모어핏"},{"code":"10000001072","name":"S1-언니가간다"},{"code":"10000001073","name":"S1-우난"},{"code":"10000001074","name":"S1-라클로에"},{"code":"10000001075","name":"S1-트로브"},{"code":"10000001076","name":"S1-핑크시슬리"},{"code":"10000001077","name":"S1-미엔느"},{"code":"10000001078","name":"S1-키메라제이"},{"code":"10000001079","name":"S1-언블랭크"},{"code":"10000001080","name":"S1-내츄럴모먼트"},{"code":"10000001081","name":"S1-프롬뮤즈"},{"code":"10000001082","name":"S1-클루니드"},{"code":"10000001083","name":"S1-유어제이"},{"code":"10000001084","name":"S1-리미즈"},{"code":"10000001085","name":"S1-톤오어"},{"code":"10000001086","name":"S1-플랫퍼"},{"code":"10000001087","name":"S1-위드후이린"},{"code":"10000001088","name":"S1-광주르네"},{"code":"10000001089","name":"S1-라이트미"},{"code":"10000001090","name":"S1-블랙모니카"},{"code":"10000001091","name":"S1-드레스코드"},{"code":"10000001092","name":"S1-슬로우리스트"},{"code":"10000001093","name":"S1-광주로고"},{"code":"10000001094","name":"S1-앤드오브"},{"code":"10000001095","name":"S1-블림핏"},{"code":"10000001096","name":"S1-유어아운스퀘어"},{"code":"10000001097","name":"S1-보통의날"},{"code":"10000001098","name":"S1-엔클로젯"},{"code":"10000001099","name":"S1-더블유비"},{"code":"10000001100","name":"S1-주미엔느"},{"code":"10000001101","name":"S1-제이페이지"},{"code":"10000001102","name":"S1-더핑크"},{"code":"10000001103","name":"S1-믹스비"},{"code":"10000001104","name":"S1-악녀일기"},{"code":"10000001105","name":"S1-본지샵"},{"code":"10000001107","name":"S1-벨라데이"},{"code":"10000001108","name":"S1-브이루아"},{"code":"10000001109","name":"S1-파크룸"},{"code":"10000001110","name":"S1-더멋"},{"code":"10000001111","name":"S1-르헤르"},{"code":"10000001112","name":"S1-라룸"},{"code":"10000001113","name":"S1-스테디샵"},{"code":"10000001114","name":"S1-쇼블랑"},{"code":"10000001115","name":"S1-제이블린"},{"code":"10000001116","name":"S1-로아시스"},{"code":"10000001117","name":"S1-일레븐메이"},{"code":"10000001118","name":"S1-데일리앤"},{"code":"10000001119","name":"S1-피키피키샵"},{"code":"10000001120","name":"S1-휴지마켓"},{"code":"10000001121","name":"S1-리얼코코"},{"code":"10000001122","name":"S1-잇수다"},{"code":"10000001123","name":"S1-벨류스"},{"code":"10000001124","name":"S1-니디즘"},{"code":"10000001125","name":"S1-예낭낭"},{"code":"10000001126","name":"S1-바잇더불렛"},{"code":"10000001127","name":"S1-더블콩"},{"code":"10000001128","name":"S1-조이조이"},{"code":"10000001129","name":"S1-니스휴"},{"code":"10000001130","name":"S1-언버티"},{"code":"10000001140","name":"S2-오큐페"},{"code":"10000001141","name":"S2-드까"},{"code":"10000001142","name":"S2-앤티즈"},{"code":"10000001143","name":"S2-리썸데이"},{"code":"10000001144","name":"S2-데이로제"},{"code":"10000001145","name":"S2-위드마리"},{"code":"10000001146","name":"S2-잇츠밤비"},{"code":"10000001147","name":"S2-온유어리"},{"code":"10000001148","name":"S2-마드제이"},{"code":"10000001150","name":"S2-투이어즈"},{"code":"10000001159","name":"S3-라걸"},{"code":"10000001160","name":"S3-커플넘버원"},{"code":"10000001161","name":"S2-어거스트바이안"},{"code":"10000001162","name":"S3-미니포에"},{"code":"1000000151","name":"스타일맨[링크샵]"},{"code":"1000000194","name":"크러쉬(링크샵)"},{"code":"1000000213","name":"치트키[링크샵]"},{"code":"1000000400","name":"남평화-매장거래처(임시)"},{"code":"1000000850","name":"신상마켓(디테일)"},{"code":"1000000742","name":"DDP(쇼룸)"},{"code":"1000000901","name":"S10-토마토팩토리"},{"code":"1000000902","name":"S10-바잇더불렛"},{"code":"1000000903","name":"S10-클루니드"},{"code":"1000000904","name":"S10-보통의날"},{"code":"1000000905","name":"S10-아담블링"},{"code":"1000000906","name":"S10-아리마"},{"code":"1000000907","name":"S10-예낭낭"},{"code":"1000000908","name":"S10-비인"},{"code":"1000000910","name":"S10-유어제이"},{"code":"1000000911","name":"S10-리미즈"},{"code":"1000000913","name":"S10-톤오어"},{"code":"1000000914","name":"S10-플랫퍼"},{"code":"1000000915","name":"S10-온오프"},{"code":"1000000916","name":"S10-블랙모니카"},{"code":"1000000917","name":"S10-드레스코드"},{"code":"1000000918","name":"S10-에이업(리즈비커밍)"},{"code":"1000000919","name":"S10-우원"},{"code":"1000000920","name":"S10-루킨"},{"code":"1000000921","name":"S10-코코블랑"},{"code":"1000000922","name":"S10-더블콩"},{"code":"1000000923","name":"S10-이너니티"},{"code":"1000000924","name":"S10-가나다란"},{"code":"1000000925","name":"S10-멜로우어썸"},{"code":"1000000926","name":"S10-크러시제이"},{"code":"1000000927","name":"S10-패션풀"},{"code":"1000000928","name":"S10-린다샵"},{"code":"1000000929","name":"S10-러브썸원"},{"code":"1000000930","name":"S10-언니가간다"},{"code":"1000000931","name":"S10-우난"},{"code":"1000000932","name":"S10-라클로에"},{"code":"1000000933","name":"S10-이퀄"},{"code":"1000000934","name":"S10-핑크시슬리"},{"code":"1000000935","name":"S10-리얼코코"},{"code":"1000000936","name":"S10-휴지마켓"},{"code":"1000000937","name":"S10-스테디샵"},{"code":"1000000938","name":"S10-데일리앤"},{"code":"1000000939","name":"S10-리틀마켓"},{"code":"1000000940","name":"S10-일레븐메이"},{"code":"1000000941","name":"S10-제이블린"},{"code":"1000000942","name":"S10-쇼블랑"},{"code":"1000000943","name":"S10-꼰미고"},{"code":"1000000944","name":"S10-데이로제"},{"code":"1000000945","name":"S10-위드마리"},{"code":"1000000946","name":"S10-데이빈"},{"code":"1000000947","name":"S10-그린블로썸"},{"code":"1000000948","name":"S10-미니포에"},{"code":"1000000949","name":"S10-조이조이"},{"code":"1000000950","name":"S10-이쁜걸"},{"code":"1000000951","name":"S10-프롬데이원"},{"code":"1000000952","name":"S10-데얼쉬이즈"},{"code":"1000000953","name":"S10-핫텐"},{"code":"1000000954","name":"S10-메이룸"},{"code":"1000000955","name":"S10-나크21"},{"code":"1000000956","name":"S10-10가트"},{"code":"1000000957","name":"S10-컬러위드클로젯"},{"code":"1000000958","name":"S10-미소706"},{"code":"1000000959","name":"S10-키메라제이"},{"code":"1000000960","name":"S10-크리시크"},{"code":"1000000961","name":"S10-보트먼트"},{"code":"1000000962","name":"S10-로몬"},{"code":"1000000963","name":"S10-데이인"},{"code":"1000000964","name":"S10-프렌치오브"},{"code":"1000000965","name":"S10-어나더오브젝트"},{"code":"1000000966","name":"S10-라라런드리"},{"code":"1000000967","name":"S10-그리니스튜디오"},{"code":"1000000968","name":"S10-블림핏"},{"code":"1000000969","name":"S10-유어아운스퀘어"},{"code":"1000000970","name":"S10-무드러브룸"},{"code":"1000000971","name":"S10-엔클로젯"},{"code":"1000000972","name":"S10-투이어즈"},{"code":"1000000973","name":"S10-파크룸"},{"code":"1000000974","name":"S10-피치모드"},{"code":"1000000977","name":"S10-더블유비"},{"code":"1000000978","name":"S10-주미엔느"},{"code":"1000000979","name":"S10-제이페이지"},{"code":"1000000980","name":"S10-더핑크"},{"code":"1000000981","name":"S10-믹스비"},{"code":"1000000982","name":"S10-유랜"},{"code":"1000000983","name":"S10-악녀일기"},{"code":"1000000984","name":"S10-본지샵"},{"code":"1000000985","name":"S10-바이영"},{"code":"1000000986","name":"S10-슈가파우더"},{"code":"1000000987","name":"S10-광주르네"},{"code":"1000000988","name":"S10-슬로우리스트"},{"code":"1000000989","name":"S10-블랑라벨"},{"code":"1000000990","name":"S11-미엔느"},{"code":"1000000991","name":"S11-하우투러브미"},{"code":"1000000992","name":"S11-트로브"},{"code":"1000000993","name":"S11-사토미라디오"},{"code":"1000000994","name":"S11-리썸데이"},{"code":"1000000995","name":"S11-바티아엘르"},{"code":"1000000996","name":"S11-모어라운드"},{"code":"1000000997","name":"S11-오브던"},{"code":"1000000998","name":"S11-니아룸"},{"code":"1000000999","name":"S11-디어바이미"},{"code":"2000000006","name":"MDO(사업자X)"},{"code":"2000000018","name":"밀리어네어(사업자X)"},{"code":"2000000028","name":"부평플렉스(사업자X)"},{"code":"2000000048","name":"운동장대박(사업자X)"},{"code":"2000000079","name":"링크샵-로단테"},{"code":"2000000106","name":"밀4/218(사업자X)"},{"code":"2000000145","name":"링크샵-T824"},{"code":"2000000155","name":"링크샵-러브하"},{"code":"2000000158","name":"룩북(사업자X)"},{"code":"2000000159","name":"링크샵-치유살롱"},{"code":"2000000166","name":"겐조(사업자X)"},{"code":"2000000175","name":"리브가(사업자X)"},{"code":"2000000176","name":"이대영록이네(사업자X)"},{"code":"2000000185","name":"하남나무(사업자X)"},{"code":"2000000200","name":"네오릭(사업자X)"},{"code":"2000000206","name":"링크샵-최신"},{"code":"2000000208","name":"링크샵-선정88"},{"code":"2000000209","name":"멜로디제이(사업자X)"},{"code":"2000000210","name":"데일리윙(사업자X)"},{"code":"2000000211","name":"플렉스몰(사업자X)"},{"code":"2000000213","name":"링크샵-ATF"},{"code":"2000000214","name":"링크샵-유리지아"},{"code":"2000000218","name":"링크샵-로픽"},{"code":"2000000219","name":"링크샵-주안유통"},{"code":"2000000220","name":"어겐비게인(사업자X)"},{"code":"2000000222","name":"설레팜팜(사업자X)"},{"code":"2000000223","name":"링크샵-스타일코"},{"code":"2000000256","name":"링크샵-진마켓"},{"code":"2000000301","name":"링크샵-헤일로샵"},{"code":"2000000367","name":"(주)스마트비즈-착한옷장"},{"code":"2000000392","name":"링크샵-뿌뿌네"},{"code":"2000000701","name":"링크샵-카도로"},{"code":"2000000754","name":"링크샵-SYCM"},{"code":"2000000224","name":"G&G유통(사업자X)"},{"code":"2000000255","name":"싸판(사업자X)"},{"code":"2000000456","name":"오오티디(일반)"},{"code":"1000000560","name":"마리맨즈(링크샵스)"}];
@@ -1403,14 +1436,77 @@ function safeId(s){return encodeURIComponent(norm(s)).slice(0,1400)}
 function isSampleCustomer(customer){
   return /(?:^|[^A-Za-z])s\s*[\/.]?\s*p(?:\s*(?:봄|여름|가을|겨울))?\s*$/i.test(norm(customer))
 }
+function findVatRuleCustomer(v){
+  const q=norm(v);
+  if(!q)return null;
+  const c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===q||norm(x.name)===q||norm(x.jangkiName)===q);
+  if(!c)return {query:q,customer:q,code:'',name:q,jangkiName:''};
+  return {query:q,customer:norm(c.jangkiName)||norm(c.name),code:norm(c.code),name:norm(c.name),jangkiName:norm(c.jangkiName)};
+}
 function getVatRuleInfo(customer){
-  const c=norm(customer);
-  if(cloud.vatRules.has(c)) return {mode:cloud.vatRules.get(c),source:'Firebase 저장규칙'};
-  if(LEARNED_VAT_RULES[c]) return {mode:LEARNED_VAT_RULES[c],source:'기존 학습규칙'};
-  if(c.startsWith('신상마켓-')) return {mode:'separate',source:'신상마켓 기본규칙'};
+  const c=norm(customer),master=(cloud.runtimeCustomers||[]).find(x=>norm(x.name)===c||norm(x.jangkiName)===c||norm(x.code)===c);
+  const keys=[c,master&&norm(master.jangkiName),master&&norm(master.name),master&&norm(master.code)].filter(Boolean);
+  for(const k of keys)if(cloud.vatRules.has(k))return {mode:cloud.vatRules.get(k),source:'Firebase 저장규칙'};
+  for(const k of keys)if(LEARNED_VAT_RULES[k])return {mode:LEARNED_VAT_RULES[k],source:'기존 학습규칙'};
+  if(keys.some(k=>k.startsWith('신상마켓-'))) return {mode:'separate',source:'신상마켓 기본규칙'};
   return {mode:null,source:null};
 }
 function getVatRule(customer){return getVatRuleInfo(customer).mode}
+function vatModeText(mode){return mode==='included'?'부가세 포함 → 단가÷1.1':mode==='separate'?'부가세 별도 → 단가 그대로':'미설정'}
+function showVatRuleManagerStatus(message,kind=''){const el=$('vatRuleManagerStatus');if(!el)return;el.className='ruleStatus '+(kind||'');el.innerHTML=message}
+function lookupVatRuleManager(){
+  const target=findVatRuleCustomer($('vatRuleCustomerInput')?.value||'');
+  if(!target){showVatRuleManagerStatus('거래처코드 또는 거래처명을 입력해 주세요.','bad');return null}
+  const info=getVatRuleInfo(target.customer);
+  if(info.mode&&$('vatRuleModeInput'))$('vatRuleModeInput').value=info.mode;
+  const label=`${target.code?esc(target.code)+' · ':''}${esc(target.name||target.customer)}${target.jangkiName&&target.jangkiName!==target.name?' · 장끼 '+esc(target.jangkiName):''}`;
+  showVatRuleManagerStatus(`<b>${label}</b> · 현재 <b>${esc(vatModeText(info.mode))}</b>${info.source?' · '+esc(info.source):' · 저장된 규칙 없음'}`,info.mode?'ok':'');
+  return target;
+}
+async function saveVatRuleManager(){
+  try{
+    if(!user)throw new Error('로그인 후 저장해 주세요.');
+    const target=findVatRuleCustomer($('vatRuleCustomerInput')?.value||''),mode=$('vatRuleModeInput')?.value||'';
+    if(!target||!mode)throw new Error('거래처와 VAT 규칙을 선택해 주세요.');
+    const docKey=target.customer;
+    await userCol('vatRules').doc(safeId(docKey)).set({customer:docKey,code:target.code||'',name:target.name||'',jangkiName:target.jangkiName||'',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    [docKey,target.code,target.name,target.jangkiName].map(norm).filter(Boolean).forEach(k=>cloud.vatRules.set(k,mode));
+    showVatRuleManagerStatus(`<b>${esc(target.code||'')} ${esc(target.name||docKey)}</b> · <b>${esc(vatModeText(mode))}</b>으로 저장했습니다. 현재 열어둔 장끼가 있으면 <b>자동 변환·검수</b>를 다시 눌러 반영해 주세요.`,'ok');
+  }catch(e){showVatRuleManagerStatus(esc(e.message||e),'bad')}
+}
+async function deleteVatRuleManager(){
+  try{
+    if(!user)throw new Error('로그인 후 삭제해 주세요.');
+    const target=findVatRuleCustomer($('vatRuleCustomerInput')?.value||'');if(!target)throw new Error('거래처를 입력해 주세요.');
+    await userCol('vatRules').doc(safeId(target.customer)).delete();
+    [target.customer,target.code,target.name,target.jangkiName].map(norm).filter(Boolean).forEach(k=>cloud.vatRules.delete(k));
+    const info=getVatRuleInfo(target.customer);
+    showVatRuleManagerStatus(`<b>${esc(target.code||'')} ${esc(target.name||target.customer)}</b>의 사용자 저장규칙을 삭제했습니다. 현재 적용값: <b>${esc(vatModeText(info.mode))}</b>${info.source?' · '+esc(info.source):''}`,'ok');
+    if(info.mode&&$('vatRuleModeInput'))$('vatRuleModeInput').value=info.mode;
+  }catch(e){showVatRuleManagerStatus(esc(e.message||e),'bad')}
+}
+function renderItemRuleManager(){
+  const box=$('itemRuleManagerList'),status=$('itemRuleManagerStatus');if(!box||!status)return;
+  const q=norm($('itemRuleSearchInput')?.value||'').toLowerCase();
+  const rows=[...(cloud.aliases||new Map()).values()].map(r=>({
+    alias:norm(r.alias),itemCode:norm(r.itemCode||r.manualCode||''),itemName:norm(r.itemName||''),manual:!!r.manualCode
+  })).filter(r=>!q||[r.alias,r.itemCode,r.itemName].some(v=>v.toLowerCase().includes(q))).sort((a,b)=>a.alias.localeCompare(b.alias,'ko'));
+  const total=(cloud.aliases||new Map()).size;
+  status.innerHTML=`저장된 품목 수동매칭 <b>${Number(total).toLocaleString()}개</b>${q?` · 검색결과 <b>${rows.length.toLocaleString()}개</b>`:''}`;
+  if(!rows.length){box.innerHTML='<div class="jobEmpty">'+(total?'검색조건에 맞는 규칙이 없습니다.':'아직 저장된 품목 수동매칭 규칙이 없습니다.')+'</div>';return;}
+  box.innerHTML=`<table><thead><tr><th>장끼 품목명</th><th>이카운트 품목코드</th><th>이카운트 품목명</th><th>저장형태</th><th>관리</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.alias)}</b></td><td>${esc(r.itemCode||'-')}</td><td>${esc(r.itemName||'-')}</td><td>${r.manual?'<span class="statusPill warn">직접 코드</span>':'<span class="statusPill ok">기준품목 연결</span>'}</td><td><button class="btn light" type="button" onclick="deleteItemAliasRule('${escAttr(r.alias)}')">규칙 삭제</button></td></tr>`).join('')}</tbody></table>`;
+}
+async function deleteItemAliasRule(alias){
+  try{
+    if(!user)throw new Error('로그인 후 삭제해 주세요.');
+    alias=norm(alias);if(!alias)throw new Error('삭제할 품목규칙을 찾지 못했습니다.');
+    if(!confirm(`품목 매칭규칙을 삭제할까요?\n${alias}`))return;
+    await userCol('itemAliases').doc(safeId(alias)).delete();
+    cloud.aliases.delete(alias);
+    updateMasterStats();renderItemRuleManager();
+    $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> 품목 수동매칭 규칙을 삭제했습니다. 다음 변환부터 자동매칭되지 않습니다.</p>`;
+  }catch(e){alert(e.message||e)}
+}
 function normalizeMemo(v){const s=norm(v); return s==='샘플'?'SAMPLE':s}
 function aoaFromSheet(wb,sheetName){return XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true,blankrows:false})}
 async function readWb(file){const buf=await file.arrayBuffer(); return XLSX.read(buf,{type:'array',cellDates:false,cellText:false})}
@@ -1559,7 +1655,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.42',
+    appVersion:'v3.44',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -1848,6 +1944,7 @@ async function loadCloudData(){
   cloud.customerMasterMeta=cm.meta||null;
   cloud.items=is.docs.map(d=>d.data());
   cloud.aliases=new Map(as.docs.map(d=>[norm(d.data().alias),d.data()]));
+  renderItemRuleManager();
   cloud.customerAliases=new Map(cas.docs.map(d=>[norm(d.data().alias),d.data()]));
   cloud.vatRules=new Map(vs.docs.map(d=>[norm(d.data().customer),d.data().mode]));
   rebuildCloudMaps();
@@ -2052,33 +2149,8 @@ function analyzeSettlements(settlements,issues){
         generalMap.get(gid).amount+=amount;
       }
 
-      if(f.loc==='store' && cust==='일반거래처'){
-        const cash=num(o['현금액']);
-        const no=o['No.'];
-
-        if(cash>0){
-          const tax=calcReceiptTax(cash);
-          receiptRows.push({
-            id:keyTicket('store',date,no,cust)+'|'+cash,
-            ticketKey:keyTicket('store',date,no,cust),
-            date,
-            no:Number(no)||0,
-            customer:cust,
-            memo:normalizeMemo(o['장기비고']||''),
-            total:cash,
-            supply:tax.supply,
-            tax:tax.tax
-          });
-        }else if(cash<0){
-          const detail=`${date} No.${no} 일반거래처 현금액 ${cash.toLocaleString('ko-KR')}원`;
-          receiptWarnings.push(detail);
-          issues.push({
-            type:'현금영수증 확인',
-            value:'일반거래처',
-            detail:detail+' — 음수 금액은 승인 일괄발급에 자동 포함하지 않음'
-          });
-        }
-      }
+      // 일반거래처 현금영수증은 수금/입금이 아니라 판매내역의 일반거래처 판매 장끼를 기준으로 생성한다.
+      // 따라서 일별정산의 현금액, 입금시점, 이월잔액은 현금영수증 발급대상 계산에 사용하지 않는다.
     }
 
     const finalTotal=sales-returns-spSales+spReturns;
@@ -2113,6 +2185,60 @@ function analyzeSettlements(settlements,issues){
   return {summaries,dayTotals,receiptRows,receiptWarnings,generalRows:[...generalMap.values()]};
 }
 
+function ymdDayDiff(a,b){
+  const pa=String(a||''),pb=String(b||'');
+  if(!/^\d{8}$/.test(pa)||!/^\d{8}$/.test(pb))return 9999;
+  const da=Date.UTC(Number(pa.slice(0,4)),Number(pa.slice(4,6))-1,Number(pa.slice(6,8)));
+  const db=Date.UTC(Number(pb.slice(0,4)),Number(pb.slice(4,6))-1,Number(pb.slice(6,8)));
+  return Math.round((db-da)/86400000);
+}
+function receiptTicketGross(t){
+  let total=0;
+  for(const o of t.rows||[]){
+    if(norm(o['상품명'])==='부가세')continue;
+    const kind=norm(o['구분']),amt=Math.abs(num(o['금액']));
+    if(kind==='판매')total+=amt;else if(kind==='반품')total-=amt;
+  }
+  return Math.round(total);
+}
+function receiptMemoFingerprint(v){return norm(v).toLowerCase().replace(/20\d{6}\/자진발급.*$/,'').replace(/[()]/g,' ').replace(/[^0-9a-z가-힣]+/gi,'').replace(/대납|택배|결제완료건/g,'')}
+function buildReceiptRowsFromSales(tickets,memoMap){
+  const rows=[],warnings=[];
+  const sales=[...tickets.values()]
+    .filter(t=>t.loc==='store'&&norm(t.cust)==='일반거래처')
+    .map(t=>({
+      key:t.key,
+      date:t.date,
+      no:Number(t.no)||0,
+      customer:'일반거래처',
+      total:receiptTicketGross(t),
+      memo:normalizeMemo((memoMap&&memoMap.get(t.key))||'')
+    }))
+    .sort((a,b)=>String(a.date).localeCompare(String(b.date))||a.no-b.no);
+  for(const x of sales){
+    if(Number(x.total)>0){
+      const tax=calcReceiptTax(x.total);
+      rows.push({
+        id:x.key+'|'+Math.round(Number(x.total)),
+        ticketKey:x.key,
+        date:x.date,
+        no:x.no,
+        customer:x.customer,
+        memo:x.memo,
+        total:Math.round(Number(x.total)),
+        supply:tax.supply,
+        tax:tax.tax,
+        salesDate:x.date,
+        salesNo:x.no,
+        linkMethod:'일반거래처 판매'
+      });
+    }else if(Number(x.total)<0){
+      warnings.push(`${formatDisplayDate(x.date)} No.${x.no} 일반거래처 반품/음수판매 ${Number(x.total).toLocaleString('ko-KR')}원 — 신규 현금영수증 발급대상에서는 제외`);
+    }
+  }
+  const total=rows.reduce((sum,x)=>sum+Number(x.total||0),0);
+  return {rows,warnings,meta:{receiptBasis:'sales',receiptSalesCount:rows.length,receiptSalesTotal:total}};
+}
 
 function formatDisplayDate(ymdStr){
   const s=String(ymdStr||'');
@@ -2274,15 +2400,18 @@ function renderReceiptSummary(rows,warnings){
   const sec=$('receiptSection'),box=$('receiptSummary');
   if(!rows.length && !warnings.length){sec.classList.add('hidden');box.innerHTML='';return;}
   sec.classList.remove('hidden');
-  const m=v=>Number(v||0).toLocaleString('ko-KR'),pending=rows.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed).length,total=rows.reduce((s,r)=>s+r.total,0);
+  const m=v=>Number(v||0).toLocaleString('ko-KR'),pending=rows.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed).length,total=rows.reduce((s,r)=>s+r.total,0),rm=state.meta||{};
   let h=`<p><b>발급대상 ${rows.length.toLocaleString()}건 · 총 ${m(total)}원</b> · ${pending?`<span class="statusPill warn">발급확인 ${pending}건 남음</span>`:'<span class="statusPill ok">전건 발급확인 완료</span>'}</p>`;
+  if(rm.receiptBasis==='sales'){
+    h+=`<div class="receiptReconcile"><span class="ok">✓ 기준: 거래처명 ‘일반거래처’ 판매장끼</span><span class="ok">판매 ${Number(rm.receiptSalesCount||rows.length).toLocaleString()}건 · ${m(rm.receiptSalesTotal||total)}원</span><span>입금·수금·이월잔액은 발급금액 계산에서 제외</span></div>`;
+  }
   if(rows.length){
-    h+=`<div class="receiptConfirmTop"><label>발급일 일괄선택 <input id="receiptBulkDate" type="date" value="${escAttr(currentReceiptBulkDate||'')}" onchange="onReceiptBulkDateChange(this.value)"></label><button type="button" class="btn light" onclick="applyBulkReceiptDate()">미확인 건 날짜 일괄적용</button><span class="small">홈택스 실제 발급을 확인한 뒤 건별 체크하세요. 체크해도 미확인 건에 일괄적용한 날짜는 그대로 유지됩니다.</span></div>`;
-    h+='<table><thead><tr><th>발급완료</th><th>발급일</th><th>일자</th><th>No.</th><th>총거래금액</th><th>공급가액</th><th>부가세액</th><th>판매 적요 반영</th></tr></thead><tbody>';
-    for(const r of rows){const c=currentReceiptConfirmations[r.id]||{},dom=safeDomId(r.id),issueInput=c.confirmed?ymdToInput(c.issueDate||''):(currentReceiptDraftDates[r.id]||'');h+=`<tr class="${c.confirmed?'receiptDoneRow':''}"><td><input type="checkbox" ${c.confirmed?'checked':''} onchange="onReceiptCheck('${escAttr(r.id)}',this)"></td><td><input id="receiptDate_${dom}" class="receiptRowDate" type="date" value="${escAttr(issueInput)}" onchange="onReceiptDateChange('${escAttr(r.id)}',this.value)"></td><td>${r.date}</td><td>${r.no}</td><td>${m(r.total)}</td><td>${m(r.supply)}</td><td>${m(r.tax)}</td><td>${c.confirmed?`<b>${esc(c.issueDate)}/자진발급</b>`:'-'}</td></tr>`;}
+    h+=`<div class="receiptConfirmTop"><label>발급일 일괄선택 <input id="receiptBulkDate" type="date" value="${escAttr(currentReceiptBulkDate||'')}" onchange="onReceiptBulkDateChange(this.value)"></label><button type="button" class="btn light" onclick="applyBulkReceiptDate()">미확인 건 날짜 일괄적용</button><button type="button" class="btn light" onclick="downloadReceiptAuditList()">발급대상 목록 엑셀</button>${pending===0?'<button type="button" class="btn light" onclick="downloadCashReceipt(activeJobId,true)">일괄발급 파일 다시받기</button>':''}<span class="small">판매일 기준 일반거래처 판매건입니다. 홈택스 실제 발급을 확인한 뒤 건별 체크하세요.</span></div>`;
+    h+='<table><thead><tr><th>발급완료</th><th>발급일</th><th>판매일</th><th>No.</th><th>총거래금액</th><th>공급가액</th><th>부가세액</th><th>원 적요</th><th>판매 적요 반영</th></tr></thead><tbody>';
+    for(const r of rows){const c=currentReceiptConfirmations[r.id]||{},dom=safeDomId(r.id),issueInput=c.confirmed?ymdToInput(c.issueDate||''):(currentReceiptDraftDates[r.id]||'');h+=`<tr class="${c.confirmed?'receiptDoneRow':''}"><td><input type="checkbox" ${c.confirmed?'checked':''} onchange="onReceiptCheck('${escAttr(r.id)}',this)"></td><td><input id="receiptDate_${dom}" class="receiptRowDate" type="date" value="${escAttr(issueInput)}" onchange="onReceiptDateChange('${escAttr(r.id)}',this.value)"></td><td>${formatDisplayDate(r.date)}</td><td>${r.no}</td><td>${m(r.total)}</td><td>${m(r.supply)}</td><td>${m(r.tax)}</td><td><span class="small">${esc(r.memo||'-')}</span></td><td>${c.confirmed?`<b>${esc(c.issueDate)}/자진발급</b>`:'-'}</td></tr>`;}
     h+='</tbody></table>';
   }
-  if(warnings.length){h+='<p class="warn"><b>자동 제외된 확인 필요 건</b></p><ul>';for(const w of warnings)h+=`<li>${esc(w)}</li>`;h+='</ul>';}
+  if(warnings.length){h+='<p class="warn"><b>자동 제외된 확인 필요 건</b> · 이 항목은 현금영수증 파일에 자동으로 넣지 않습니다.</p><ul>';for(const w of warnings)h+=`<li>${esc(w)}</li>`;h+='</ul>';}
   box.innerHTML=h;
 }
 function decodeBase64Bytes(b64){
@@ -2319,14 +2448,25 @@ function receiptRowsToWorkbook(rows,memoFn){
   rows.forEach((r,i)=>{const rr=info.rowIndex+1+i;setReceiptCell(ws,rr,idxPurpose,'0');setReceiptCell(ws,rr,idxNumber,'010-000-1234');setReceiptCell(ws,rr,idxTotal,r.total);setReceiptCell(ws,rr,idxSupply,r.supply);setReceiptCell(ws,rr,idxTax,r.tax);if(idxMemo>=0)setReceiptCell(ws,rr,idxMemo,memoFn?memoFn(r):'');});
   const ref=XLSX.utils.decode_range(ws['!ref']||'A1:A1');ref.e.r=Math.max(ref.e.r,info.rowIndex+rows.length);ref.e.c=Math.max(ref.e.c,Math.max(idxPurpose,idxNumber,idxTotal,idxSupply,idxTax,idxMemo));ws['!ref']=XLSX.utils.encode_range(ref);return wb;
 }
-async function downloadCashReceipt(jobId=activeJobId){
+async function downloadCashReceipt(jobId=activeJobId,forceAll=false){
   try{
-    const rows=(state.cashReceiptRows||[]).filter(r=>!currentReceiptConfirmations[r.id]?.confirmed);
-    if(!rows.length)throw new Error('미확인 현금영수증 발급대상이 없습니다.');
-    XLSX.writeFile(receiptRowsToWorkbook(rows),'현금영수증_일괄발급_자동완성.xlsx',{bookType:'xlsx'});if(jobId)await recordJobDownload(jobId,'receipt');
+    const all=state.cashReceiptRows||[],pending=all.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed);
+    const rows=(forceAll||!pending.length)?all:pending;
+    if(!rows.length)throw new Error('현금영수증 발급대상이 없습니다.');
+    const name=(forceAll||!pending.length)?'현금영수증_일괄발급_전체대상_다시받기.xlsx':'현금영수증_일괄발급_자동완성.xlsx';
+    XLSX.writeFile(receiptRowsToWorkbook(rows),name,{bookType:'xlsx'});if(jobId)await recordJobDownload(jobId,'receipt');
   }catch(e){showError(e)}
 }
-function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust); memo.set(k,norm(o['장기비고'])); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({
+function downloadReceiptAuditList(){
+  try{
+    const rows=(state.cashReceiptRows||[]).map(r=>{const c=currentReceiptConfirmations[r.id]||{};return [r.date,r.no,r.total,r.supply,r.tax,r.memo||'',c.confirmed?'확인완료':'미확인',c.issueDate||''];});
+    if(!rows.length)throw new Error('현금영수증 발급대상이 없습니다.');
+    const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([['판매일','No.','총거래금액','공급가액','부가세액','원 적요','발급확인','실제 발급일'],...rows]);
+    ws['!cols']=[{wch:12},{wch:8},{wch:14},{wch:14},{wch:12},{wch:34},{wch:12},{wch:12}];XLSX.utils.book_append_sheet(wb,ws,'현금영수증 발급대상');XLSX.writeFile(wb,'현금영수증_발급대상_확인목록.xlsx');
+  }catch(e){showError(e)}
+}
+window.downloadReceiptAuditList=downloadReceiptAuditList;
+function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),cashTmp=[]; for(const f of settlements){const date=dateFromFilename(f.file.name); if(!date){issues.push({type:'파일 날짜',value:f.file.name,detail:'파일명에서 MMDD 날짜를 읽지 못함'});continue} if(!f.loc){issues.push({type:'매장/창고 구분',value:f.file.name,detail:'파일명에 매장/창고가 없고 자동판별 실패'});continue} const objs=objectsFromRows(f.a,f.header); for(const o of objs){const cust=norm(o['판매처']),no=o['No.']; if(!cust||no==null)continue; if(isSampleCustomer(cust))continue; const k=keyTicket(f.loc,date,no,cust),note=normalizeMemo(o['장기비고']||''); if(note)memo.set(k,appendMemoText(memo.get(k)||'',note)); else if(!memo.has(k))memo.set(k,''); const amt=num(o['현금액']); if(amt!==0){const cm=resolveCustomer(customerMaps,cust); if(!cm.ok)issues.push({
   type:'현금 거래처 '+(cm.type==='ambiguous'?'중복':'미매칭'),
   value:cust,
   source:f.loc==='store'?'매장 정산':'창고 정산',
@@ -2693,7 +2833,7 @@ async function saveCustomerDuplicateAlias(groupIndex){
 }
 window.saveCustomerDuplicateAlias=saveCustomerDuplicateAlias;
 
-async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
+async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); renderItemRuleManager(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
 function renderAutoVat(rows){
   const sec=$('vatAutoSection'),box=$('vatAutoTable'),count=$('vatAutoCount');
   if(count)count.textContent=`(${rows.length.toLocaleString()}개)`;
@@ -3777,7 +3917,7 @@ function renderCompare(){
   renderCompareSpecialDetails();
 }
 
-// ===== 신상마켓 입금 · 매출 공급가액 비교 v3.42 =====
+// ===== 신상마켓 입금 · 매출 공급가액 비교 v3.44 =====
 function shinsangCompact(v){
   let s=norm(v);try{s=s.normalize('NFKC')}catch(e){}
   return s.toLowerCase().replace(/[^0-9a-z가-힣]/gi,'');
@@ -6381,23 +6521,23 @@ async function processAll(ticketOverrides={}){try{
   currentBizRegConditionalReviews=existing.exists?{...(existing.data().bizRegConditionalReviews||{})}:{};
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
-  const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
+  const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,receiptLink=buildReceiptRowsFromSales(tickets,mc.memo),br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
   const bizRegConditionalReview=await reviewConditionalExclusionsForSales(tickets,runtimeCustomer.maps);
-  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:settlementAnalysis.receiptRows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:settlementAnalysis.generalRows||[],receiptWarnings:settlementAnalysis.receiptWarnings,issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview},parsed:{tickets,memo:mc.memo,ticketOverrides}};
+  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:settlementAnalysis.generalRows||[],receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
   applyAllSalesMemos();finishRender();await persistCurrentJob();
 }catch(e){showError(e)}}
 function finishRender(){
   const d=dedupeIssues(state.issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
   renderDailySalesTop(state.settlementDayTotals||[]);renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]);renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]);$('stats').classList.remove('hidden');$('sSales').textContent=state.salesRows.length;$('sCash').textContent=state.cashRows.length;$('sVat').textContent=state.vatPending.length;$('sCust').textContent=custN;$('sItem').textContent=itemN;renderVat(state.vatPending);renderAutoVat(state.autoVatApplied||[]);$('issueSection').classList.remove('hidden');renderIssues(state.issues,state.meta);renderGeneralLedger();
   const blocking=receiptPending>0||state.vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||state.meta.unclassifiedFiles.length>0;
-  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).some(r=>!currentReceiptConfirmations[r.id]?.confirmed);$('reviewBtn').disabled=false;
+  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length;$('receiptBtn').textContent=receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기';$('reviewBtn').disabled=false;
   let msg=`<p><b>판매 ${state.salesRows.length.toLocaleString()}행</b>, 현금 ${state.cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(state.meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(state.meta.customerFileName)}</b> · ${Number(state.meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length)msg+=`<p class="${receiptPending?'warn':'ok'}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료'}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
   if(state.meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${state.meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(state.meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${state.meta.sampleExcludedTickets.toLocaleString()}장끼 / ${state.meta.sampleExcludedRows.toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`;if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭 검수와 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
 }
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(jobId=activeJobId){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'sales')}
 function downloadCash(jobId=activeJobId){XLSX.writeFile(makeWorkbook(CASH_HEADERS,state.cashRows,'입금보고서'),'이카운트_현금입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'cash')}
-function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.shinsangMarketAmount||0,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','신상마켓금액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>[r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','비고'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 샘플 제외 장끼',state.meta.sampleExcludedTickets||0],['S/P·SP 샘플 제외 품목',state.meta.sampleExcludedRows||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
+function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.shinsangMarketAmount||0,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','신상마켓금액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>{const c=currentReceiptConfirmations[r.id]||{};return [r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'',c.confirmed?'확인완료':'미확인',c.issueDate||''];}); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['판매일','판매 No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','원 적요','발급확인','실제 발급일'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 샘플 제외 장끼',state.meta.sampleExcludedTickets||0],['S/P·SP 샘플 제외 품목',state.meta.sampleExcludedRows||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
 
 
 
@@ -6656,10 +6796,10 @@ window.deleteFirebaseJob=deleteFirebaseJob;
 
 function jobOutputCell(job,type){
   const m=metricsForJob(job),dl=job.downloads||{};let lines=[],can=false;
-  if(type==='receipt'){if(m.receipt)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">검수 ${m.receipt}건 남음</button>`);if(Number(job.cashReceiptCount||0)){if(Number(m.receiptConfirmPending||job.receiptConfirmPending||0))lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">발급확인 ${Number(m.receiptConfirmPending||job.receiptConfirmPending||0)}건</button>`);else lines.push('<span class="jobComplete">발급확인 완료</span>');}else lines.push('<span class="jobComplete">대상없음</span>');{const rp=job.receiptConfirmPending===undefined?Number(job.cashReceiptCount||0):Number(job.receiptConfirmPending||0);can=Number(job.cashReceiptCount||0)>0&&rp>0}}
+  if(type==='receipt'){if(m.receipt)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">검수 ${m.receipt}건 남음</button>`);if(Number(job.cashReceiptCount||0)){const rp=job.receiptConfirmPending===undefined?Number(job.cashReceiptCount||0):Number(job.receiptConfirmPending||0);if(rp)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">발급확인 ${rp}건</button>`);else lines.push('<span class="jobComplete">발급확인 완료</span>');lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">목록보기</button>`);can=true;}else lines.push('<span class="jobComplete">대상없음</span>');}
   if(type==='cash'){if(m.cashCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.cashCust}건</button>`);else lines.push('<span class="jobComplete">완료</span>');can=m.cashBlocking===0}
   if(type==='sales'){if(m.vat)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','vatPending')">VAT 검수 ${m.vat}건</button>`);if(m.salesCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.salesCust}건</button>`);if(m.item)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">품목 미매칭 ${m.item}건</button>`);if(Number(m.receiptConfirmPending||0))lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">현금영수증 확인 ${Number(m.receiptConfirmPending)}건</button>`);if(!m.vat&&!m.salesCust&&!m.item&&!m.fatal&&!Number(m.receiptConfirmPending||0))lines.push('<span class="jobComplete">완료</span>');can=m.salesBlocking===0}
-  const stamp=fmtJobDownloadTime(dl[type]);lines.push(`<div><button class="jobDownloadBtn" ${can?'':'disabled'} onclick="downloadJobOutput('${job.id}','${type}')">다운로드</button></div>`);if(stamp)lines.push(`<div class="jobDownloadTime">${stamp}</div>`);return lines.join('')
+  const stamp=fmtJobDownloadTime(dl[type]),btnLabel=(type==='receipt'&&stamp)?'다시받기':'다운로드';lines.push(`<div><button class="jobDownloadBtn" ${can?'':'disabled'} onclick="downloadJobOutput('${job.id}','${type}')">${btnLabel}</button></div>`);if(stamp)lines.push(`<div class="jobDownloadTime">${stamp}</div>`);return lines.join('')
 }
 function jobReferenceCell(job){
   const refs=Array.isArray(job.fileRefs)?job.fileRefs:[];
@@ -7772,6 +7912,8 @@ document.addEventListener('click',e=>{
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
+$('vatRuleLookupBtn').onclick=lookupVatRuleManager; $('vatRuleSaveBtn').onclick=saveVatRuleManager; $('vatRuleDeleteBtn').onclick=deleteVatRuleManager; $('vatRuleCustomerInput').addEventListener('change',lookupVatRuleManager);
+$('itemRuleRefreshBtn').onclick=renderItemRuleManager; $('itemRuleSearchInput').addEventListener('input',renderItemRuleManager); $('itemRuleManagerBox').addEventListener('toggle',()=>{if($('itemRuleManagerBox').open)renderItemRuleManager()});
 $('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptBulkDate=''; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 
 // 신규 월마감/원장 기능 이벤트
