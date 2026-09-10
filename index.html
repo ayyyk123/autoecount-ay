@@ -550,6 +550,11 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .genericFileUi{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;max-width:100%}.genericFileChip{display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:4px 6px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:10px;color:#475569}.genericFileChip .gfname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.genericFileChip button{border:0;background:transparent;color:#64748b;cursor:pointer;padding:0 1px;font-size:14px;line-height:1}.genericFileChip button:hover{color:#dc2626}.filePickLabel.fileDragReady{border-style:dashed}.filePickLabel.fileDragReady::after{content:'↧';font-size:11px;color:#6366f1}.filePickLabel.fileDragOver,.genericDropTarget.fileDragOver{outline:2px dashed #6366f1;outline-offset:2px;background:#eef2ff!important}.genericDropTarget{transition:.12s}
   @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
 
+
+  /* ===== v3.46 통합 규칙관리 ===== */
+  .rulesWorkArea{margin:12px 0 16px}.rulesHero{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid #c7d2fe;border-radius:12px;background:#eef2ff}.rulesHero h2{margin:0 0 5px;font-size:18px}.rulesHero p{margin:0;font-size:11px;line-height:1.55;color:#475569}.rulesSummary{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px;margin:10px 0}.rulesSummary>div{padding:9px 11px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}.rulesSummary small{display:block;color:#64748b;font-size:10px}.rulesSummary b{font-size:16px}.rulesBox{border:1px solid #dbe2ea;border-radius:10px;background:#fff;margin:9px 0;padding:0 10px 10px}.rulesBox>summary{cursor:pointer;font-weight:900;font-size:13px;padding:10px 2px}.rulesHint{font-size:10px;color:#64748b;line-height:1.5;padding:0 2px 7px}.rulesEditRow,.rulesToolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}.rulesEditRow input,.rulesEditRow select,.rulesToolbar input,.rulesToolbar select{height:31px;padding:5px 8px;font-size:11px}.rulesToolbar .btn,.rulesEditRow .btn{padding:6px 9px;font-size:10px}.rulesTableWrap{max-height:450px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;margin-top:6px}.rulesTableWrap table{font-size:10px;min-width:900px}.rulesTableWrap th,.rulesTableWrap td{padding:5px 6px;vertical-align:middle}.rulesTableWrap th{position:sticky;top:0;background:#f8fafc;z-index:1}.ruleSource{display:inline-block;border-radius:999px;padding:2px 6px;font-size:9px;font-weight:850;white-space:nowrap}.ruleSource.user{background:#e0e7ff;color:#3730a3}.ruleSource.base{background:#dcfce7;color:#166534}.ruleSource.blocked{background:#fee2e2;color:#991b1b}.ruleSource.builtin{background:#fef3c7;color:#92400e}.ruleSource.ambiguous{background:#ffedd5;color:#9a3412}.ruleActions{display:flex;gap:4px;white-space:nowrap}.ruleActions .btn{padding:4px 6px;font-size:9px}.rulesCode{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px}.rulesMuted{color:#94a3b8}.rulesPageInfo{min-width:75px;text-align:center;color:#64748b}.rulesWorkArea .ruleStatus{margin:5px 0;padding:6px 8px;font-size:10px}
+  @media(max-width:900px){.rulesSummary{grid-template-columns:repeat(2,1fr)}.rulesHero{flex-direction:column}.rulesEditRow>*{max-width:100%}}
+
 </style>
 </head>
 <body>
@@ -562,7 +567,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <button type="button" id="noticeBtn" class="noticeBtn" title="프로그램 안내">📢</button>
           <div id="noticePop" class="noticePop hidden">
             매장·창고 장끼 원본을 이카운트 판매입력·현금입력 파일로 자동 변환합니다.<br>
-            품목 기준정보·거래처 기준정보·수동 매칭·VAT 규칙은 Firebase에 저장되어 여러 PC에서 공유됩니다.<br>
+            품목·거래처 기준정보와 사용자 매칭·VAT·신상마켓 규칙은 Firebase에 저장되어 여러 PC에서 공유되며, 규칙관리 탭에서 조회·수정할 수 있습니다.<br>
             매출변환 작업의 장끼/일별정산 원본과 검수 진행상태도 Firebase에 자동저장되어 다른 PC에서 이어서 작업할 수 있습니다.
           </div>
         </span>
@@ -577,7 +582,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.45 · 현금영수증 판매기준 바로잡기 · 과거목록/재다운로드</div>
+      <div class="badge">v3.46 · 통합 규칙관리 · 전체 적용규칙 조회/수정/삭제</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -603,9 +608,90 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       미수관리
       <small>월요일 자동정리 · 주간 입금체크 · 공유엑셀</small>
     </button>
+    <button id="rulesWorkTabBtn" class="workTabBtn" type="button" data-work-tab="rules">
+      규칙관리
+      <small>거래처 · 품목 · VAT · 신상마켓 매칭</small>
+    </button>
   </div>
 
 
+  <div id="rulesWorkArea" class="rulesWorkArea workTabHidden">
+    <div class="rulesHero">
+      <div>
+        <h2>규칙관리</h2>
+        <p>프로그램이 현재 자동으로 적용하는 거래처·품목·VAT·신상마켓 매칭을 한곳에서 확인합니다. <b>기준정보 자동연결까지 포함한 전체 적용규칙</b>을 볼 수 있고, 사용자 규칙은 직접 추가·수정·삭제할 수 있습니다. 기준정보 규칙을 삭제하면 원본 기준정보 자체를 지우지 않고 <b>자동연결 제외규칙</b>으로 저장해 안전하게 막습니다.</p>
+      </div>
+      <button id="rulesExportBtn" class="btn light" type="button">전체 규칙 엑셀 저장</button>
+    </div>
+    <div id="rulesSummary" class="rulesSummary"></div>
+
+    <details class="rulesBox" id="rulesCustomerBox" open>
+      <summary>거래처 매칭 규칙</summary>
+      <div class="rulesHint">최신 거래처 기준정보의 <b>거래처명·장끼거래처명 → 거래처코드</b> 자동연결과 Firebase 사용자 매칭을 모두 보여줍니다. 사용자 규칙이 있으면 기준정보보다 우선합니다.</div>
+      <div class="rulesEditRow">
+        <input id="rulesCustomerAlias" class="grow" placeholder="장끼/원본에서 들어오는 거래처명">
+        <input id="rulesCustomerTarget" class="grow" list="customerChoices" placeholder="연결할 거래처코드 또는 거래처명">
+        <button id="rulesCustomerSave" class="btn" type="button">추가/수정 저장</button>
+        <button id="rulesCustomerClear" class="btn light" type="button">입력 비우기</button>
+      </div>
+      <div id="rulesCustomerStatus" class="ruleStatus">원본 거래처명과 연결할 거래처를 입력하면 수기 규칙을 추가할 수 있습니다.</div>
+      <div class="rulesToolbar">
+        <input id="rulesCustomerSearch" class="grow" placeholder="원본명 · 거래처코드 · 거래처명 검색">
+        <select id="rulesCustomerFilter"><option value="all">전체</option><option value="user">사용자규칙</option><option value="base">기준정보 자동연결</option><option value="blocked">자동연결 제외</option><option value="ambiguous">중복/확인필요</option></select>
+        <button class="btn light" id="rulesCustomerPrev" type="button">◀</button><span id="rulesCustomerPage" class="small"></span><button class="btn light" id="rulesCustomerNext" type="button">▶</button>
+      </div>
+      <div id="rulesCustomerList" class="rulesTableWrap"></div>
+    </details>
+
+    <details class="rulesBox" id="rulesItemBox" open>
+      <summary>품목 매칭 규칙</summary>
+      <div class="rulesHint">품목 기준정보의 <b>품목명 → 품목코드</b> 자동연결과 Firebase 품목 매칭을 모두 보여줍니다. 수기로 새 규칙을 추가하거나 기존 규칙을 다른 코드로 수정할 수 있습니다.</div>
+      <div class="rulesEditRow">
+        <input id="rulesItemAlias" class="grow" placeholder="장끼/원본 품목명">
+        <input id="rulesItemTarget" class="grow" list="itemChoices" placeholder="연결할 이카운트 품목코드 또는 품목명">
+        <button id="rulesItemSave" class="btn" type="button">추가/수정 저장</button>
+        <button id="rulesItemClear" class="btn light" type="button">입력 비우기</button>
+      </div>
+      <div id="rulesItemStatus" class="ruleStatus">원본 품목명과 연결할 품목을 입력하면 수기 규칙을 추가할 수 있습니다.</div>
+      <div class="rulesToolbar">
+        <input id="rulesItemSearch" class="grow" placeholder="원본 품목명 · 품목코드 · 품목명 검색">
+        <select id="rulesItemFilter"><option value="all">전체</option><option value="user">사용자규칙</option><option value="base">기준정보 자동연결</option><option value="blocked">자동연결 제외</option><option value="ambiguous">중복/확인필요</option></select>
+        <button class="btn light" id="rulesItemPrev" type="button">◀</button><span id="rulesItemPage" class="small"></span><button class="btn light" id="rulesItemNext" type="button">▶</button>
+      </div>
+      <div id="rulesItemList" class="rulesTableWrap"></div>
+    </details>
+
+    <details class="rulesBox" id="rulesVatBox" open>
+      <summary>VAT 거래처 규칙 · 1.1 계산</summary>
+      <div class="rulesHint"><b>현재규칙 보기 버튼 없이</b> 전체 규칙이 아래 목록에 바로 표시됩니다. Firebase 사용자규칙 → 기존 학습규칙 → 신상마켓 기본규칙 순으로 적용합니다. 기존 규칙을 수정하면 사용자규칙으로 덮어쓰며, 기존 규칙을 삭제하면 자동적용 제외로 저장할 수 있습니다.</div>
+      <div class="rulesEditRow">
+        <input id="rulesVatCustomer" class="grow" list="customerChoices" placeholder="거래처코드 또는 거래처명">
+        <select id="rulesVatMode"><option value="included">부가세 포함 → 단가÷1.1</option><option value="separate">부가세 별도 → 단가 그대로</option></select>
+        <button id="rulesVatSave" class="btn" type="button">추가/수정 저장</button>
+        <button id="rulesVatClear" class="btn light" type="button">입력 비우기</button>
+      </div>
+      <div id="rulesVatStatus" class="ruleStatus">거래처를 입력하면 사용자 VAT 규칙을 추가할 수 있습니다.</div>
+      <div class="rulesToolbar">
+        <input id="rulesVatSearch" class="grow" placeholder="거래처명 · 코드 · 적용출처 검색">
+        <select id="rulesVatFilter"><option value="all">전체</option><option value="user">사용자규칙</option><option value="builtin">기존/기본규칙</option><option value="blocked">자동적용 제외</option></select>
+      </div>
+      <div id="rulesVatList" class="rulesTableWrap"></div>
+    </details>
+
+    <details class="rulesBox" id="rulesShinsangBox">
+      <summary>신상마켓 입금명 매칭 규칙</summary>
+      <div class="rulesHint">은행 입금 기재내용의 <b>신마+거래처명</b>이 어떤 신상마켓 거래처로 연결되는지 저장된 영구매칭을 조회·수정·삭제합니다.</div>
+      <div class="rulesEditRow">
+        <input id="rulesShinsangAlias" class="grow" placeholder="입금 기재내용 (예: 신마포인트룩)">
+        <input id="rulesShinsangTarget" class="grow" list="customerChoices" placeholder="연결할 거래처코드 또는 거래처명">
+        <button id="rulesShinsangSave" class="btn" type="button">추가/수정 저장</button>
+        <button id="rulesShinsangClear" class="btn light" type="button">입력 비우기</button>
+      </div>
+      <div id="rulesShinsangStatus" class="ruleStatus">저장된 신상마켓 입금명 영구매칭을 관리합니다.</div>
+      <div class="rulesToolbar"><input id="rulesShinsangSearch" class="grow" placeholder="입금명 · 거래처명 · 코드 검색"></div>
+      <div id="rulesShinsangList" class="rulesTableWrap"></div>
+    </details>
+  </div>
 
   <div id="arWorkArea" class="arWorkArea workTabHidden">
     <div class="arHero">
@@ -705,31 +791,6 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="card"><h2>거래처리스트 업데이트</h2><div class="hint">이카운트의 <b>최신 전체 거래처리스트</b>를 기준정보로 저장합니다. 새 거래처 등록·코드변경·휴폐업 반영 등 거래처정보가 바뀌었을 때 새 파일을 넣고 <b>거래처 업데이트</b>를 누르세요. 저장된 최신 기준정보는 매출변환, 월초 세금계산서 점검, 거래처 비교에 공통으로 사용합니다.</div><input class="file hidden" id="customerFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="customerDrop"><div class="dztext"><b>최신 거래처리스트 선택</b> 또는 여기로 끌어다 놓으세요.</div></div><div class="filechips" id="customerChips"></div><div class="actions"><button class="btn light" id="importCustomerBtn" disabled>거래처 업데이트</button></div><div id="customerStat" class="masterstat small">저장된 거래처 기준정보 없음</div></div>
     <div class="card"><h2>품목 기준정보 업데이트</h2><div class="hint">최초 1회 또는 품목이 추가·수정됐을 때만 올립니다. 여러 파일을 넣으면 순서대로 병합하며 <b>같은 코드는 나중 파일 값으로 업데이트</b>됩니다. 미매칭 품목은 아래 검수 화면에서 직접 영구 매칭할 수 있습니다.</div><input class="file hidden" id="itemFile" type="file" accept=".xlsx,.xls" multiple><div class="dropzone" id="itemDrop"><div class="dztext"><b>파일 선택</b> 또는 품목 엑셀을 끌어다 놓으세요.</div></div><div class="filechips" id="itemChips"></div><div class="actions"><button class="btn light" id="importItemBtn" disabled>품목 업데이트</button></div><div id="itemStat" class="masterstat small">저장 0개 · 수동매칭 0개</div></div>
   </div>
-      <details class="vatRuleManager" id="vatRuleManagerBox">
-        <summary>VAT 거래처 기본규칙 관리 · 거래처별 1.1 계산 직접 변경</summary>
-        <div class="hint" style="margin-top:8px">거래처코드 또는 거래처명을 선택하고 기본규칙을 저장하면 다음 변환부터 Firebase 저장규칙이 가장 우선 적용됩니다. <b>부가세 포함</b>은 단가÷1.1, <b>부가세 별도</b>는 단가 그대로입니다.</div>
-        <div class="moduleToolbar">
-          <input id="vatRuleCustomerInput" class="grow" list="customerChoices" placeholder="거래처코드 또는 거래처명 (예: 2592600918)">
-          <select id="vatRuleModeInput">
-            <option value="included">부가세 포함 → 단가÷1.1</option>
-            <option value="separate">부가세 별도 → 단가 그대로</option>
-          </select>
-          <button id="vatRuleLookupBtn" class="btn light" type="button">현재규칙 보기</button>
-          <button id="vatRuleSaveBtn" class="btn" type="button">기본규칙 저장</button>
-          <button id="vatRuleDeleteBtn" class="btn light" type="button">내 저장규칙 삭제</button>
-        </div>
-        <div id="vatRuleManagerStatus" class="ruleStatus">거래처를 선택하면 현재 적용규칙을 확인할 수 있습니다.</div>
-      </details>
-      <details class="vatRuleManager" id="itemRuleManagerBox">
-        <summary>품목 수동매칭 규칙 보기 · 저장된 품목 연결 확인</summary>
-        <div class="hint" style="margin-top:8px">검수 화면에서 <b>앞으로 이 품목으로 매칭</b>으로 저장한 규칙을 보여줍니다. 장끼 품목명이 어떤 이카운트 품목코드·품목명으로 연결되는지 확인할 수 있고, 잘못 저장한 규칙은 여기서 삭제할 수 있습니다.</div>
-        <div class="moduleToolbar">
-          <input id="itemRuleSearchInput" class="grow" placeholder="장끼 품목명 · 이카운트 품목코드 · 품목명 검색">
-          <button id="itemRuleRefreshBtn" class="btn light" type="button">목록 새로고침</button>
-        </div>
-        <div id="itemRuleManagerStatus" class="ruleStatus">저장된 품목 수동매칭 규칙을 불러오면 여기에 표시됩니다.</div>
-        <div id="itemRuleManagerList" style="margin-top:8px;max-height:360px;overflow:auto"></div>
-      </details>
       <div class="baseDataActions">
         <button class="btn" id="processBtn" disabled>자동 변환·검수</button>
         <button class="btn light" id="reviewBtn" disabled>검수보고서 다운로드</button>
@@ -1160,7 +1221,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   </div>
   <datalist id="itemChoices"></datalist><datalist id="customerChoices"></datalist>
 
-  <div class="footer">Firebase에는 품목 기준정보, 최신 거래처 기준정보, 수동 매칭, 거래처별 VAT 규칙을 저장합니다. 최신 거래처리스트를 업데이트하면 매출변환·월초 세금계산서 점검·거래처 비교에서 공통 사용합니다. 기존 학습 VAT 규칙도 자동변환에 사용하되, 이번 변환에서 자동 적용된 장끼는 별도 목록으로 보여줍니다. 검수 중인 판매내역/일별정산 원본과 작업 진행상태는 여러 PC에서 이어서 작업할 수 있도록 Firebase Firestore에 분할 저장합니다. 이 PC 브라우저에도 임시 캐시를 유지합니다.</div>
+  <div class="footer">Firebase에는 품목 기준정보, 최신 거래처 기준정보와 사용자 거래처/품목 매칭, VAT, 신상마켓 입금명 규칙을 저장합니다. 최신 거래처리스트를 업데이트하면 매출변환·월초 세금계산서 점검·거래처 비교에서 공통 사용합니다. 기존 학습 VAT 규칙도 자동변환에 사용하되, 이번 변환에서 자동 적용된 장끼는 별도 목록으로 보여줍니다. 검수 중인 판매내역/일별정산 원본과 작업 진행상태는 여러 PC에서 이어서 작업할 수 있도록 Firebase Firestore에 분할 저장합니다. 이 PC 브라우저에도 임시 캐시를 유지합니다.</div>
 </div>
 <script>
 const SALES_HEADERS=['일자','순번','거래처코드','거래처명','출하창고','거래유형','통화','환율','품목코드','품목명','규격','수량','단가','외화금액','공급가액','부가세','적요','생산전표생성'];
@@ -1446,9 +1507,9 @@ function findVatRuleCustomer(v){
 function getVatRuleInfo(customer){
   const c=norm(customer),master=(cloud.runtimeCustomers||[]).find(x=>norm(x.name)===c||norm(x.jangkiName)===c||norm(x.code)===c);
   const keys=[c,master&&norm(master.jangkiName),master&&norm(master.name),master&&norm(master.code)].filter(Boolean);
-  for(const k of keys)if(cloud.vatRules.has(k))return {mode:cloud.vatRules.get(k),source:'Firebase 저장규칙'};
+  for(const k of keys)if(cloud.vatRules.has(k)){const v=cloud.vatRules.get(k);return v==='none'?{mode:null,source:'사용자 자동적용 제외',blocked:true}:{mode:v,source:'Firebase 저장규칙'};}
   for(const k of keys)if(LEARNED_VAT_RULES[k])return {mode:LEARNED_VAT_RULES[k],source:'기존 학습규칙'};
-  if(keys.some(k=>k.startsWith('신상마켓-'))) return {mode:'separate',source:'신상마켓 기본규칙'};
+  if(keys.some(k=>k.startsWith('신상마켓-'))){if(cloud.vatRules.has('__shinsang_default__')){const v=cloud.vatRules.get('__shinsang_default__');return v==='none'?{mode:null,source:'사용자 자동적용 제외',blocked:true}:{mode:v,source:'Firebase 신상마켓 기본규칙'};}return {mode:'separate',source:'신상마켓 기본규칙'};}
   return {mode:null,source:null};
 }
 function getVatRule(customer){return getVatRuleInfo(customer).mode}
@@ -1503,7 +1564,7 @@ async function deleteItemAliasRule(alias){
     if(!confirm(`품목 매칭규칙을 삭제할까요?\n${alias}`))return;
     await userCol('itemAliases').doc(safeId(alias)).delete();
     cloud.aliases.delete(alias);
-    updateMasterStats();renderItemRuleManager();
+    updateMasterStats();renderItemRuleManager();renderRulesDashboard();
     $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> 품목 수동매칭 규칙을 삭제했습니다. 다음 변환부터 자동매칭되지 않습니다.</p>`;
   }catch(e){alert(e.message||e)}
 }
@@ -1515,22 +1576,135 @@ function objectsFromRows(rows,headerIdx){const h=rows[headerIdx].map(norm); retu
 function mapAdd(map,k,v){k=norm(k);v=norm(v); if(!k||!v)return; if(!map.has(k))map.set(k,new Set()); map.get(k).add(v)}
 function mapResolve(map,k){const s=map.get(norm(k)); if(!s||s.size===0)return {ok:false,type:'missing'}; if(s.size>1)return {ok:false,type:'ambiguous',values:[...s]}; return {ok:true,value:[...s][0]}}
 function resolveCustomer(maps,name){
-  const key=norm(name),j=mapResolve(maps.jangki,key),e=mapResolve(maps.ecount,key);
-  if(j.ok)return j;if(e.ok)return e;
-  const alias=cloud.customerAliases.get(key);
+  const key=norm(name),alias=cloud.customerAliases.get(key);
+  // v3.46: 사용자가 규칙관리에서 만든 매칭/제외규칙을 기준정보 자동일치보다 우선한다.
   if(alias){
+    if(alias.disabled)return {ok:false,type:'blocked',via:'customerDisabled'};
     if(alias.targetName){
       const ar=mapResolve(maps.ecount,alias.targetName); if(ar.ok)return {...ar,via:'customerAlias'};
       const aj=mapResolve(maps.jangki,alias.targetName); if(aj.ok)return {...aj,via:'customerAlias'};
     }
-    if(alias.manualCode){
-      return {ok:true,value:alias.manualCode,via:'customerManualCode'};
-    }
+    if(alias.manualCode)return {ok:true,value:alias.manualCode,via:'customerManualCode'};
   }
+  const j=mapResolve(maps.jangki,key),e=mapResolve(maps.ecount,key);
+  if(j.ok)return j;if(e.ok)return e;
   if(j.type==='ambiguous')return j;if(e.type==='ambiguous')return e;
   return {ok:false,type:'missing'};
 }
-function resolveItem(map,name){const alias=cloud.aliases.get(norm(name)); if(alias)return {ok:true,value:alias.itemCode,via:'alias'}; return mapResolve(map,name)}
+function resolveItem(map,name){const alias=cloud.aliases.get(norm(name)); if(alias){if(alias.disabled)return {ok:false,type:'blocked',via:'itemDisabled'};return {ok:true,value:alias.itemCode,via:'alias'}} return mapResolve(map,name)}
+
+
+// ===== v3.46 통합 규칙관리 =====
+const ruleManagerState={customerPage:1,itemPage:1,perPage:100};
+function ruleCustomerByCode(code){code=norm(code);return (cloud.runtimeCustomers||[]).find(c=>norm(c.code)===code)||null}
+function ruleFindCustomer(v){
+  const q=norm(v);if(!q)return null;
+  return (cloud.runtimeCustomers||[]).find(c=>norm(c.code)===q||norm(c.name)===q||norm(c.jangkiName)===q)||null;
+}
+function ruleFindItem(v){
+  const q=norm(v);if(!q)return null;
+  if(cloud.itemByCode?.has(q))return cloud.itemByCode.get(q);
+  const r=mapResolve(cloud.itemNameToCodes||new Map(),q);return r.ok?cloud.itemByCode.get(norm(r.value)):null;
+}
+function ruleSourceBadge(source){
+  const cls=source==='user'?'user':source==='blocked'?'blocked':source==='ambiguous'?'ambiguous':source==='builtin'?'builtin':'base';
+  const text={user:'사용자규칙',blocked:'자동연결 제외',ambiguous:'중복/확인필요',builtin:'기존/기본규칙',base:'기준정보 자동연결'}[cls];
+  return `<span class="ruleSource ${cls}">${text}</span>`;
+}
+function customerRuleRows(){
+  const keys=new Set([...(cloud.customerMaps?.jangki?.keys?.()||[]),...(cloud.customerMaps?.ecount?.keys?.()||[]),...(cloud.customerAliases?.keys?.()||[])]),rows=[];
+  for(const key of keys){
+    const custom=cloud.customerAliases.get(key),j=mapResolve(cloud.customerMaps.jangki,key),e=mapResolve(cloud.customerMaps.ecount,key);
+    if(custom){
+      if(custom.disabled){rows.push({key,source:'blocked',code:'',name:'',jangki:'',note:'사용자가 기준정보 자동연결을 제외함'});continue}
+      let code=norm(custom.manualCode||''),target=null;
+      if(!code&&custom.targetName){const r=mapResolve(cloud.customerMaps.ecount,custom.targetName);if(r.ok)code=r.value}
+      target=ruleCustomerByCode(code);
+      rows.push({key,source:'user',code:code||'',name:target?.name||custom.targetName||'',jangki:target?.jangkiName||custom.targetJangkiName||'',note:custom.selectedFromAmbiguous?'중복 후보에서 선택 저장':''});continue;
+    }
+    const resolved=j.ok?j:e.ok?e:null;
+    if(resolved){const c=ruleCustomerByCode(resolved.value);rows.push({key,source:'base',code:resolved.value,name:c?.name||'',jangki:c?.jangkiName||'',note:j.ok?'장끼거래처명 우선':'거래처명 자동일치'});}
+    else if(j.type==='ambiguous'||e.type==='ambiguous')rows.push({key,source:'ambiguous',code:[...(j.values||[]),...(e.values||[])].filter((v,i,a)=>a.indexOf(v)===i).join(', '),name:'',jangki:'',note:'동일명에 여러 거래처코드가 있어 자동확정 안 됨'});
+  }
+  return rows.sort((a,b)=>a.key.localeCompare(b.key,'ko'));
+}
+function itemRuleRows(){
+  const keys=new Set([...(cloud.itemMap?.keys?.()||[]),...(cloud.aliases?.keys?.()||[])]),rows=[];
+  for(const key of keys){
+    const custom=cloud.aliases.get(key),base=mapResolve(cloud.itemMap,key);
+    if(custom){
+      if(custom.disabled){rows.push({key,source:'blocked',code:'',name:'',note:'사용자가 기준정보 자동연결을 제외함'});continue}
+      rows.push({key,source:'user',code:norm(custom.itemCode||custom.manualCode||''),name:norm(custom.itemName||ruleFindItem(custom.itemCode)?.name||''),note:custom.manualCode?'직접 코드 저장':'기준품목 연결'});continue;
+    }
+    if(base.ok){const i=cloud.itemByCode.get(norm(base.value));rows.push({key,source:'base',code:base.value,name:i?.name||key,note:'품목명 자동일치'});}
+    else if(base.type==='ambiguous')rows.push({key,source:'ambiguous',code:(base.values||[]).join(', '),name:key,note:'동일 품목명에 여러 코드가 있어 자동확정 안 됨'});
+  }
+  return rows.sort((a,b)=>a.key.localeCompare(b.key,'ko'));
+}
+function vatRuleRows(){
+  const keys=new Set([...Object.keys(LEARNED_VAT_RULES),...[...(cloud.vatRules?.keys?.()||[])].filter(k=>k!=='__shinsang_default__')]),rows=[];
+  for(const key of keys){
+    const custom=cloud.vatRules.has(key)?cloud.vatRules.get(key):undefined;
+    const c=ruleFindCustomer(key);
+    if(custom!==undefined){rows.push({key,code:c?.code||'',mode:custom==='none'?null:custom,source:custom==='none'?'blocked':'user',note:custom==='none'?'자동 VAT 적용 제외':'Firebase 저장규칙'});}
+    else rows.push({key,code:c?.code||'',mode:LEARNED_VAT_RULES[key],source:'builtin',note:'기존 학습규칙'});
+  }
+  const sh=cloud.vatRules.has('__shinsang_default__')?cloud.vatRules.get('__shinsang_default__'):'separate';
+  rows.push({key:'신상마켓-*',code:'',mode:sh==='none'?null:sh,source:cloud.vatRules.has('__shinsang_default__')?(sh==='none'?'blocked':'user'):'builtin',note:cloud.vatRules.has('__shinsang_default__')?'Firebase 신상마켓 기본규칙':'신상마켓 거래처 공통 기본규칙'});
+  return rows.sort((a,b)=>a.key.localeCompare(b.key,'ko'));
+}
+function filterRuleRows(rows,q,filter){q=norm(q).toLowerCase();return rows.filter(r=>(!filter||filter==='all'||r.source===filter)&&(!q||Object.values(r).some(v=>String(v??'').toLowerCase().includes(q))))}
+function rulePager(rows,page,per){const pages=Math.max(1,Math.ceil(rows.length/per));page=Math.min(Math.max(1,page),pages);return {page,pages,rows:rows.slice((page-1)*per,page*per)}}
+function renderRulesSummary(){
+  const box=$('rulesSummary');if(!box)return;
+  const cr=customerRuleRows(),ir=itemRuleRows(),vr=vatRuleRows();
+  box.innerHTML=`<div><small>거래처 적용규칙</small><b>${cr.length.toLocaleString()}개</b><div class="small">사용자 ${cr.filter(x=>x.source==='user').length.toLocaleString()} · 제외 ${cr.filter(x=>x.source==='blocked').length.toLocaleString()}</div></div><div><small>품목 적용규칙</small><b>${ir.length.toLocaleString()}개</b><div class="small">사용자 ${ir.filter(x=>x.source==='user').length.toLocaleString()} · 제외 ${ir.filter(x=>x.source==='blocked').length.toLocaleString()}</div></div><div><small>VAT 적용규칙</small><b>${vr.length.toLocaleString()}개</b><div class="small">사용자 ${vr.filter(x=>x.source==='user').length.toLocaleString()}</div></div><div><small>신상마켓 입금명 영구매칭</small><b>${(shinsangDepositAliases?.size||0).toLocaleString()}개</b></div>`;
+}
+function renderCustomerRules(){
+  const box=$('rulesCustomerList');if(!box)return;let rows=filterRuleRows(customerRuleRows(),$('rulesCustomerSearch')?.value,$('rulesCustomerFilter')?.value);const p=rulePager(rows,ruleManagerState.customerPage,ruleManagerState.perPage);ruleManagerState.customerPage=p.page;$('rulesCustomerPage').textContent=`${p.page}/${p.pages} · ${rows.length.toLocaleString()}개`;$('rulesCustomerPrev').disabled=p.page<=1;$('rulesCustomerNext').disabled=p.page>=p.pages;
+  if(!p.rows.length){box.innerHTML='<div class="jobEmpty">조건에 맞는 거래처 규칙이 없습니다.</div>';return}
+  box.innerHTML=`<table><thead><tr><th>원본/장끼 거래처명</th><th>연결 거래처코드</th><th>이카운트 거래처명</th><th>장끼명</th><th>출처</th><th>설명</th><th>관리</th></tr></thead><tbody>${p.rows.map(r=>`<tr><td><b>${esc(r.key)}</b></td><td class="rulesCode">${esc(r.code||'-')}</td><td>${esc(r.name||'-')}</td><td>${esc(r.jangki||'-')}</td><td>${ruleSourceBadge(r.source)}</td><td class="rulesMuted">${esc(r.note||'')}</td><td><div class="ruleActions"><button class="btn light" onclick="editCustomerRule('${escAttr(r.key)}')">수정</button>${r.source==='blocked'?`<button class="btn light" onclick="restoreCustomerRule('${escAttr(r.key)}')">복원</button>`:`<button class="btn light" onclick="deleteCustomerRule('${escAttr(r.key)}','${escAttr(r.source)}')">삭제</button>`}</div></td></tr>`).join('')}</tbody></table>`;
+}
+function renderItemRules(){
+  const box=$('rulesItemList');if(!box)return;let rows=filterRuleRows(itemRuleRows(),$('rulesItemSearch')?.value,$('rulesItemFilter')?.value);const p=rulePager(rows,ruleManagerState.itemPage,ruleManagerState.perPage);ruleManagerState.itemPage=p.page;$('rulesItemPage').textContent=`${p.page}/${p.pages} · ${rows.length.toLocaleString()}개`;$('rulesItemPrev').disabled=p.page<=1;$('rulesItemNext').disabled=p.page>=p.pages;
+  if(!p.rows.length){box.innerHTML='<div class="jobEmpty">조건에 맞는 품목 규칙이 없습니다.</div>';return}
+  box.innerHTML=`<table><thead><tr><th>원본/장끼 품목명</th><th>연결 품목코드</th><th>이카운트 품목명</th><th>출처</th><th>설명</th><th>관리</th></tr></thead><tbody>${p.rows.map(r=>`<tr><td><b>${esc(r.key)}</b></td><td class="rulesCode">${esc(r.code||'-')}</td><td>${esc(r.name||'-')}</td><td>${ruleSourceBadge(r.source)}</td><td class="rulesMuted">${esc(r.note||'')}</td><td><div class="ruleActions"><button class="btn light" onclick="editItemRule('${escAttr(r.key)}')">수정</button>${r.source==='blocked'?`<button class="btn light" onclick="restoreItemRule('${escAttr(r.key)}')">복원</button>`:`<button class="btn light" onclick="deleteItemRule('${escAttr(r.key)}','${escAttr(r.source)}')">삭제</button>`}</div></td></tr>`).join('')}</tbody></table>`;
+}
+function renderVatRules(){
+  const box=$('rulesVatList');if(!box)return;const rows=filterRuleRows(vatRuleRows(),$('rulesVatSearch')?.value,$('rulesVatFilter')?.value);if(!rows.length){box.innerHTML='<div class="jobEmpty">조건에 맞는 VAT 규칙이 없습니다.</div>';return}
+  box.innerHTML=`<table><thead><tr><th>거래처/적용대상</th><th>거래처코드</th><th>현재 적용값</th><th>출처</th><th>설명</th><th>관리</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.key)}</b></td><td class="rulesCode">${esc(r.code||'-')}</td><td>${r.mode?esc(vatModeText(r.mode)):'자동적용 안 함'}</td><td>${ruleSourceBadge(r.source)}</td><td class="rulesMuted">${esc(r.note||'')}</td><td><div class="ruleActions"><button class="btn light" onclick="editVatRule('${escAttr(r.key)}')">수정</button>${r.source==='blocked'?`<button class="btn light" onclick="restoreVatRule('${escAttr(r.key)}')">복원</button>`:`<button class="btn light" onclick="deleteVatRule('${escAttr(r.key)}','${escAttr(r.source)}')">삭제</button>`}</div></td></tr>`).join('')}</tbody></table>`;
+}
+function renderShinsangRules(){
+  const box=$('rulesShinsangList');if(!box)return;const q=norm($('rulesShinsangSearch')?.value).toLowerCase();const rows=[...(shinsangDepositAliases||new Map()).values()].filter(r=>!q||[r.description,r.aliasKey,r.code,r.name].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>norm(a.description||a.aliasKey).localeCompare(norm(b.description||b.aliasKey),'ko'));
+  if(!rows.length){box.innerHTML='<div class="jobEmpty">저장된 신상마켓 입금명 영구매칭이 없습니다.</div>';return}
+  box.innerHTML=`<table><thead><tr><th>입금 기재내용</th><th>매칭키</th><th>연결 거래처코드</th><th>거래처명</th><th>관리</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.description||r.aliasKey)}</b></td><td class="rulesCode">${esc(r.aliasKey||'')}</td><td class="rulesCode">${esc(r.code||'')}</td><td>${esc(r.name||'')}</td><td><div class="ruleActions"><button class="btn light" onclick="editShinsangRule('${escAttr(r.aliasKey)}')">수정</button><button class="btn light" onclick="deleteShinsangRule('${escAttr(r.aliasKey)}')">삭제</button></div></td></tr>`).join('')}</tbody></table>`;
+}
+function renderRulesDashboard(){renderRulesSummary();renderCustomerRules();renderItemRules();renderVatRules();renderShinsangRules()}
+function setRuleStatus(id,msg,kind=''){const el=$(id);if(!el)return;el.className='ruleStatus '+kind;el.innerHTML=msg}
+async function saveCustomerRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesCustomerAlias').value),q=norm($('rulesCustomerTarget').value);if(!alias||!q)throw new Error('원본 거래처명과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);const data={alias,targetName:t?.name||'',targetJangkiName:t?.jangkiName||'',manualCode:t?.code||q,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:false});cloud.customerAliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesCustomerStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(t?.code||q)} ${esc(t?.name||'')}</b> 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesCustomerStatus',esc(e.message||e),'bad')}}
+async function saveItemRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesItemAlias').value),q=norm($('rulesItemTarget').value);if(!alias||!q)throw new Error('원본 품목명과 연결할 품목을 모두 입력해 주세요.');const t=ruleFindItem(q),code=t?.code||q,data={alias,itemCode:code,itemName:t?.name||'(수동 지정 코드)',manualCode:!t,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:false});cloud.aliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesItemStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(code)} ${esc(t?.name||'')}</b> 저장완료`,'ok');updateMasterStats();renderRulesDashboard()}catch(e){setRuleStatus('rulesItemStatus',esc(e.message||e),'bad')}}
+async function saveVatRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const q=norm($('rulesVatCustomer').value),mode=$('rulesVatMode').value;if(!q)throw new Error('거래처를 입력해 주세요.');let key=q,data;if(q==='신상마켓-*'){key='__shinsang_default__';data={customer:key,name:'신상마켓-*',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}else{const t=ruleFindCustomer(q);key=norm(t?.jangkiName)||norm(t?.name)||q;data={customer:key,code:t?.code||'',name:t?.name||q,jangkiName:t?.jangkiName||'',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}await userCol('vatRules').doc(safeId(key)).set(data,{merge:true});cloud.vatRules.set(key,mode);setRuleStatus('rulesVatStatus',`✓ <b>${esc(q)}</b> · ${esc(vatModeText(mode))} 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesVatStatus',esc(e.message||e),'bad')}}
+async function saveShinsangRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const raw=norm($('rulesShinsangAlias').value),q=norm($('rulesShinsangTarget').value);if(!raw||!q)throw new Error('입금 기재내용과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);if(!t)throw new Error('거래처 기준정보에서 연결할 거래처를 찾지 못했습니다.');const aliasKey=shinsangCompact(raw),data={aliasKey,description:raw,code:t.code||'',name:t.name||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('shinsangDepositAliases').doc(safeId(aliasKey)).set(data,{merge:false});shinsangDepositAliases.set(aliasKey,{...data,updatedAt:null});setRuleStatus('rulesShinsangStatus',`✓ <b>${esc(raw)}</b> → <b>${esc(t.code)} ${esc(t.name)}</b> 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesShinsangStatus',esc(e.message||e),'bad')}}
+window.editCustomerRule=function(key){const r=customerRuleRows().find(x=>x.key===key);$('rulesCustomerAlias').value=key;$('rulesCustomerTarget').value=r?.code||'';$('rulesCustomerAlias').focus()}
+window.deleteCustomerRule=async function(key,source){try{if(!user)throw new Error('로그인이 필요합니다.');if(source==='user'){if(!confirm(`${key} 사용자 매칭규칙을 삭제할까요?\n기준정보 자동연결이 있으면 그 규칙으로 돌아갑니다.`))return;await userCol('customerAliases').doc(safeId(key)).delete();cloud.customerAliases.delete(key)}else{if(!confirm(`${key} 기준정보 자동연결을 사용하지 않도록 제외할까요?`))return;const data={alias:key,disabled:true,source:'rulesManagerBlock',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('customerAliases').doc(safeId(key)).set(data,{merge:false});cloud.customerAliases.set(key,{...data,updatedAt:null})}renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.restoreCustomerRule=async function(key){try{await userCol('customerAliases').doc(safeId(key)).delete();cloud.customerAliases.delete(key);renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.editItemRule=function(key){const r=itemRuleRows().find(x=>x.key===key);$('rulesItemAlias').value=key;$('rulesItemTarget').value=r?.code||'';$('rulesItemAlias').focus()}
+window.deleteItemRule=async function(key,source){try{if(!user)throw new Error('로그인이 필요합니다.');if(source==='user'){if(!confirm(`${key} 사용자 품목규칙을 삭제할까요?\n기준정보 자동연결이 있으면 그 규칙으로 돌아갑니다.`))return;await userCol('itemAliases').doc(safeId(key)).delete();cloud.aliases.delete(key)}else{if(!confirm(`${key} 기준정보 자동연결을 사용하지 않도록 제외할까요?`))return;const data={alias:key,disabled:true,source:'rulesManagerBlock',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('itemAliases').doc(safeId(key)).set(data,{merge:false});cloud.aliases.set(key,{...data,updatedAt:null})}updateMasterStats();renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.restoreItemRule=async function(key){try{await userCol('itemAliases').doc(safeId(key)).delete();cloud.aliases.delete(key);updateMasterStats();renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.editVatRule=function(key){$('rulesVatCustomer').value=key;const r=vatRuleRows().find(x=>x.key===key);if(r?.mode)$('rulesVatMode').value=r.mode;$('rulesVatCustomer').focus()}
+window.deleteVatRule=async function(key,source){try{if(!user)throw new Error('로그인이 필요합니다.');const docKey=key==='신상마켓-*'?'__shinsang_default__':key;if(source==='user'){if(!confirm(`${key} 사용자 VAT 규칙을 삭제할까요?\n기존 학습/기본규칙이 있으면 그 값으로 돌아갑니다.`))return;await userCol('vatRules').doc(safeId(docKey)).delete();cloud.vatRules.delete(docKey)}else{if(!confirm(`${key} VAT 자동적용을 제외할까요?\n다음 변환부터 필요하면 검수 대상으로 올라옵니다.`))return;await userCol('vatRules').doc(safeId(docKey)).set({customer:docKey,name:key,mode:'none',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});cloud.vatRules.set(docKey,'none')}renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.restoreVatRule=async function(key){try{const docKey=key==='신상마켓-*'?'__shinsang_default__':key;await userCol('vatRules').doc(safeId(docKey)).delete();cloud.vatRules.delete(docKey);renderRulesDashboard()}catch(e){alert(e.message||e)}}
+window.editShinsangRule=function(key){const r=shinsangDepositAliases.get(key);$('rulesShinsangAlias').value=r?.description||key;$('rulesShinsangTarget').value=r?.code||'';$('rulesShinsangAlias').focus()}
+window.deleteShinsangRule=async function(key){try{if(!user)throw new Error('로그인이 필요합니다.');if(!confirm(`${shinsangDepositAliases.get(key)?.description||key} 영구매칭을 삭제할까요?`))return;await userCol('shinsangDepositAliases').doc(safeId(key)).delete();shinsangDepositAliases.delete(key);renderRulesDashboard()}catch(e){alert(e.message||e)}}
+function downloadAllRulesExcel(){try{const wb=XLSX.utils.book_new();const c=customerRuleRows(),i=itemRuleRows(),v=vatRuleRows(),sh=[...(shinsangDepositAliases||new Map()).values()];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 거래처명','연결 거래처코드','이카운트 거래처명','장끼명','출처','설명'],...c.map(r=>[r.key,r.code,r.name,r.jangki,r.source,r.note])]),'거래처규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 품목명','연결 품목코드','이카운트 품목명','출처','설명'],...i.map(r=>[r.key,r.code,r.name,r.source,r.note])]),'품목규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['거래처/적용대상','거래처코드','적용값','출처','설명'],...v.map(r=>[r.key,r.code,r.mode?vatModeText(r.mode):'자동적용 안 함',r.source,r.note])]),'VAT규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['입금 기재내용','매칭키','거래처코드','거래처명'],...sh.map(r=>[r.description||r.aliasKey,r.aliasKey,r.code,r.name])]),'신상마켓입금매칭');XLSX.writeFile(wb,`매출자동화_전체규칙_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`)}catch(e){alert(e.message||e)}}
+function setupRuleManager(){
+  $('rulesCustomerSave')?.addEventListener('click',saveCustomerRuleFromManager);$('rulesItemSave')?.addEventListener('click',saveItemRuleFromManager);$('rulesVatSave')?.addEventListener('click',saveVatRuleFromManager);$('rulesShinsangSave')?.addEventListener('click',saveShinsangRuleFromManager);$('rulesExportBtn')?.addEventListener('click',downloadAllRulesExcel);
+  $('rulesCustomerClear')?.addEventListener('click',()=>{$('rulesCustomerAlias').value='';$('rulesCustomerTarget').value=''});$('rulesItemClear')?.addEventListener('click',()=>{$('rulesItemAlias').value='';$('rulesItemTarget').value=''});$('rulesVatClear')?.addEventListener('click',()=>{$('rulesVatCustomer').value=''});$('rulesShinsangClear')?.addEventListener('click',()=>{$('rulesShinsangAlias').value='';$('rulesShinsangTarget').value=''});
+  $('rulesCustomerSearch')?.addEventListener('input',()=>{ruleManagerState.customerPage=1;renderCustomerRules()});$('rulesCustomerFilter')?.addEventListener('change',()=>{ruleManagerState.customerPage=1;renderCustomerRules()});$('rulesCustomerPrev')?.addEventListener('click',()=>{ruleManagerState.customerPage--;renderCustomerRules()});$('rulesCustomerNext')?.addEventListener('click',()=>{ruleManagerState.customerPage++;renderCustomerRules()});
+  $('rulesItemSearch')?.addEventListener('input',()=>{ruleManagerState.itemPage=1;renderItemRules()});$('rulesItemFilter')?.addEventListener('change',()=>{ruleManagerState.itemPage=1;renderItemRules()});$('rulesItemPrev')?.addEventListener('click',()=>{ruleManagerState.itemPage--;renderItemRules()});$('rulesItemNext')?.addEventListener('click',()=>{ruleManagerState.itemPage++;renderItemRules()});
+  $('rulesVatSearch')?.addEventListener('input',renderVatRules);$('rulesVatFilter')?.addEventListener('change',renderVatRules);$('rulesShinsangSearch')?.addEventListener('input',renderShinsangRules);
+  renderRulesDashboard();
+}
 
 
 // ===== 데이터 안전관리 / 백업 =====
@@ -1868,7 +2042,7 @@ function updateAuthUI(){
   if($('restoreBackupDataFile'))$('restoreBackupDataFile').disabled=!on;
   $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
 }
-function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};shinsangHistoryOpenMonths=new Set();renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
+function resetCloud(){cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};shinsangHistoryOpenMonths=new Set();renderRulesDashboard();renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 
 async function loadCustomerMasterFromFirebase(){
@@ -1948,6 +2122,7 @@ async function loadCloudData(){
   cloud.customerAliases=new Map(cas.docs.map(d=>[norm(d.data().alias),d.data()]));
   cloud.vatRules=new Map(vs.docs.map(d=>[norm(d.data().customer),d.data().mode]));
   rebuildCloudMaps();
+  renderRulesDashboard();
   updateMasterStats();
   updateAuthUI();
   await loadRemoteMenuPrefs();
@@ -2799,7 +2974,7 @@ async function saveCustomerAlias(i,alias){
     }
 
     await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:true});
-    cloud.customerAliases.set(norm(alias),{...data,updatedAt:null});
+    cloud.customerAliases.set(norm(alias),{...data,updatedAt:null});renderRulesDashboard();
     await processAll(state.parsed?.ticketOverrides||{});
     $('statusBox').innerHTML=`<p class="ok">✓ ${message}</p>`;
   }catch(e){alert(e.message||e)}
@@ -2825,7 +3000,7 @@ async function saveCustomerDuplicateAlias(groupIndex){
     };
 
     await userCol('customerAliases').doc(safeId(g.alias)).set(data,{merge:true});
-    cloud.customerAliases.set(norm(g.alias),{...data,updatedAt:null});
+    cloud.customerAliases.set(norm(g.alias),{...data,updatedAt:null});renderRulesDashboard();
 
     await processAll(state.parsed?.ticketOverrides||{});
     $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(g.alias)}</b> → <b>${esc(target.name)}</b> (${esc(target.code)})로 영구매칭했습니다. 같은 이름의 판매·현금 거래에 모두 적용했습니다.</p>`;
@@ -2833,7 +3008,7 @@ async function saveCustomerDuplicateAlias(groupIndex){
 }
 window.saveCustomerDuplicateAlias=saveCustomerDuplicateAlias;
 
-async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); renderItemRuleManager(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
+async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); renderItemRuleManager(); renderRulesDashboard(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
 function renderAutoVat(rows){
   const sec=$('vatAutoSection'),box=$('vatAutoTable'),count=$('vatAutoCount');
   if(count)count.textContent=`(${rows.length.toLocaleString()}개)`;
@@ -2966,7 +3141,7 @@ function renderVat(pending){
   box.innerHTML=h;
   $('applyVatBtn').onclick=applyVatChoices;
 }
-async function applyVatChoices(){try{const overrides={...(state.parsed?.ticketOverrides||{})},toSave=[]; let missing=0; document.querySelectorAll('select[data-vat-key]').forEach(s=>{if(!s.value){missing++;return;} overrides[s.dataset.vatKey]=s.value; const cb=document.querySelector(`input[data-vat-save="${CSS.escape(s.dataset.vatKey)}"]`); if(cb?.checked)toSave.push({customer:s.dataset.vatCustomer,mode:s.value});}); if(missing)throw new Error('VAT 검수 항목을 모두 선택해 주세요.'); for(const r of toSave){await userCol('vatRules').doc(safeId(r.customer)).set({customer:r.customer,mode:r.mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); cloud.vatRules.set(norm(r.customer),r.mode);} await processAll(overrides);}catch(e){alert(e.message||e)}}
+async function applyVatChoices(){try{const overrides={...(state.parsed?.ticketOverrides||{})},toSave=[]; let missing=0; document.querySelectorAll('select[data-vat-key]').forEach(s=>{if(!s.value){missing++;return;} overrides[s.dataset.vatKey]=s.value; const cb=document.querySelector(`input[data-vat-save="${CSS.escape(s.dataset.vatKey)}"]`); if(cb?.checked)toSave.push({customer:s.dataset.vatCustomer,mode:s.value});}); if(missing)throw new Error('VAT 검수 항목을 모두 선택해 주세요.'); for(const r of toSave){await userCol('vatRules').doc(safeId(r.customer)).set({customer:r.customer,mode:r.mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); cloud.vatRules.set(norm(r.customer),r.mode);} renderRulesDashboard(); await processAll(overrides);}catch(e){alert(e.message||e)}}
 
 
 // ===== 일반- 거래처 현금영수증 원장 =====
@@ -4129,8 +4304,9 @@ function renderShinsangCompare(){
 }
 
 async function loadShinsangDepositAliases(){
-  shinsangDepositAliases=new Map();if(!user)return;
+  shinsangDepositAliases=new Map();if(!user){renderRulesDashboard();return;}
   try{const snap=await userCol('shinsangDepositAliases').get();for(const d of snap.docs){const x=d.data()||{};if(x.aliasKey)shinsangDepositAliases.set(norm(x.aliasKey),x)}}catch(e){console.warn('신상마켓 입금명 매칭 불러오기 실패',e)}
+  renderRulesDashboard();
 }
 window.saveShinsangDepositAlias=async function(depId){
   try{
@@ -4138,7 +4314,7 @@ window.saveShinsangDepositAlias=async function(depId){
     const sel=$('shinsangMap_'+depId),value=sel?.value||'';if(!value)throw new Error('연결할 신상마켓 거래처를 선택해 주세요.');
     const sales=(shinsangCompareState.sales||[]).find(x=>x.code===value||x.key===value);if(!sales)throw new Error('선택한 거래처를 찾지 못했습니다.');
     const data={aliasKey:dep.aliasKey,description:dep.desc||'',code:sales.code||'',name:sales.name||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-    await userCol('shinsangDepositAliases').doc(safeId(dep.aliasKey||dep.desc)).set(data,{merge:true});shinsangDepositAliases.set(dep.aliasKey,{...data,updatedAt:null});rebuildShinsangCompareRows();
+    await userCol('shinsangDepositAliases').doc(safeId(dep.aliasKey||dep.desc)).set(data,{merge:true});shinsangDepositAliases.set(dep.aliasKey,{...data,updatedAt:null});renderRulesDashboard();rebuildShinsangCompareRows();
   }catch(e){alert(e.message||e)}
 }
 function shinsangCompareHistoryByMonth(month){return (shinsangCompareHistory||[]).find(x=>x.month===month)||null}
@@ -6961,7 +7137,7 @@ let menuSaveTimer=null;
 
 
 function applyWorkTab(tab,save=true){
-  tab=['sales','tax','ar'].includes(tab)?tab:'sales';
+  tab=['sales','tax','ar','rules'].includes(tab)?tab:'sales';
   activeWorkTab=tab;
   document.querySelectorAll('[data-work-tab]').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.workTab===tab);
@@ -6973,6 +7149,9 @@ function applyWorkTab(tab,save=true){
   if(toolbar)toolbar.classList.toggle('workTabHidden',tab!=='sales');
   const arArea=$('arWorkArea');
   if(arArea)arArea.classList.toggle('workTabHidden',tab!=='ar');
+  const rulesArea=$('rulesWorkArea');
+  if(rulesArea)rulesArea.classList.toggle('workTabHidden',tab!=='rules');
+  if(tab==='rules')renderRulesDashboard();
 
   if(menuBoard){
     for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
@@ -6991,7 +7170,7 @@ function setupWorkTabs(){
   let saved='sales';
   try{
     const v=localStorage.getItem(WORK_TAB_KEY);
-    if(v==='tax'||v==='sales'||v==='ar')saved=v;
+    if(v==='tax'||v==='sales'||v==='ar'||v==='rules')saved=v;
   }catch(e){}
   applyWorkTab(saved,false);
 }
@@ -7912,8 +8091,8 @@ document.addEventListener('click',e=>{
 $('loginBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');await auth.signInWithEmailAndPassword(norm($('email').value),$('password').value)}catch(e){showError(e)}};
 $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결이 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');const email=norm($('email').value),pw=$('password').value;if(!email||pw.length<6)throw new Error('이메일과 6자리 이상의 비밀번호를 입력해 주세요.');await auth.createUserWithEmailAndPassword(email,pw)}catch(e){showError(e)}};
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
-$('vatRuleLookupBtn').onclick=lookupVatRuleManager; $('vatRuleSaveBtn').onclick=saveVatRuleManager; $('vatRuleDeleteBtn').onclick=deleteVatRuleManager; $('vatRuleCustomerInput').addEventListener('change',lookupVatRuleManager);
-$('itemRuleRefreshBtn').onclick=renderItemRuleManager; $('itemRuleSearchInput').addEventListener('input',renderItemRuleManager); $('itemRuleManagerBox').addEventListener('toggle',()=>{if($('itemRuleManagerBox').open)renderItemRuleManager()});
+if($('vatRuleLookupBtn')){$('vatRuleLookupBtn').onclick=lookupVatRuleManager;$('vatRuleSaveBtn').onclick=saveVatRuleManager;$('vatRuleDeleteBtn').onclick=deleteVatRuleManager;$('vatRuleCustomerInput').addEventListener('change',lookupVatRuleManager)}
+if($('itemRuleRefreshBtn')){$('itemRuleRefreshBtn').onclick=renderItemRuleManager;$('itemRuleSearchInput').addEventListener('input',renderItemRuleManager);$('itemRuleManagerBox').addEventListener('toggle',()=>{if($('itemRuleManagerBox').open)renderItemRuleManager()})}
 $('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptBulkDate=''; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 
 // 신규 월마감/원장 기능 이벤트
@@ -7949,6 +8128,7 @@ setupShinsangCompareUI();
 setupBaseDataGroup();
 setupFixedTopCards();
 setupMenuSystem();
+setupRuleManager();
 setupWorkTabs();
 setupInnerBoxCollapse();
 setupExplanationToggles();
