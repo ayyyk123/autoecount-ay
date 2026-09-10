@@ -582,7 +582,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.46 · 통합 규칙관리 · 전체 적용규칙 조회/수정/삭제</div>
+      <div class="badge">v3.47 · 규칙관리 탭 클릭 오류 수정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -596,19 +596,19 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   </div>
 
   <div id="workTabs" class="workTabs">
-    <button id="salesWorkTabBtn" class="workTabBtn active" type="button" data-work-tab="sales">
+    <button id="salesWorkTabBtn" class="workTabBtn active" type="button" data-work-tab="sales" onclick="applyWorkTab('sales',true)">
       매출변환
       <small>변환 · 현금영수증 · 월마감 · 거래처 비교</small>
     </button>
-    <button id="taxWorkTabBtn" class="workTabBtn" type="button" data-work-tab="tax">
+    <button id="taxWorkTabBtn" class="workTabBtn" type="button" data-work-tab="tax" onclick="applyWorkTab('tax',true)">
       세금계산서
       <small>사업자등록증 · 유의사항 · 월별 매입/매출 정리</small>
     </button>
-    <button id="arWorkTabBtn" class="workTabBtn" type="button" data-work-tab="ar">
+    <button id="arWorkTabBtn" class="workTabBtn" type="button" data-work-tab="ar" onclick="applyWorkTab('ar',true)">
       미수관리
       <small>월요일 자동정리 · 주간 입금체크 · 공유엑셀</small>
     </button>
-    <button id="rulesWorkTabBtn" class="workTabBtn" type="button" data-work-tab="rules">
+    <button id="rulesWorkTabBtn" class="workTabBtn" type="button" data-work-tab="rules" onclick="applyWorkTab('rules',true)">
       규칙관리
       <small>거래처 · 품목 · VAT · 신상마켓 매칭</small>
     </button>
@@ -7151,7 +7151,14 @@ function applyWorkTab(tab,save=true){
   if(arArea)arArea.classList.toggle('workTabHidden',tab!=='ar');
   const rulesArea=$('rulesWorkArea');
   if(rulesArea)rulesArea.classList.toggle('workTabHidden',tab!=='rules');
-  if(tab==='rules')renderRulesDashboard();
+  if(tab==='rules'){
+    try{renderRulesDashboard()}
+    catch(e){
+      console.error('규칙관리 화면 렌더링 오류',e);
+      const st=$('rulesCustomerStatus');
+      if(st){st.className='ruleStatus bad';st.textContent='규칙 목록을 불러오는 중 오류가 발생했습니다: '+(e.message||e)}
+    }
+  }
 
   if(menuBoard){
     for(const p of menuBoard.querySelectorAll(':scope > .menuPanel')){
@@ -7164,9 +7171,7 @@ function applyWorkTab(tab,save=true){
   }
 }
 function setupWorkTabs(){
-  document.querySelectorAll('#workTabs [data-work-tab]').forEach(btn=>{
-    btn.addEventListener('click',()=>applyWorkTab(btn.dataset.workTab,true));
-  });
+  // v3.47: 탭 클릭은 각 버튼의 inline onclick으로도 직접 연결해 초기화 중 다른 모듈 오류가 있어도 탭 전환이 막히지 않게 한다.
   let saved='sales';
   try{
     const v=localStorage.getItem(WORK_TAB_KEY);
@@ -8128,8 +8133,8 @@ setupShinsangCompareUI();
 setupBaseDataGroup();
 setupFixedTopCards();
 setupMenuSystem();
-setupRuleManager();
 setupWorkTabs();
+setupRuleManager();
 setupInnerBoxCollapse();
 setupExplanationToggles();
 setupJobListResize();
