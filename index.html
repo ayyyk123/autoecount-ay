@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.70</title>
+<title>아도라블 매출 자동화 v3.72</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -29,7 +29,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   h1{font-size:28px;margin:0 0 8px}.sub{color:var(--muted);line-height:1.55}.badge{background:#eef2ff;color:#3730a3;padding:8px 12px;border-radius:999px;font-weight:700;white-space:nowrap}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.035)}
   .card h2{font-size:17px;margin:0 0 8px}.hint{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px}.file{display:block;border:1px dashed #c7cbd4;border-radius:10px;padding:12px;background:#fafafa;width:100%}
-  .actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.btn{appearance:none;border:0;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;background:var(--main);color:white}.btn.secondary{background:#374151}.btn.light{background:#eef2ff;color:#3730a3}.btn:disabled{opacity:.45;cursor:not-allowed}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.btn{appearance:none;border:0;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;background:var(--main);color:white}.btn.secondary{background:#374151}.btn.light{background:#eef2ff;color:#3730a3}.btn.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}.btn:disabled{opacity:.45;cursor:not-allowed}
   .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}.stat b{font-size:22px;display:block;margin-top:5px}.stat small{color:var(--muted)}
   .section{margin-top:16px}.section h3{font-size:16px;margin:0 0 10px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
   .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto}.msg{line-height:1.55;font-size:14px}.msg p{margin:4px 0}
@@ -599,7 +599,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.70 · 월요일/현재기준 미수정리 · 담당자별 분리</div>
+      <div class="badge">v3.72 · 미수 시작일 표시 간소화 · 정리기록 삭제</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -768,7 +768,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <div class="arTopControls">
         <div class="arField"><label>정리 기준일</label><input id="arRunDate" type="date"></div>
         <div class="arField"><label>저장된 정리기록</label><select id="arWeekSelect"><option value="">저장된 정리기록 없음</option></select></div>
-        <button id="arLoadWeekBtn" class="btn light" type="button">선택주 불러오기</button>
+        <button id="arLoadWeekBtn" class="btn light" type="button">선택 기록 불러오기</button>
+        <button id="arDeleteWeekBtn" class="btn danger" type="button">선택 기록 삭제</button>
         <button id="arSyncHistoryBtn" class="btn light" type="button">판매·입금 자료 동기화</button>
         <button id="arRunBtn" class="btn" type="button">미수 자동정리</button>
       </div>
@@ -829,7 +830,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button id="arApplyMidweekBtn" class="btn" type="button">주중 입금 반영</button>
       </div>
       <div id="arMidweekFileNames" class="arFileNames">선택된 파일 없음</div>
-      <div id="arWeeklyTable" class="arCompactTable" style="margin-top:8px"><div class="jobEmpty">저장된 주간정리를 불러오거나 월요일 자동정리를 실행해 주세요.</div></div>
+      <div id="arWeeklyTable" class="arCompactTable" style="margin-top:8px"><div class="jobEmpty">저장된 정리기록을 불러오거나 미수 자동정리를 실행해 주세요.</div></div>
     </div>
   </div>
 
@@ -1917,7 +1918,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.70',
+    appVersion:'v3.72',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -9084,15 +9085,21 @@ function arEstimateOutstandingStart(code,target,cutoff){
   const payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff).map(x=>({date:x.date,amount:-Math.abs(Number(x.amount||0)),kind:'payment',key:x.key||''}));
   const tx=[...sales,...payments].filter(x=>x.date&&x.amount).sort((a,b)=>b.date.localeCompare(a.date)||String(b.key).localeCompare(String(a.key)));
   let need=Math.round(target),oldest='';
+  const contributingDates=[];
   for(const x of tx){
     oldest=x.date;
     if(x.amount<0){need+=Math.abs(Math.round(x.amount));continue}
     const a=Math.max(0,Math.round(x.amount));if(!a)continue;
-    if(a>=need)return {label:`${arShortDate(x.date)} 거래부터`,exact:true,date:x.date,diff:0,needed:need,saleAmount:a};
+    if(need>0)contributingDates.push(x.date);
+    if(a>=need){
+      const distinct=[...new Set(contributingDates)];
+      const oneDay=distinct.length<=1;
+      return {label:oneDay?arShortDate(x.date):`${arShortDate(x.date)}~`,exact:true,date:x.date,diff:0,needed:need,saleAmount:a,oneDay};
+    }
     need-=a;
   }
-  if(oldest)return {label:`${arShortDate(oldest)} 이전 거래부터로 추정`,exact:false,date:oldest,diff:Math.max(0,need)};
-  return {label:'거래이력 부족',exact:false,date:'',diff:target};
+  if(oldest)return {label:`${arShortDate(oldest)} 이전(추)`,exact:false,date:oldest,diff:Math.max(0,need)};
+  return {label:'거래이력 부족(추)',exact:false,date:'',diff:target};
 }
 function arFindSampleMatch(code,target,cutoff,startDate=''){
   if(target<=0)return null;const from=startDate||'00000000';
@@ -9142,6 +9149,35 @@ async function saveArWeekBase(runDate,cutoff,rows,periodText='',mode='weekly'){
 async function loadArWeeksIndex(){arState.weeks=[];if(!user)return;const snap=await userCol('arWeeks').get();arState.weeks=snap.docs.map(d=>d.data()).sort((a,b)=>String(b.runDate||'').localeCompare(String(a.runDate||'')));const sel=$('arWeekSelect');if(sel){const current=arState.activeWeek||sel.value;sel.innerHTML='<option value="">저장된 주간정리 선택</option>'+arState.weeks.map(w=>`<option value="${escAttr(w.weekKey)}">${arYmdToIso(w.runDate)} · ${Number(w.rowCount||0).toLocaleString()}곳</option>`).join('');if(current&&arState.weeks.some(w=>w.weekKey===current))sel.value=current}}
 async function loadArWeekActions(weekKey){arState.actions=new Map();if(!user||!weekKey)return;const snap=await userCol('arWeekActions').where('weekKey','==',weekKey).get();for(const d of snap.docs){const x=d.data()||{};arState.actions.set(norm(x.code),x)}}
 async function loadArWeek(weekKey){if(!user||!weekKey)return;arSetLoading(true,'저장된 주간정리를 불러오는 중…');try{const metaSnap=await userCol('arWeeks').doc(safeId(weekKey)).get();if(!metaSnap.exists)throw new Error('선택한 주간정리를 찾지 못했습니다.');const meta=metaSnap.data()||{},version=String(meta.version||'');const snap=await userCol('arWeekChunks').where('weekKey','==',weekKey).get();const docs=snap.docs.map(d=>d.data()).filter(x=>String(x.version||'')===version).sort((a,b)=>Number(a.index||0)-Number(b.index||0));const rows=[];for(const d of docs)rows.push(...(d.rows||[]));arState.activeWeek=weekKey;arState.weekMeta=meta;arState.weekRows=rows;await loadArWeekActions(weekKey);refreshArWeekPayments();if($('arRunDate'))$('arRunDate').value=arYmdToIso(meta.runDate);if($('arWeekSelect'))$('arWeekSelect').value=weekKey;try{localStorage.setItem(AR_LAST_WEEK_KEY,weekKey)}catch(e){}renderArAll();$('arRunStatus').textContent=`${arYmdToIso(meta.runDate)} ${meta.mode==='current'?'현재기준 정리':'월요일 주간정리'}를 불러왔습니다.`}finally{arSetLoading(false)}}
+async function deleteArWeek(weekKey){
+  if(!user)throw new Error('로그인이 필요합니다.');
+  if(!weekKey)throw new Error('삭제할 정리기록을 먼저 선택해 주세요.');
+  const meta=(arState.weeks||[]).find(w=>String(w.weekKey||'')===String(weekKey||''))||{};
+  const dateText=arYmdToIso(meta.runDate||weekKey)||weekKey;
+  const modeText=meta.mode==='current'?'현재기준 정리':'월요일 주간정리';
+  if(!confirm(`${dateText} ${modeText} 기록을 삭제할까요?\n\n삭제되는 것: 해당 정리 결과·체크/메모\n유지되는 것: 판매/입금 거래이력·거래처 설정·다른 메뉴 자료`))return;
+  arSetLoading(true,'선택한 미수 정리기록을 삭제하는 중…');
+  try{
+    const [chunkSnap,actionSnap]=await Promise.all([
+      userCol('arWeekChunks').where('weekKey','==',weekKey).get(),
+      userCol('arWeekActions').where('weekKey','==',weekKey).get()
+    ]);
+    const refs=[...chunkSnap.docs.map(d=>d.ref),...actionSnap.docs.map(d=>d.ref),userCol('arWeeks').doc(safeId(weekKey))];
+    for(let p=0;p<refs.length;p+=350){
+      const batch=db.batch();
+      for(const ref of refs.slice(p,p+350))batch.delete(ref);
+      await batch.commit();
+    }
+    if(String(arState.activeWeek||'')===String(weekKey)){
+      arState.activeWeek='';arState.weekMeta=null;arState.weekRows=[];arState.actions=new Map();
+      try{localStorage.removeItem(AR_LAST_WEEK_KEY)}catch(e){}
+    }
+    await loadArWeeksIndex();
+    if($('arWeekSelect'))$('arWeekSelect').value='';
+    renderArAll();
+    if($('arRunStatus'))$('arRunStatus').textContent=`✓ ${dateText} ${modeText} 기록을 삭제했습니다. 판매·입금 거래이력과 다른 메뉴 자료는 유지됩니다.`;
+  }finally{arSetLoading(false)}
+}
 async function saveArAction(code,patch){if(!user||!arState.activeWeek)return;code=norm(code);const prev=arState.actions.get(code)||{},next={...prev,...patch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};arState.actions.set(code,next);await userCol('arWeekActions').doc(safeId(`${arState.activeWeek}|${code}`)).set({...next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});refreshArWeekPayments();renderArAll();}
 function refreshArWeekPayments(){const latest=arLatestHistoryDate();for(const r of arState.weekRows){r.weekPaid=arPaymentsAfter(r.code,r.cutoff,latest||'99999999');r.remaining=Math.max(0,Number(r.baseBalance||0)-r.weekPaid);r.lastPayment=arLastPayment(r.code,latest||r.runDate);if(!r.lastPaymentAtCutoff)r.lastPaymentAtCutoff=arLastPayment(r.code,r.cutoff);r.action=arState.actions.get(norm(r.code))||{};r.paidCandidate=r.baseBalance>0&&r.remaining<=0&&!r.action.paymentComplete}}
 function arRowMatchesFilter(r){const f=arState.filter,action=r.action||{};if(arState.location!=='all'&&r.location!==arState.location)return false;const q=norm(arState.search).toLowerCase();if(q&&!([r.code,r.name,r.jangkiName,r.reason,action.note,r.paymentDay].join(' ').toLowerCase().includes(q)))return false;if(f==='all')return true;if(f==='paid')return !!action.paymentComplete;if(f==='shipx')return !!action.shipmentStop;if(f==='sample')return !!r.sampleMatch;if(f==='review')return r.status==='review'&&!action.paymentComplete;if(f==='contact')return r.status==='contact'&&!action.paymentComplete;if(f==='wait')return (r.status==='wait'||r.status==='excluded')&&!action.paymentComplete;return true}
@@ -9165,7 +9201,7 @@ window.arToggleAction=(code,key,value)=>saveArAction(code,{[key]:value}).catch(e
 window.arEditPaymentDay=(code,value)=>saveArCustomerSetting(code,{paymentDay:norm(value)}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
 window.arTogglePermanentExclude=(code,value)=>saveArCustomerSetting(code,{permanentExclude:!!value}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
 
-function arExportRows(location=null,includeExcluded=false){return (arState.weekRows||[]).filter(r=>(!location||r.location===location)&&(includeExcluded||r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete)).map(r=>{const a=r.action||{},scheduled=arHasScheduledPaymentDay(r.paymentDay);return {'구분':arLocationLabel(r.location),'관리구분':scheduled?'입금요일 지정':'바로 확인/연락','입금요일':r.paymentDay||'','거래처코드':r.code,'거래처명':r.name,'장끼거래처명':r.jangkiName||'','이월잔액':r.carryover==null?'':r.carryover,'재고매출':r.periodSales==null?'':r.periodSales,'수금합계':r.periodReceipts==null?'':r.periodReceipts,'기준미수잔액':r.baseBalance,'주중추가입금':r.weekPaid,'미입금잔액':r.remaining,'마지막입금':r.lastPayment?arYmdToIso(r.lastPayment):'','미수시작거래일':r.outstandingDate?arYmdToIso(r.outstandingDate):'','미수시점판정':r.outstandingLabel||'','SAMPLE잔액':r.sampleMatch?Number(r.sampleMatch.amount||0):'','일반미수추정':r.sampleMatch?Number(r.sampleMatch.generalAmount||0):Number(r.baseBalance||0),'SAMPLE상세':r.sampleMatch?r.sampleMatch.source||'':'','판정':arStatusLabel(r),'연락/확인사유':r.reason||'','물건출고X':a.shipmentStop?'O':'','입금완료':a.paymentComplete?'O':r.paidCandidate?'후보':'','연락완료':a.contactComplete?'O':'','재연락일':a.recontactDate||'','특이사항':a.note||'','영구제외':r.permanentExclude?'O':''}})}
+function arExportRows(location=null,includeExcluded=false){return (arState.weekRows||[]).filter(r=>(!location||r.location===location)&&(includeExcluded||r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete)).map(r=>{const a=r.action||{},scheduled=arHasScheduledPaymentDay(r.paymentDay);return {'구분':arLocationLabel(r.location),'관리구분':scheduled?'입금요일 지정':'바로 확인/연락','입금요일':r.paymentDay||'','거래처코드':r.code,'거래처명':r.name,'장끼거래처명':r.jangkiName||'','이월잔액':r.carryover==null?'':r.carryover,'재고매출':r.periodSales==null?'':r.periodSales,'수금합계':r.periodReceipts==null?'':r.periodReceipts,'기준미수잔액':r.baseBalance,'주중추가입금':r.weekPaid,'미입금잔액':r.remaining,'마지막입금':r.lastPayment?arYmdToIso(r.lastPayment):'','미수시작거래일':r.outstandingLabel||'','미수시점판정':r.outstandingLabel||'','SAMPLE잔액':r.sampleMatch?Number(r.sampleMatch.amount||0):'','일반미수추정':r.sampleMatch?Number(r.sampleMatch.generalAmount||0):Number(r.baseBalance||0),'SAMPLE상세':r.sampleMatch?r.sampleMatch.source||'':'','판정':arStatusLabel(r),'연락/확인사유':r.reason||'','물건출고X':a.shipmentStop?'O':'','입금완료':a.paymentComplete?'O':r.paidCandidate?'후보':'','연락완료':a.contactComplete?'O':'','재연락일':a.recontactDate||'','특이사항':a.note||'','영구제외':r.permanentExclude?'O':''}})}
 function arMakeSheet(rows){const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'안내':'해당 거래처 없음'}]);ws['!cols']=[{wch:9},{wch:13},{wch:17},{wch:28},{wch:25},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:13},{wch:20},{wch:13},{wch:34},{wch:22},{wch:11},{wch:11},{wch:11},{wch:13},{wch:34},{wch:10}];ws['!autofilter']={ref:ws['!ref']||'A1:A1'};return ws}
 function exportArExcel(mode){if(!arState.weekRows.length){alert('저장할 주간 미수정리가 없습니다.');return}const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value),suffix=date||'미수정리',scheduled=x=>x['관리구분']==='입금요일 지정';if(mode==='warehouse'){const xs=arExportRows('warehouse',false);XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(x=>!scheduled(x))),'바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(scheduled)),'입금요일지정');XLSX.writeFile(wb,`미수정리_창고담당자_${suffix}.xlsx`);return}if(mode==='nampyeonghwa'){const xs=arExportRows('nampyeonghwa',false);XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(x=>!scheduled(x))),'바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(scheduled)),'입금요일지정');XLSX.writeFile(wb,`미수정리_남평화담당자_${suffix}.xlsx`);return}XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,false)),'전체');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false).filter(x=>!scheduled(x))),'창고_바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false).filter(scheduled)),'창고_입금요일');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false).filter(x=>!scheduled(x))),'남평화_바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false).filter(scheduled)),'남평화_입금요일');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,true).filter(x=>x['판정']==='자동제외')),'자동제외내역');XLSX.writeFile(wb,`미수정리_대표용전체_${suffix}.xlsx`)}
 
@@ -9178,7 +9214,7 @@ function setupArUI(){
   const bindFiles=(id,key,labelId,multiple=true)=>{$(id)?.addEventListener('change',e=>{let arr=[...e.target.files];const seen=new Set();arr=arr.filter(f=>{const k=`${f.name}|${f.size}|${f.lastModified}`;if(seen.has(k))return false;seen.add(k);return true});if(multiple)arSelectedFiles[key]=arr;else arSelectedFiles[key]=arr[0]||null;$(labelId).textContent=multiple?arFileListText(arr):(arr[0]?.name||'선택된 파일 없음')})};
   bindFiles('arBalanceFile','balance','arBalanceFileNames',false);bindFiles('arSalesFiles','sales','arSalesFileNames',true);bindFiles('arPaymentFiles','payments','arPaymentFileNames',true);bindFiles('arMidweekPaymentFiles','midweek','arMidweekFileNames',true);
   $('arSyncHistoryBtn').onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments);$('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
-  $('arRunBtn').onclick=()=>runArMonday().catch(e=>alert(e.message||e));$('arApplyMidweekBtn').onclick=()=>applyArMidweek().catch(e=>alert(e.message||e));$('arLoadWeekBtn').onclick=()=>loadArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));
+  $('arRunBtn').onclick=()=>runArMonday().catch(e=>alert(e.message||e));$('arApplyMidweekBtn').onclick=()=>applyArMidweek().catch(e=>alert(e.message||e));$('arLoadWeekBtn').onclick=()=>loadArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));$('arDeleteWeekBtn').onclick=()=>deleteArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));
   $('arSearch').addEventListener('input',e=>{arState.search=e.target.value||'';renderArResultTable()});$('arLocationFilter').addEventListener('change',e=>{arState.location=e.target.value||'all';renderArResultTable()});document.querySelectorAll('[data-ar-filter]').forEach(b=>b.addEventListener('click',()=>{arState.filter=b.dataset.arFilter||'all';try{localStorage.setItem(AR_FILTER_KEY,arState.filter)}catch(e){}renderArSummary();renderArResultTable()}));
   $('arExportWarehouseBtn').onclick=()=>exportArExcel('warehouse');$('arExportNampBtn').onclick=()=>exportArExcel('nampyeonghwa');$('arExportAllBtn').onclick=()=>exportArExcel('all');
   try{const f=localStorage.getItem(AR_FILTER_KEY);if(['all','review','contact','wait','sample','paid','shipx'].includes(f||''))arState.filter=f}catch(e){}
