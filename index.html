@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.53</title>
+<title>아도라블 매출 자동화 v3.54</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -234,6 +234,13 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .receiptReconcile span.warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
   .ledgerSummary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0}
   .ledgerSummary>div{border:1px solid #e2e8f0;border-radius:10px;padding:9px;background:#fafafa}.ledgerSummary small{display:block;color:#64748b}.ledgerSummary b{font-size:16px}
+  .ledgerSummary>div.clickableSummary{cursor:pointer;user-select:none;transition:border-color .15s,background .15s}
+  .ledgerSummary>div.clickableSummary:hover,.ledgerSummary>div.clickableSummary:focus{border-color:#a5b4fc;background:#f5f7ff;outline:none}
+  .ledgerSummary>div.clickableSummary small::after{content:'  ▾';font-size:10px;color:#94a3b8}
+  .unprocessedDetailBox{border:1px solid #e2e8f0;border-radius:10px;background:#fff;margin:4px 0 10px;padding:10px;max-height:330px;overflow:auto}
+  .unprocessedDetailBox .detailHead{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .unprocessedDetailBox table{width:100%;border-collapse:collapse}.unprocessedDetailBox th,.unprocessedDetailBox td{padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
+  .unprocessedDetailBox th{font-size:12px;color:#64748b;background:#f8fafc;position:sticky;top:0}.unprocessedDetailBox td.amount{text-align:right;font-variant-numeric:tabular-nums}
   .ledgerAction{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .ledgerAction input{max-width:155px}
   .compareFilters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.filterBtn.active{background:#111827;color:#fff}
@@ -582,7 +589,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.53 · 일반- 거래처 발급정보·이월·추가매출</div>
+      <div class="badge">v3.54 · 일반- 거래처 발급정보·이월·추가매출</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1862,7 +1869,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.53',
+    appVersion:'v3.54',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3413,11 +3420,20 @@ function downloadGeneralMemoChecklist(){
     XLSX.writeFile(wb,'일반거래처_자진발급_적요반영목록.xlsx',{bookType:'xlsx'});
   }catch(e){showError(e)}
 }
+function toggleGeneralUnprocessedDetails(){
+  const el=$('generalUnprocessedDetails');
+  if(!el)return;
+  el.hidden=!el.hidden;
+}
 function renderGeneralLedger(){
   const box=$('generalLedgerTable'),sum=$('generalLedgerSummary'),opening=$('openingList'),profiles=$('receiptProfileList');if(!box||!sum)return;
-  const consumed=consumedGeneralIds(),rows=collectGeneralRows(),un=rows.filter(r=>!consumed.has(r.id)),by=new Set(un.map(r=>r.cust));
+  const consumed=consumedGeneralIds(),rows=collectGeneralRows();
+  const un=rows.filter(r=>!consumed.has(r.id)&&Number(r.amount||0)!==0)
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||''))||Number(a.no||0)-Number(b.no||0));
+  const by=new Set(un.map(r=>r.cust));
   const pendingIssue=(generalActions||[]).filter(a=>a.type==='issue'&&a.status==='pending').length,pendingCancel=(generalActions||[]).filter(a=>a.type==='cancel'&&a.status==='pending').length,groupedPending=(generalActions||[]).filter(a=>(a.type==='issue'||a.type==='cancel')&&a.status==='pending'&&(a.entryIds||[]).length!==1).length;
-  sum.innerHTML=`<div class="ledgerSummary"><div><small>미처리 판매·반품</small><b>${un.length.toLocaleString()}건</b></div><div><small>미처리 거래처</small><b>${by.size.toLocaleString()}곳</b></div><div><small>발급 대기</small><b>${pendingIssue}건</b></div><div><small>취소 대기</small><b>${pendingCancel}건</b></div></div>${groupedPending?`<div class="warnBox" style="margin-top:8px">기존 거래처별 합산 대기 ${groupedPending}건이 남아 있습니다. <b>판매건별 발급대상 생성</b>을 누르면 완료되지 않은 합산 대기를 지우고 장끼 1건씩 다시 만듭니다.</div>`:''}`;
+  const unDetail=un.length?`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><div class="detailHead"><b>미처리 판매·반품 상세</b><span class="small">0원 거래 제외 · ${un.length.toLocaleString()}건 / ${by.size.toLocaleString()}곳</span></div><table><thead><tr><th>날짜</th><th>거래처</th><th>No.</th><th style="text-align:right">금액</th></tr></thead><tbody>${un.map(r=>`<tr><td>${esc(r.date?formatDisplayDate(r.date):'-')}</td><td>${esc(r.cust||'')}</td><td>${r.opening?'이월':(r.no?`No.${Number(r.no)}`:'-')}</td><td class="amount">${Number(r.amount||0).toLocaleString('ko-KR')}원</td></tr>`).join('')}</tbody></table></div>`:`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><span class="small">현재 미처리 판매·반품이 없습니다. (0원 거래는 미처리 건수에서 제외)</span></div>`;
+  sum.innerHTML=`<div class="ledgerSummary"><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 판매·반품</small><b>${un.length.toLocaleString()}건</b></div><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 거래처</small><b>${by.size.toLocaleString()}곳</b></div><div><small>발급 대기</small><b>${pendingIssue}건</b></div><div><small>취소 대기</small><b>${pendingCancel}건</b></div></div>${unDetail}${groupedPending?`<div class="warnBox" style="margin-top:8px">기존 거래처별 합산 대기 ${groupedPending}건이 남아 있습니다. <b>판매건별 발급대상 생성</b>을 누르면 완료되지 않은 합산 대기를 지우고 장끼 1건씩 다시 만듭니다.</div>`:''}`;
   if(opening){
     opening.innerHTML=(generalOpenings||[]).length?`<table><thead><tr><th>거래처</th><th>기준일</th><th>이월잔액</th><th>변경이력</th><th></th></tr></thead><tbody>${[...(generalOpenings||[])].sort((a,b)=>String(a.cust||'').localeCompare(String(b.cust||''))).map(o=>{const hist=(o.history||[]).slice().sort((a,b)=>Number(b.changedAtMs||0)-Number(a.changedAtMs||0)),detail=hist.length?`<details><summary>${hist.length}건</summary>${hist.map(x=>`<div class="small">${esc(ymdToInput(x.basisDate||''))} 기준 · ${Number(x.amount||0).toLocaleString()}원</div>`).join('')}</details>`:'-';return `<tr><td>${esc(o.cust||'')}</td><td>${esc(ymdToInput(o.basisDate||generalStartDate))}</td><td><b>${Number(o.amount||0).toLocaleString()}원</b>${Number(o.processedAmount||0)!==0?`<br><span class="small">처리반영 ${Number(o.processedAmount||0).toLocaleString()}원</span>`:''}</td><td>${detail}</td><td><button class="btn light" onclick="editGeneralOpening('${o.id}')">수정</button> <button class="btn light" onclick="deleteGeneralOpening('${o.id}')">삭제</button></td></tr>`}).join('')}</tbody></table>`:'<span class="small">등록된 이월잔액 없음</span>';
   }
