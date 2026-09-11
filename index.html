@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.54</title>
+<title>아도라블 매출 자동화 v3.56</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -241,6 +241,12 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .unprocessedDetailBox .detailHead{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:7px}
   .unprocessedDetailBox table{width:100%;border-collapse:collapse}.unprocessedDetailBox th,.unprocessedDetailBox td{padding:6px 8px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
   .unprocessedDetailBox th{font-size:12px;color:#64748b;background:#f8fafc;position:sticky;top:0}.unprocessedDetailBox td.amount{text-align:right;font-variant-numeric:tabular-nums}
+  .generalActionPanels{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+  .generalActionPanel{border:1px solid #e2e8f0;border-radius:12px;background:#fff;padding:12px;overflow:auto}
+  .generalActionPanel h4{margin:0 0 4px;font-size:14px}.generalActionPanel .panelHint{margin:0 0 9px;color:#64748b;font-size:12px}
+  .generalActionPanel.cancelPanel{border-color:#fed7aa;background:#fffdf9}.generalActionPanel.offsetPanel{border-color:#c7d2fe;background:#fdfdff}
+  .generalActionPanel table{width:100%;border-collapse:collapse}.generalActionPanel th,.generalActionPanel td{padding:7px 8px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top;white-space:nowrap}.generalActionPanel th{font-size:12px;color:#64748b;background:#f8fafc}.generalActionPanel td.amount{text-align:right;font-variant-numeric:tabular-nums}
+  .cancelMissing{display:inline-block;color:#991b1b;font-weight:800;background:#fee2e2;border-radius:7px;padding:3px 7px}.offsetPair{line-height:1.55}
   .ledgerAction{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .ledgerAction input{max-width:155px}
   .compareFilters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.filterBtn.active{background:#111827;color:#fff}
@@ -589,7 +595,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.54 · 일반- 거래처 발급정보·이월·추가매출</div>
+      <div class="badge">v3.56 · 일반- 판매반품 상계·취소확인 분리</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -876,7 +882,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   <div id="generalReceiptLedgerSection" class="section">
     <h3>일반- 거래처 현금영수증 원장</h3>
     <div class="box">
-      <div class="hint"><b>일반-</b> 거래처의 판매·반품을 <b>매출 기준 · 판매건별</b>로 관리합니다. 발급방식은 거래처별로 <b>자진발급 또는 휴대폰번호</b>를 저장할 수 있고, 매출변환 후 추가된 판매도 직접 등록할 수 있습니다. 거래처별 합산 발급은 하지 않습니다.</div>
+      <div class="hint"><b>일반-</b> 거래처의 판매·반품을 <b>매출 기준 · 판매건별</b>로 관리합니다. 같은 거래처·같은 날짜에 <b>동일금액 판매와 반품이 함께 있으면 서로 상계</b>해 발급/취소에서 제외하고, <b>음수 이월잔액이 있으면 남은 판매·반품을 먼저 상계</b>합니다. 반품으로 과거 현금영수증 취소가 필요한 건은 일반 발급목록과 분리해 별도 박스에서 확인합니다.</div>
       <div class="moduleToolbar">
         <label>관리 시작일 <input id="generalStartDate" type="date" value="2026-09-07"></label>
         <button id="saveGeneralStartBtn" class="btn light" type="button">시작일 저장</button>
@@ -894,7 +900,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <button id="saveOpeningBtn" class="btn light" type="button">저장</button>
             <label class="filePickLabel">이월잔액 엑셀 일괄등록<input id="openingBalanceFile" type="file" accept=".xlsx,.xls"></label>
           </div>
-          <div class="small">기준일 <b>시작 시점</b>의 이월잔액입니다. 저장할 때마다 기준일·금액 변경이력도 남습니다.</div>
+          <div class="small">기준일 <b>시작 시점</b>의 이월잔액입니다. <b>음수 잔액은 이후 판매·반품과 먼저 자동 상계</b>되고, 판매가 음수잔액을 초과하면 초과분만 현금영수증 발급대상이 됩니다. 저장할 때마다 기준일·금액 변경이력도 남습니다.</div>
           <div id="openingList" class="miniList" style="margin-top:8px"></div>
         </div>
         <div class="moduleBox">
@@ -1869,7 +1875,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.54',
+    appVersion:'v3.56',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3284,7 +3290,13 @@ async function saveReceiptProfile(){
 }
 window.editGeneralReceiptProfile=function(id){const x=(generalCustomerSettings||[]).find(r=>r.id===id);if(!x)return;$('receiptProfileCustomer').value=x.cust||'';$('receiptProfileMethod').value=x.issueMethod||'self';$('receiptProfilePhone').value=x.phone||'';$('receiptProfilePhone').disabled=$('receiptProfileMethod').value!=='mobile';$('receiptProfileCustomer').focus()}
 window.deleteGeneralReceiptProfile=async function(id){if(!confirm('이 거래처의 현금영수증 발급정보를 삭제할까요? 삭제 후에는 자진발급이 기본값입니다.'))return;await userCol('generalReceiptCustomerSettings').doc(id).delete();await loadGeneralLedgerData()}
+function hasRebuildableGeneralDrafts(){return (generalActions||[]).some(a=>((a.type==='issue'||a.type==='cancel')&&a.status==='pending')||a.type==='offset')}
+async function refreshGeneralSettlementsAfterOpeningChange(shouldRebuild){
+  await loadGeneralLedgerData();
+  if(shouldRebuild)await createGeneralSettlements({silent:true,reason:'opening-change'});
+}
 async function importOpeningBalances(file){
+  const shouldRebuild=hasRebuildableGeneralDrafts();
   const p=await genericExcelObjects(file),h=p.headers,nameKey=findHeaderAlias(h,['거래처명','거래처','판매처','상호']),codeKey=findHeaderAlias(h,['거래처코드','코드']),amountKey=findHeaderAlias(h,['이월잔액','잔액','미처리잔액','금액']),dateKey=findHeaderAlias(h,['기준일','기준날짜','잔액기준일']);
   if((!nameKey&&!codeKey)||!amountKey)throw new Error('이월잔액 파일에서 거래처/잔액 열을 찾지 못했습니다.');
   const batch=db.batch();let n=0;const now=Date.now(),defaultBasis=dateInputToYmd($('openingBasisDate')?.value)||generalStartDate;
@@ -3294,16 +3306,26 @@ async function importOpeningBalances(file){
     const existing=(generalOpenings||[]).find(x=>norm(x.cust)===cust),history=[...(existing?.history||[]),{basisDate,amount,changedAtMs:now}].slice(-30);
     batch.set(userCol('generalOpeningBalances').doc(safeId(cust)),{cust,amount,basisDate,history,version:now,updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});n++;
   }
-  if(!n)throw new Error('등록할 일반- 이월잔액을 찾지 못했습니다.');await batch.commit();await loadGeneralLedgerData();alert(`이월잔액 ${n}건을 등록했습니다.`)
+  if(!n)throw new Error('등록할 일반- 이월잔액을 찾지 못했습니다.');
+  await batch.commit();
+  await refreshGeneralSettlementsAfterOpeningChange(shouldRebuild);
+  alert(`이월잔액 ${n}건을 등록했습니다.${shouldRebuild?'\n기존 발급/취소 대기 목록도 새 이월잔액 기준으로 자동 재계산했습니다.':''}`)
 }
 async function saveGeneralOpening(){
+  const shouldRebuild=hasRebuildableGeneralDrafts();
   const cust=resolveCustomerNameInput($('openingCustomer').value),amount=num($('openingAmount').value),basisDate=dateInputToYmd($('openingBasisDate').value);
   if(!cust||!cust.startsWith('일반-'))throw new Error('일반- 거래처를 입력해 주세요.');if(!basisDate)throw new Error('이월잔액 기준일을 선택해 주세요.');if(!Number.isFinite(amount))throw new Error('이월잔액을 입력해 주세요.');
   const ref=userCol('generalOpeningBalances').doc(safeId(cust)),snap=await ref.get(),old=snap.exists?snap.data():{},now=Date.now(),history=[...(old.history||[]),{basisDate,amount,changedAtMs:now}].slice(-30);
   await ref.set({cust,amount,basisDate,history,version:now,updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  $('openingCustomer').value='';$('openingAmount').value='';await loadGeneralLedgerData()
+  $('openingCustomer').value='';$('openingAmount').value='';
+  await refreshGeneralSettlementsAfterOpeningChange(shouldRebuild)
 }
-async function deleteGeneralOpening(id){if(!confirm('이월잔액을 삭제할까요? 변경이력도 함께 삭제됩니다.'))return;await userCol('generalOpeningBalances').doc(id).delete();await loadGeneralLedgerData()}
+async function deleteGeneralOpening(id){
+  if(!confirm('이월잔액을 삭제할까요? 변경이력도 함께 삭제됩니다.'))return;
+  const shouldRebuild=hasRebuildableGeneralDrafts();
+  await userCol('generalOpeningBalances').doc(id).delete();
+  await refreshGeneralSettlementsAfterOpeningChange(shouldRebuild)
+}
 window.deleteGeneralOpening=deleteGeneralOpening;
 async function saveManualGeneralSale(){
   const saleDate=dateInputToYmd($('manualGeneralSaleDate').value),cust=resolveCustomerNameInput($('manualGeneralCustomer').value),amount=num($('manualGeneralAmount').value),noRaw=norm($('manualGeneralNo').value),saleNo=noRaw?Number(noRaw):0,issueDate=dateInputToYmd($('manualGeneralIssueDate').value),approvalNo=norm($('manualGeneralApprovalNo').value),methodSel=$('manualGeneralIssueMethod').value,phone=$('manualGeneralIssuePhone').value;
@@ -3321,13 +3343,42 @@ async function saveManualGeneralSale(){
 window.undoGeneralAction=async function(id){const a=generalActions.find(x=>x.id===id);if(!a)return;if(a.status==='issued'||a.status==='cancelled'||a.type==='legacyIssue'){alert('완료된 발급/취소 기록은 원장에서 임의 삭제할 수 없습니다.');return}if(!confirm('이 정산을 취소하고 연결 거래를 다시 미정산 상태로 돌릴까요?'))return;await userCol('generalReceiptActions').doc(id).delete();await loadGeneralLedgerData()};
 async function saveLegacyApproval(){const cust=resolveCustomerNameInput($('legacyApprovalCustomer').value),issueDate=dateInputToYmd($('legacyApprovalDate').value),approvalNo=norm($('legacyApprovalNo').value),amount=Math.abs(num($('legacyApprovalAmount').value));if(!cust.startsWith('일반-')||!issueDate||!approvalNo||amount<=0)throw new Error('거래처·발급일·승인번호·취소가능금액을 모두 입력해 주세요.');const id='LEGACY_'+simpleHash(cust+'|'+approvalNo+'|'+issueDate);await userCol('generalReceiptActions').doc(id).set({type:'legacyIssue',cust,amount,status:'issued',issueDate,approvalNo,entryIds:[],createdAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});$('legacyApprovalCustomer').value='';$('legacyApprovalDate').value='';$('legacyApprovalNo').value='';$('legacyApprovalAmount').value='';await loadGeneralLedgerData()}
 function collectGeneralRows(){const map=new Map();for(const r of generalTransactions||[]){if(String(r.date||'')<generalStartDate)continue;const id=r.id||r.ticketKey;if(!id)continue;if(!map.has(id))map.set(id,{...r,id});}for(const o of generalOpenings||[]){const basis=o.basisDate||generalStartDate,delta=Number(o.amount||0)-Number(o.processedAmount||0);if(String(basis)<generalStartDate||delta===0)continue;const id='OPEN|'+o.id+'|'+String(o.version||o.updatedAtMs||basis);map.set(id,{id,cust:o.cust,amount:delta,date:basis,loc:'opening',no:0,opening:true,openingId:o.id,openingCurrentAmount:Number(o.amount||0)});}return [...map.values()]}
+function openingResidualBase(o){return Number(o?.amount||0)-Number(o?.processedAmount||0)}
+function openingAppliedActions(o){return (generalActions||[]).filter(a=>a.openingCarryId===o?.id&&Number.isFinite(Number(a.openingDeltaApplied))&&Number(a.openingDeltaApplied)!==0)}
+function openingCurrentBalance(o){return openingResidualBase(o)+openingAppliedActions(o).reduce((sum,a)=>sum+Number(a.openingDeltaApplied||0),0)}
+function openingCarryDetailHtml(o){
+  const acts=openingAppliedActions(o).slice().sort((a,b)=>String(a.saleDate||'').localeCompare(String(b.saleDate||''))||Number(a.saleNo||0)-Number(b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0));
+  if(!acts.length)return '<span class="small">상계내역 없음</span>';
+  return `<details><summary>${acts.length}건</summary>${acts.map(a=>{const delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),kind=delta>=0?'판매 상계':'반품 반영';return `<div class="small" style="white-space:nowrap">${esc(a.saleDate?formatDisplayDate(a.saleDate):'-')} · ${a.saleNo?`No.${Number(a.saleNo)}`:'-'} · ${kind} ${Math.abs(delta).toLocaleString()}원 · ${before.toLocaleString()} → ${after.toLocaleString()}원</div>`}).join('')}</details>`;
+}
 function consumedGeneralIds(){const s=new Set();for(const a of generalActions||[])for(const id of a.entryIds||[])s.add(id);return s}
 function cancellationUsedForIssue(issueId){let n=0;for(const a of generalActions||[]){if(a.type==='cancel'&&a.status==='cancelled')for(const t of a.targets||[])if(t.actionId===issueId)n+=Number(t.amount||0);}return n}
 function remainingForApproval(a){return Math.max(0,Number(a.amount||0)-cancellationUsedForIssue(a.id))}
 function recommendCancelTargets(cust,amount){let left=amount,targets=[];const issues=(generalActions||[]).filter(a=>a.cust===cust&&(a.type==='issue'||a.type==='legacyIssue')&&a.status==='issued'&&a.approvalNo).sort((a,b)=>String(b.issueDate||'').localeCompare(String(a.issueDate||''))||Number(b.createdAtMs||0)-Number(a.createdAtMs||0));for(const a of issues){const rem=remainingForApproval(a);if(rem<=0)continue;const take=Math.min(rem,left);targets.push({actionId:a.id,approvalNo:a.approvalNo,issueDate:a.issueDate,amount:take});left-=take;if(left<=0)break;}return {targets,shortfall:left}}
+function recommendCancelTargetsReserved(cust,amount,reserved){
+  let left=amount,targets=[];
+  const issues=(generalActions||[]).filter(a=>a.cust===cust&&(a.type==='issue'||a.type==='legacyIssue')&&a.status==='issued'&&a.approvalNo).sort((a,b)=>String(b.issueDate||'').localeCompare(String(a.issueDate||''))||Number(b.createdAtMs||0)-Number(a.createdAtMs||0));
+  for(const a of issues){
+    const rem=Math.max(0,remainingForApproval(a)-Number(reserved.get(a.id)||0));if(rem<=0)continue;
+    const take=Math.min(rem,left);targets.push({actionId:a.id,approvalNo:a.approvalNo,issueDate:a.issueDate,amount:take});reserved.set(a.id,Number(reserved.get(a.id)||0)+take);left-=take;if(left<=0)break;
+  }
+  return {targets,shortfall:left};
+}
+function pairSameDayExactSaleReturns(rows){
+  const groups=new Map();
+  for(const r of rows){const amt=Number(r.amount||0);if(!amt)continue;const key=[norm(r.cust),String(r.date||''),Math.abs(amt)].join('|');if(!groups.has(key))groups.set(key,{pos:[],neg:[]});(amt>0?groups.get(key).pos:groups.get(key).neg).push(r);}
+  const pairs=[],used=new Set();
+  for(const g of groups.values()){
+    g.pos.sort((a,b)=>Number(a.no||0)-Number(b.no||0)||String(a.id||'').localeCompare(String(b.id||'')));
+    g.neg.sort((a,b)=>Number(a.no||0)-Number(b.no||0)||String(a.id||'').localeCompare(String(b.id||'')));
+    const n=Math.min(g.pos.length,g.neg.length);
+    for(let i=0;i<n;i++){const pos=g.pos[i],neg=g.neg[i];pairs.push({kind:'saleOffset',positive:pos,negative:neg,amount:Math.abs(Number(pos.amount||0))});used.add(pos.id);used.add(neg.id);}
+  }
+  return {pairs,remaining:rows.filter(r=>!used.has(r.id))};
+}
 async function clearPendingGeneralActionsForRebuild(){
   const removable=(generalActions||[]).filter(a=>
-    (a.type==='issue'||a.type==='cancel'||a.type==='offset') &&
+    (a.type==='issue'||a.type==='cancel'||a.type==='offset'||a.type==='saleOffset') &&
     a.status!=='issued' && a.status!=='cancelled'
   );
   if(!removable.length)return 0;
@@ -3340,27 +3391,100 @@ async function clearPendingGeneralActionsForRebuild(){
   generalActions=(generalActions||[]).filter(a=>!removedIds.has(a.id));
   return removable.length;
 }
-async function createGeneralSettlements(){
+async function createGeneralSettlements(opts={}){
+  const silent=!!opts.silent;
   const cutoff=dateInputToYmd($('generalCutoffDate').value)||dateInputToYmd(new Date().toISOString().slice(0,10));
   const replaced=await clearPendingGeneralActionsForRebuild();
   const consumed=consumedGeneralIds();
-  const rows=collectGeneralRows()
-    .filter(r=>!consumed.has(r.id)&&String(r.date||'')<=cutoff&&Number(r.amount||0)!==0)
+  const allRows=collectGeneralRows();
+  const saleRows=allRows
+    .filter(r=>!r.opening&&!consumed.has(r.id)&&String(r.date||'')<=cutoff&&Number(r.amount||0)!==0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||Number(a.no||0)-Number(b.no||0)||String(a.cust||'').localeCompare(String(b.cust||'')));
-  if(!rows.length){
-    await loadGeneralLedgerData();
-    throw new Error('발급대상으로 만들 미처리 판매·반품 거래가 없습니다.');
+  const positiveOpeningRows=allRows
+    .filter(r=>r.opening&&!consumed.has(r.id)&&String(r.date||'')<=cutoff&&Number(r.amount||0)>0)
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||'')));
+
+  // 음수 이월잔액은 취소대상으로 만들지 않고, 기준일 이후 미처리 판매·반품과 먼저 상계한다.
+  // 이미 발급완료된 판매건에 사용된 상계분은 openingDeltaApplied로 남아 계속 반영한다.
+  const carryByCust=new Map();
+  for(const o of generalOpenings||[]){
+    const basis=o.basisDate||generalStartDate;
+    if(String(basis)>cutoff)continue;
+    let balance=openingResidualBase(o);
+    for(const a of (generalActions||[])){
+      if(a.openingCarryId===o.id)balance+=Number(a.openingDeltaApplied||0);
+    }
+    if(balance<0)carryByCust.set(norm(o.cust),{opening:o,balance});
   }
-  let created=0;
-  for(let i=0;i<rows.length;i+=350){
+
+  const actionRows=[];
+  for(const r of positiveOpeningRows){
+    actionRows.push({kind:'normal',row:r});
+  }
+  // 같은 거래처·같은 날짜의 동일금액 판매/반품은 홈택스 발급·취소 전에 서로 상계한다.
+  // 예: +11,500 / -11,500은 별도 '상계처리 목록'으로 보내고 둘 다 발급/취소하지 않는다.
+  const paired=pairSameDayExactSaleReturns(saleRows);
+  actionRows.push(...paired.pairs);
+  for(const r of paired.remaining){
+    const signed=Number(r.amount||0),carry=carryByCust.get(norm(r.cust));
+    if(carry&&carry.balance<0&&String(r.date||'')>=String(carry.opening?.basisDate||generalStartDate)){
+      const before=carry.balance;
+      if(signed>0){
+        const applied=Math.min(signed,-before),after=before+applied;
+        carry.balance=after;
+        if(signed>applied){
+          actionRows.push({kind:'partialIssue',row:r,opening:carry.opening,openingDeltaApplied:applied,openingBalanceBefore:before,openingBalanceAfter:after,issueAmount:signed-applied});
+        }else{
+          actionRows.push({kind:'offset',row:r,opening:carry.opening,openingDeltaApplied:applied,openingBalanceBefore:before,openingBalanceAfter:after});
+        }
+        continue;
+      }
+      if(signed<0){
+        const after=before+signed;
+        carry.balance=after;
+        actionRows.push({kind:'offset',row:r,opening:carry.opening,openingDeltaApplied:signed,openingBalanceBefore:before,openingBalanceAfter:after});
+        continue;
+      }
+    }
+    actionRows.push({kind:'normal',row:r});
+  }
+
+  if(!actionRows.length){
+    await loadGeneralLedgerData();
+    if(silent)return {created:0,replaced,issue:0,cancel:0,offset:0};
+    throw new Error('발급대상으로 만들 미처리 판매·반품 거래가 없습니다. 음수 이월잔액은 다음 판매가 생기면 먼저 자동 상계됩니다.');
+  }
+
+  let created=0,issueCount=0,cancelCount=0,offsetCount=0,saleOffsetCount=0;
+  const cancelReservations=new Map();
+  for(let i=0;i<actionRows.length;i+=350){
     const b=db.batch();
-    for(const r of rows.slice(i,i+350)){
-      const signed=Number(r.amount||0),amount=Math.abs(signed),id='GA_TX_'+simpleHash(String(r.id));
+    for(const item of actionRows.slice(i,i+350)){
+      if(item.kind==='saleOffset'){
+        const pos=item.positive,neg=item.negative,amount=Math.abs(Number(item.amount||0)),id='GA_NET_'+simpleHash(String(pos.id)+'|'+String(neg.id));
+        const data={type:'saleOffset',status:'offset',cust:pos.cust,entryIds:[pos.id,neg.id],amount,netAmount:0,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:pos.date||neg.date||'',saleNo:Number(pos.no||0),positiveEntryId:pos.id,negativeEntryId:neg.id,positiveNo:Number(pos.no||0),negativeNo:Number(neg.no||0),sourceJobId:pos.sourceJobId||neg.sourceJobId||''};
+        b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        created++;saleOffsetCount++;continue;
+      }
+      const r=item.row,signed=Number(r.amount||0),id='GA_TX_'+simpleHash(String(r.id));
+      if(item.kind==='offset'){
+        const delta=Number(item.openingDeltaApplied||0),before=Number(item.openingBalanceBefore||0),after=Number(item.openingBalanceAfter||0);
+        const data={type:'offset',status:'offset',cust:r.cust,entryIds:[r.id],amount:Math.abs(signed),netAmount:signed,originalAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',openingCarryId:item.opening?.id||'',openingDeltaApplied:delta,openingBalanceBefore:before,openingBalanceAfter:after};
+        b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        created++;offsetCount++;continue;
+      }
+      if(item.kind==='partialIssue'){
+        const issueAmount=Number(item.issueAmount||0),info=issueInfoForCustomer(r.cust);
+        const data={type:'issue',status:'pending',cust:r.cust,entryIds:[r.id],amount:issueAmount,netAmount:issueAmount,grossAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',issueMethod:info.issueMethod,issueNumber:info.issueNumber,openingCarryId:item.opening?.id||'',openingDeltaApplied:Number(item.openingDeltaApplied||0),openingBalanceBefore:Number(item.openingBalanceBefore||0),openingBalanceAfter:Number(item.openingBalanceAfter||0)};
+        b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        created++;issueCount++;continue;
+      }
+      const amount=Math.abs(signed);
       let data={cust:r.cust,entryIds:[r.id],netAmount:signed,amount,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',opening:!!r.opening,openingId:r.openingId||'',...(r.opening?{openingCurrentAmount:Number(r.openingCurrentAmount||0)}:{})};
-      if(signed>0){const info=issueInfoForCustomer(r.cust);data={...data,type:'issue',status:'pending',issueMethod:info.issueMethod,issueNumber:info.issueNumber};}
+      if(signed>0){const info=issueInfoForCustomer(r.cust);data={...data,type:'issue',status:'pending',issueMethod:info.issueMethod,issueNumber:info.issueNumber};issueCount++;}
       else{
-        const rec=recommendCancelTargets(r.cust,amount);
-        data={...data,type:'cancel',status:'pending',targets:rec.targets,shortfall:rec.shortfall};
+        const rec=recommendCancelTargetsReserved(r.cust,amount,cancelReservations);
+        data={...data,type:'cancel',status:'pending',targets:rec.targets,shortfall:rec.shortfall,originalShortfall:rec.shortfall};cancelCount++;
       }
       b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
       created++;
@@ -3368,7 +3492,15 @@ async function createGeneralSettlements(){
     await b.commit();
   }
   await loadGeneralLedgerData();
-  alert(`${created}건을 장끼별 1건씩 발급/취소 대상으로 생성했습니다.${replaced?`\n기존 합산 대기 ${replaced}건은 판매건별로 다시 만들었습니다.`:''}`);
+  if(!silent){
+    const parts=[];
+    if(issueCount)parts.push(`발급 ${issueCount}건`);
+    if(cancelCount)parts.push(`취소 ${cancelCount}건`);
+    if(offsetCount)parts.push(`이월상계 ${offsetCount}건`);
+    if(saleOffsetCount)parts.push(`판매·반품상계 ${saleOffsetCount}쌍`);
+    alert(`${created}건을 다시 계산했습니다. (${parts.join(' · ')||'처리대상 없음'})${replaced?`\n기존 미완료/상계 ${replaced}건은 현재 이월잔액 기준으로 다시 계산했습니다.`:''}`);
+  }
+  return {created,replaced,issue:issueCount,cancel:cancelCount,offset:offsetCount,saleOffset:saleOffsetCount};
 }
 function pendingGeneralIssues(){return (generalActions||[]).filter(a=>a.type==='issue'&&a.status==='pending'&&(a.entryIds||[]).length===1)}
 function hasGroupedPendingGeneralActions(){return (generalActions||[]).some(a=>(a.type==='issue'||a.type==='cancel')&&a.status==='pending'&&(a.entryIds||[]).length!==1)}
@@ -3379,7 +3511,16 @@ async function markOpeningProcessedForAction(a){
   await userCol('generalOpeningBalances').doc(a.openingId).set({processedAmount:Number(o.amount||0),processedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
 }
 window.completeGeneralIssue=async function(id){try{const a=generalActions.find(x=>x.id===id),date=dateInputToYmd($('gIssueDate_'+safeDomId(id)).value),approvalNo=norm($('gApproval_'+safeDomId(id)).value);if(!a||!date||!approvalNo)throw new Error('실제 발급일과 승인번호를 입력해 주세요.');const info=issueInfoForAction(a);await userCol('generalReceiptActions').doc(id).set({status:'issued',issueDate:date,approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(a);await loadGeneralLedgerData();applyAllSalesMemos();finishRender()}catch(e){alert(e.message||e)}}
-window.completeGeneralCancel=async function(id){try{const a=generalActions.find(x=>x.id===id),date=dateInputToYmd($('gCancelDate_'+safeDomId(id)).value),cancelApprovalNo=norm($('gCancelApproval_'+safeDomId(id)).value);if(!a||!date)throw new Error('실제 취소일을 입력해 주세요.');const rec=recommendCancelTargets(a.cust,Number(a.amount||0));if(Number(rec.shortfall||0)>0)throw new Error(`취소가능 승인금액이 ${Number(rec.shortfall).toLocaleString()}원 부족합니다. 과거 승인건을 먼저 등록해 주세요.`);await userCol('generalReceiptActions').doc(id).set({status:'cancelled',cancelDate:date,cancelApprovalNo,targets:rec.targets,shortfall:0,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(a);await loadGeneralLedgerData();applyAllSalesMemos();finishRender()}catch(e){alert(e.message||e)}}
+window.completeGeneralCancel=async function(id){
+  try{
+    const a=generalActions.find(x=>x.id===id),date=dateInputToYmd($('gCancelDate_'+safeDomId(id))?.value),cancelApprovalNo=norm($('gCancelApproval_'+safeDomId(id))?.value);
+    if(!a||!date)throw new Error('실제 취소일을 입력해 주세요.');
+    const unresolved=Number(a.shortfall||0);
+    await userCol('generalReceiptActions').doc(id).set({status:'cancelled',cancelDate:date,cancelApprovalNo,targets:a.targets||[],manualCancel:true,manualResolvedShortfall:unresolved,shortfall:0,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await markOpeningProcessedForAction(a);await loadGeneralLedgerData();applyAllSalesMemos();finishRender();
+  }catch(e){alert(e.message||e)}
+}
+window.completeManualGeneralCancel=window.completeGeneralCancel;
 function generalActionEntries(a){
   const ids=new Set(a?.entryIds||[]);
   return collectGeneralRows().filter(r=>ids.has(r.id)).sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||Number(x.no||0)-Number(y.no||0));
@@ -3428,41 +3569,102 @@ function toggleGeneralUnprocessedDetails(){
 function renderGeneralLedger(){
   const box=$('generalLedgerTable'),sum=$('generalLedgerSummary'),opening=$('openingList'),profiles=$('receiptProfileList');if(!box||!sum)return;
   const consumed=consumedGeneralIds(),rows=collectGeneralRows();
-  const un=rows.filter(r=>!consumed.has(r.id)&&Number(r.amount||0)!==0)
+  const un=rows.filter(r=>!r.opening&&!consumed.has(r.id)&&Number(r.amount||0)!==0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||''))||Number(a.no||0)-Number(b.no||0));
   const by=new Set(un.map(r=>r.cust));
   const pendingIssue=(generalActions||[]).filter(a=>a.type==='issue'&&a.status==='pending').length,pendingCancel=(generalActions||[]).filter(a=>a.type==='cancel'&&a.status==='pending').length,groupedPending=(generalActions||[]).filter(a=>(a.type==='issue'||a.type==='cancel')&&a.status==='pending'&&(a.entryIds||[]).length!==1).length;
   const unDetail=un.length?`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><div class="detailHead"><b>미처리 판매·반품 상세</b><span class="small">0원 거래 제외 · ${un.length.toLocaleString()}건 / ${by.size.toLocaleString()}곳</span></div><table><thead><tr><th>날짜</th><th>거래처</th><th>No.</th><th style="text-align:right">금액</th></tr></thead><tbody>${un.map(r=>`<tr><td>${esc(r.date?formatDisplayDate(r.date):'-')}</td><td>${esc(r.cust||'')}</td><td>${r.opening?'이월':(r.no?`No.${Number(r.no)}`:'-')}</td><td class="amount">${Number(r.amount||0).toLocaleString('ko-KR')}원</td></tr>`).join('')}</tbody></table></div>`:`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><span class="small">현재 미처리 판매·반품이 없습니다. (0원 거래는 미처리 건수에서 제외)</span></div>`;
   sum.innerHTML=`<div class="ledgerSummary"><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 판매·반품</small><b>${un.length.toLocaleString()}건</b></div><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 거래처</small><b>${by.size.toLocaleString()}곳</b></div><div><small>발급 대기</small><b>${pendingIssue}건</b></div><div><small>취소 대기</small><b>${pendingCancel}건</b></div></div>${unDetail}${groupedPending?`<div class="warnBox" style="margin-top:8px">기존 거래처별 합산 대기 ${groupedPending}건이 남아 있습니다. <b>판매건별 발급대상 생성</b>을 누르면 완료되지 않은 합산 대기를 지우고 장끼 1건씩 다시 만듭니다.</div>`:''}`;
   if(opening){
-    opening.innerHTML=(generalOpenings||[]).length?`<table><thead><tr><th>거래처</th><th>기준일</th><th>이월잔액</th><th>변경이력</th><th></th></tr></thead><tbody>${[...(generalOpenings||[])].sort((a,b)=>String(a.cust||'').localeCompare(String(b.cust||''))).map(o=>{const hist=(o.history||[]).slice().sort((a,b)=>Number(b.changedAtMs||0)-Number(a.changedAtMs||0)),detail=hist.length?`<details><summary>${hist.length}건</summary>${hist.map(x=>`<div class="small">${esc(ymdToInput(x.basisDate||''))} 기준 · ${Number(x.amount||0).toLocaleString()}원</div>`).join('')}</details>`:'-';return `<tr><td>${esc(o.cust||'')}</td><td>${esc(ymdToInput(o.basisDate||generalStartDate))}</td><td><b>${Number(o.amount||0).toLocaleString()}원</b>${Number(o.processedAmount||0)!==0?`<br><span class="small">처리반영 ${Number(o.processedAmount||0).toLocaleString()}원</span>`:''}</td><td>${detail}</td><td><button class="btn light" onclick="editGeneralOpening('${o.id}')">수정</button> <button class="btn light" onclick="deleteGeneralOpening('${o.id}')">삭제</button></td></tr>`}).join('')}</tbody></table>`:'<span class="small">등록된 이월잔액 없음</span>';
+    opening.innerHTML=(generalOpenings||[]).length?`<table><thead><tr><th>거래처</th><th>기준일</th><th>등록잔액</th><th>현재잔액</th><th>상계내역</th><th>변경이력</th><th></th></tr></thead><tbody>${[...(generalOpenings||[])].sort((a,b)=>String(a.cust||'').localeCompare(String(b.cust||''))).map(o=>{const hist=(o.history||[]).slice().sort((a,b)=>Number(b.changedAtMs||0)-Number(a.changedAtMs||0)),detail=hist.length?`<details><summary>${hist.length}건</summary>${hist.map(x=>`<div class="small">${esc(ymdToInput(x.basisDate||''))} 기준 · ${Number(x.amount||0).toLocaleString()}원</div>`).join('')}</details>`:'-',current=openingCurrentBalance(o);return `<tr><td>${esc(o.cust||'')}</td><td>${esc(ymdToInput(o.basisDate||generalStartDate))}</td><td><b>${Number(o.amount||0).toLocaleString()}원</b>${Number(o.processedAmount||0)!==0?`<br><span class="small">완료처리 ${Number(o.processedAmount||0).toLocaleString()}원</span>`:''}</td><td><b>${Number(current).toLocaleString()}원</b>${current<0?'<br><span class="small">다음 판매와 자동 상계</span>':current===0?'<br><span class="small">상계 완료</span>':''}</td><td>${openingCarryDetailHtml(o)}</td><td>${detail}</td><td><button class="btn light" onclick="editGeneralOpening('${o.id}')">수정</button> <button class="btn light" onclick="deleteGeneralOpening('${o.id}')">삭제</button></td></tr>`}).join('')}</tbody></table>`:'<span class="small">등록된 이월잔액 없음</span>';
   }
   if(profiles){
     profiles.innerHTML=(generalCustomerSettings||[]).length?`<table><thead><tr><th>거래처</th><th>발급방식</th><th>발급수단번호</th><th></th></tr></thead><tbody>${[...(generalCustomerSettings||[])].sort((a,b)=>String(a.cust||'').localeCompare(String(b.cust||''))).map(x=>`<tr><td>${esc(x.cust||'')}</td><td>${x.issueMethod==='mobile'?'휴대폰번호':'자진발급'}</td><td>${x.issueMethod==='mobile'?esc(x.phone||''):'010-000-1234'}</td><td><button class="btn light" onclick="editGeneralReceiptProfile('${x.id}')">수정</button> <button class="btn light" onclick="deleteGeneralReceiptProfile('${x.id}')">삭제</button></td></tr>`).join('')}</tbody></table>`:'<span class="small">별도 저장된 거래처 없음 · 기본은 자진발급(010-000-1234)</span>';
   }
-  let h='<table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>금액</th><th>발급방식</th><th>반영할 적요</th><th>처리</th></tr></thead><tbody>';
   const acts=[...(generalActions||[])].sort((a,b)=>{const ar=generalActionEntries(a)[0]||{},br=generalActionEntries(b)[0]||{};return String(ar.date||a.saleDate||'').localeCompare(String(br.date||b.saleDate||''))||Number(ar.no||a.saleNo||0)-Number(br.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0)});
-  for(const a of acts.slice(0,500)){
-    let st='',action='',methodText='-';
-    if(a.type==='issue'){
-      const grouped=(a.entryIds||[]).length!==1,info=issueInfoForAction(a);methodText=info.issueMethod==='mobile'?`휴대폰 ${esc(info.issueNumber)}`:'자진발급';
-      st=a.status==='issued'?'<span class="statusPill ok">발급완료</span>':grouped?'<span class="statusPill bad">합산대기 재생성필요</span>':'<span class="statusPill warn">발급 대기</span>';
-      action=a.status==='issued'?`${esc(a.issueDate||'')} / 승인 ${esc(a.approvalNo||'')}`:grouped?'<span class="small">위의 판매건별 발급대상 생성을 눌러주세요.</span>':`<div class="ledgerAction"><input id="gIssueDate_${safeDomId(a.id)}" type="date"><input id="gApproval_${safeDomId(a.id)}" placeholder="승인번호"><button class="btn light" onclick="completeGeneralIssue('${a.id}')">발급완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
-    }else if(a.type==='cancel'){
-      const grouped=(a.entryIds||[]).length!==1;methodText='취소';
-      st=a.status==='cancelled'?'<span class="statusPill ok">취소완료</span>':grouped?'<span class="statusPill bad">합산대기 재생성필요</span>':'<span class="statusPill bad">취소 필요</span>';
-      const rec=a.status==='cancelled'?{targets:a.targets||[],shortfall:a.shortfall||0}:recommendCancelTargets(a.cust,Number(a.amount||0)),target=(rec.targets||[]).map(t=>`${t.issueDate||''} ${t.approvalNo||''}에서 ${Number(t.amount||0).toLocaleString()}원`).join('<br>')+(Number(rec.shortfall||0)>0?`<br><b class="bad">승인금액 ${Number(rec.shortfall).toLocaleString()}원 부족</b>`:'');
-      action=a.status==='cancelled'?`${esc(a.cancelDate||'')} / 원승인 ${(a.targets||[]).map(t=>esc(t.approvalNo||'')).join(', ')}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}`:grouped?'<span class="small">위의 판매건별 발급대상 생성을 눌러주세요.</span>':`${target}<div class="ledgerAction"><input id="gCancelDate_${safeDomId(a.id)}" type="date"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(있으면)"><button class="btn light" onclick="completeGeneralCancel('${a.id}')">취소완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
-    }else if(a.type==='legacyIssue'){st='<span class="statusPill">과거 승인</span>';methodText='과거발급';action=`${esc(a.issueDate||'')} / 승인 ${esc(a.approvalNo||'')} / 남은취소가능 ${remainingForApproval(a).toLocaleString()}원`}
-    else{st='<span class="statusPill ok">상계완료</span>';methodText='-';action='발급/취소 없음'}
-    const entry=generalActionEntries(a)[0]||{},memo=generalActionMemoText(a),saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),signed=(a.type==='cancel'?-1:1)*Number(a.amount||0),isOpening=entry.opening||a.opening;
-    h+=`<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}${isOpening?'<br><span class="small">이월 기준</span>':''}</td><td>${esc(a.cust||'')}</td><td>${saleNo?`No.${Number(saleNo)}`:(isOpening?'이월':'-')}</td><td>${signed.toLocaleString()}</td><td>${methodText}</td><td><b>${esc(memo)}</b></td><td>${action}</td></tr>`;
-  }
-  h+='</tbody></table>';box.innerHTML=h;
+  const issueActs=acts.filter(a=>a.type==='issue');
+  const offsetActs=acts.filter(a=>a.type==='offset'||a.type==='saleOffset');
+  const cancelActs=acts.filter(a=>a.type==='cancel');
+  const legacyActs=acts.filter(a=>a.type==='legacyIssue');
+
+  const issueRows=issueActs.length?issueActs.slice(0,500).map(a=>{
+    const entry=generalActionEntries(a)[0]||{},saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),grouped=(a.entryIds||[]).length!==1,info=issueInfoForAction(a),methodText=info.issueMethod==='mobile'?`휴대폰 ${esc(info.issueNumber)}`:'자진발급',memo=generalActionMemoText(a);
+    const carryNote=Number(a.openingDeltaApplied||0)!==0?`<div class="small" style="margin-bottom:4px">이월잔액 ${Number(a.openingBalanceBefore||0).toLocaleString()}원 → ${Number(a.openingBalanceAfter||0).toLocaleString()}원 · ${Math.abs(Number(a.openingDeltaApplied||0)).toLocaleString()}원 상계${Number(a.grossAmount||0)>Number(a.amount||0)?` · 판매 ${Number(a.grossAmount||0).toLocaleString()}원 중 ${Number(a.amount||0).toLocaleString()}원만 발급`:''}</div>`:'';
+    const st=a.status==='issued'?'<span class="statusPill ok">발급완료</span>':grouped?'<span class="statusPill bad">재생성필요</span>':'<span class="statusPill warn">발급 대기</span>';
+    const action=a.status==='issued'?`${esc(a.issueDate||'')} / 승인 ${esc(a.approvalNo||'')}`:grouped?'<span class="small">판매건별 발급대상 생성을 다시 눌러주세요.</span>':`<div class="ledgerAction"><input id="gIssueDate_${safeDomId(a.id)}" type="date"><input id="gApproval_${safeDomId(a.id)}" placeholder="승인번호"><button class="btn light" onclick="completeGeneralIssue('${a.id}')">발급완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
+    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b></td><td>${methodText}</td><td><b>${esc(memo)}</b></td><td>${carryNote}${action}</td></tr>`;
+  }).join(''):'<tr><td colspan="8" class="small">현재 발급대상 없음</td></tr>';
+
+  const offsetRows=offsetActs.length?offsetActs.slice(0,500).map(a=>{
+    const es=generalActionEntries(a),date=(es[0]?.date||a.saleDate||''),cust=a.cust||es[0]?.cust||'';
+    if(a.type==='saleOffset'){
+      const pos=es.find(r=>Number(r.amount||0)>0),neg=es.find(r=>Number(r.amount||0)<0),amt=Math.abs(Number(a.amount||0));
+      const pair=`<div class="offsetPair">판매 ${pos?.no?`No.${Number(pos.no)}`:'-'} +${amt.toLocaleString()}원<br>반품 ${neg?.no?`No.${Number(neg.no)}`:'-'} -${amt.toLocaleString()}원</div>`;
+      return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}</td><td>${pair}</td><td class="amount">0원</td><td><b>서로 상계</b><br><span class="small">현금영수증 발급·취소 없음</span></td></tr>`;
+    }
+    const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
+    return `<tr><td><span class="statusPill ok">이월상계</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">${signed.toLocaleString()}원</td><td>${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · <b>${before.toLocaleString()} → ${after.toLocaleString()}원</b></td></tr>`;
+  }).join(''):'<tr><td colspan="6" class="small">현재 상계처리 내역 없음</td></tr>';
+
+  const cancelRows=cancelActs.length?cancelActs.slice(0,500).map(a=>{
+    const entry=generalActionEntries(a)[0]||{},saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),targets=a.targets||[],shortfall=Number(a.shortfall||0),memo=generalActionMemoText(a);
+    const targetHtml=targets.length?targets.map(t=>`<div>${esc(t.issueDate?formatDisplayDate(t.issueDate):'-')} 발행 · 승인 ${esc(t.approvalNo||'-')} · <b>${Number(t.amount||0).toLocaleString()}원 취소</b></div>`).join(''):'';
+    const missing=!targets.length?`<span class="cancelMissing">과거 발행건 없음</span><div class="small" style="margin-top:4px">이카운트/홈택스에서 과거 발행건을 직접 찾아 취소한 뒤 아래 수기완료 버튼을 눌러주세요.</div>`:shortfall>0?`${targetHtml}<div class="cancelMissing" style="margin-top:4px">추가 과거 발행건 ${shortfall.toLocaleString()}원 부족</div>`:targetHtml;
+    const st=a.status==='cancelled'?'<span class="statusPill ok">취소완료</span>':'<span class="statusPill bad">취소 확인</span>';
+    const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:`${missing}<div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기취소발행완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
+    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>-${Number(a.amount||0).toLocaleString()}원</b></td><td>${a.status==='cancelled'?(targets.length?targetHtml:'수기 확인 완료'):missing}</td><td>${action}</td></tr>`;
+  }).join(''):'<tr><td colspan="7" class="small">현재 취소 확인이 필요한 반품 없음</td></tr>';
+
+  const legacyRows=legacyActs.length?`<details style="margin-top:8px"><summary class="small">등록된 과거 승인건 ${legacyActs.length}건 보기</summary><div style="padding-top:6px">${legacyActs.map(a=>`<div class="small">${esc(a.cust||'')} · ${esc(a.issueDate?formatDisplayDate(a.issueDate):'-')} · 승인 ${esc(a.approvalNo||'')} · 남은 취소가능 ${remainingForApproval(a).toLocaleString()}원</div>`).join('')}</div></details>`:'';
+
+  box.innerHTML=`<div class="generalActionPanels">
+    <div class="generalActionPanel"><h4>현금영수증 발급 목록</h4><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 표시합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${issueRows}</tbody></table></div>
+    <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">같은 날 동일금액 판매·반품 상계와 음수 이월잔액 상계를 따로 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
+    <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내하고, 없으면 ‘과거 발행건 없음’으로 표시합니다. 홈택스 발급내역 엑셀에서 취소건이 매칭되면 자동으로 취소완료·적요 준비됩니다.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
+  </div>`;
 }
 window.editGeneralOpening=function(id){const o=(generalOpenings||[]).find(x=>x.id===id);if(!o)return;$('openingCustomer').value=o.cust||'';$('openingBasisDate').value=ymdToInput(o.basisDate||generalStartDate);$('openingAmount').value=Number(o.amount||0);$('openingCustomer').focus()}
 
-async function importHometaxResult(file){try{const parsed=await genericExcelObjects(file),headers=parsed.headers,rows=parsed.rows,approvalKey=findHeaderAlias(headers,['승인번호','승인 번호']),dateKey=findHeaderAlias(headers,['거래일자','발급일자','거래일','발급일']),amountKey=findHeaderAlias(headers,['총거래금액','거래금액','금액']),memoKey=findHeaderAlias(headers,['메모','비고']),typeKey=findHeaderAlias(headers,['거래구분','구분','승인구분']),origKey=findHeaderAlias(headers,['당초승인번호','원승인번호','원 승인번호']);if(!approvalKey||!amountKey)throw new Error('발급결과 파일에서 승인번호/거래금액 열을 찾지 못했습니다.');let matched=0,unmatched=0;for(const r of rows){const approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);let action=null;const mm=memo.match(/AUTO:([^\s]+)/);if(mm)action=generalActions.find(a=>a.id===mm[1]);if(!action&&/취소/.test(type)&&orig)action=generalActions.find(a=>a.type==='cancel'&&a.status==='pending'&&(a.targets||[]).some(t=>norm(t.approvalNo)===orig)&&Number(a.amount||0)===amount);if(action){if(action.type==='issue'){const info=issueInfoForAction(action);await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);}else if(action.type==='cancel'){await userCol('generalReceiptActions').doc(action.id).set({status:'cancelled',cancelDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),cancelApprovalNo:approvalNo,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);}matched++;}else unmatched++;}await loadGeneralLedgerData();applyAllSalesMemos();finishRender();$('hometaxImportStatus').textContent=`자동대조 ${matched}건 · 미매칭 ${unmatched}건`;}catch(e){$('hometaxImportStatus').textContent='오류: '+(e.message||e)}}
+function cancelImportedAmount(a){return (a?.cancelImportMatches||[]).reduce((sum,x)=>sum+Math.abs(Number(x.amount||0)),0)}
+function findPendingCancelForHometax(orig,amount,memoActionId){
+  if(memoActionId){const a=(generalActions||[]).find(x=>x.id===memoActionId&&x.type==='cancel'&&x.status==='pending');if(a)return a;}
+  if(!orig)return null;
+  const candidates=(generalActions||[]).filter(a=>a.type==='cancel'&&a.status==='pending'&&(a.targets||[]).some(t=>norm(t.approvalNo)===orig));
+  for(const a of candidates){
+    const targetTotal=(a.targets||[]).filter(t=>norm(t.approvalNo)===orig).reduce((s,t)=>s+Number(t.amount||0),0);
+    const already=(a.cancelImportMatches||[]).filter(x=>norm(x.originalApprovalNo)===orig).reduce((s,x)=>s+Math.abs(Number(x.amount||0)),0);
+    if(targetTotal-already>=amount)return a;
+  }
+  return candidates[0]||null;
+}
+async function importHometaxResult(file){
+  try{
+    const parsed=await genericExcelObjects(file),headers=parsed.headers,rows=parsed.rows,approvalKey=findHeaderAlias(headers,['승인번호','승인 번호']),dateKey=findHeaderAlias(headers,['거래일자','발급일자','거래일','발급일']),amountKey=findHeaderAlias(headers,['총거래금액','거래금액','금액']),memoKey=findHeaderAlias(headers,['메모','비고']),typeKey=findHeaderAlias(headers,['거래구분','구분','승인구분']),origKey=findHeaderAlias(headers,['당초승인번호','원승인번호','원 승인번호']);
+    if(!approvalKey||!amountKey)throw new Error('발급결과 파일에서 승인번호/거래금액 열을 찾지 못했습니다.');
+    let matched=0,unmatched=0,autoCancelled=0;
+    for(const r of rows){
+      const approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(!amount){continue;}
+      const mm=memo.match(/AUTO:([^\s]+)/),memoId=mm?mm[1]:'';
+      let action=memoId?generalActions.find(a=>a.id===memoId):null;
+      if(/취소/.test(type))action=findPendingCancelForHometax(orig,amount,memoId)||action;
+      if(!action){unmatched++;continue;}
+      if(action.type==='issue'){
+        const info=issueInfoForAction(action);await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=date;action.approvalNo=approvalNo;matched++;continue;
+      }
+      if(action.type==='cancel'){
+        const matches=[...(action.cancelImportMatches||[]),{originalApprovalNo:orig||'',cancelApprovalNo:approvalNo||'',amount,date:date||dateInputToYmd(new Date().toISOString().slice(0,10))}];
+        const matchedTotal=matches.reduce((sum,x)=>sum+Math.abs(Number(x.amount||0)),0),canAutoComplete=matchedTotal>=Number(action.amount||0)&&Number(action.shortfall||0)<=0;
+        const patch={cancelImportMatches:matches,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+        if(canAutoComplete){patch.status='cancelled';patch.cancelDate=date||matches[matches.length-1]?.date||'';patch.cancelApprovalNo=matches.map(x=>x.cancelApprovalNo).filter(Boolean).join(', ');patch.shortfall=0;patch.autoCancelledFromHometax=true;autoCancelled++;}
+        await userCol('generalReceiptActions').doc(action.id).set(patch,{merge:true});
+        action.cancelImportMatches=matches;if(canAutoComplete){action.status='cancelled';action.cancelDate=patch.cancelDate;action.cancelApprovalNo=patch.cancelApprovalNo;await markOpeningProcessedForAction(action);}matched++;continue;
+      }
+      unmatched++;
+    }
+    await loadGeneralLedgerData();applyAllSalesMemos();finishRender();$('hometaxImportStatus').textContent=`자동대조 ${matched}건 · 취소완료 ${autoCancelled}건 · 미매칭 ${unmatched}건`;
+  }catch(e){$('hometaxImportStatus').textContent='오류: '+(e.message||e)}
+}
+
 
 // ===== 공통 엑셀 자동인식 =====
 function excelValueToYmd(v){if(v==null||v==='')return'';if(typeof v==='number'&&v>20000&&v<100000){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}`}return ymd(v)}
