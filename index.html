@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.68</title>
+<title>아도라블 매출 자동화 v3.69</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -539,6 +539,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arSectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}.arSectionHead h3{margin:0;font-size:15px}
   .arExportButtons{display:flex;gap:6px;flex-wrap:wrap}.arExportButtons .btn{padding:7px 10px;font-size:11px}
   .arWeekHint{font-size:11px;color:#64748b;line-height:1.5}
+  .arAssigneeGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.arAssigneeBox{border:1px solid #dbe2ea;border-radius:10px;background:#f8fafc;padding:9px;min-width:0}.arAssigneeBox.scheduled{background:#f8fbff;border-color:#bfdbfe}.arAssigneeBox h4{margin:0 0 7px;font-size:12px;color:#334155}.arAssigneeBox h4 span{display:inline-block;margin-left:4px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#475569;font-size:10px}.arGroupList{max-height:230px;overflow:auto;border-radius:8px;background:#fff}.arGroupList table{min-width:720px;font-size:10px}.arGroupList th,.arGroupList td{padding:5px 6px;white-space:nowrap}.arGroupList td.grpName{white-space:normal;min-width:145px}.arGroupSample{color:#6d28d9;font-weight:800}.arGroupReason{white-space:normal!important;min-width:150px;max-width:220px}
   .arLoading{opacity:.55;pointer-events:none}
   .shinsangSummary{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:8px;margin:10px 0 12px}
   .shinsangSummary>div{border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;padding:10px 11px}
@@ -561,7 +562,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .shinsangHowto{margin:8px 0 10px;padding:9px 10px;border:1px solid #c7d2fe;border-radius:9px;background:#eef2ff;font-size:11px;line-height:1.55;color:#3730a3}
   .shinsangReviewCell{min-width:105px;text-align:center}.shinsangReviewCheck{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;white-space:nowrap}.shinsangReviewCheck input{width:15px;height:15px}.shinsangReviewMemo{width:100%;min-width:150px;max-width:240px;padding:5px 6px!important;font-size:10px!important;border-radius:6px!important}.shinsangConfirmedAmount{width:105px!important;min-width:105px!important;padding:5px 6px!important;font-size:10px!important;text-align:right;font-variant-numeric:tabular-nums}.shinsangAmountNeed{font-size:9px;color:#dc2626;font-weight:800;margin-top:2px;white-space:nowrap}.shinsangAutoAmount{font-size:9px;color:#15803d;margin-top:2px;white-space:nowrap}.shinsangTable tr.reviewDone td{background:#f0fdf4}.shinsangReviewSaved{font-size:9px;color:#15803d;margin-top:2px}.shinsangHistoryExpanded{margin-top:8px}.shinsangHistoryDetail{padding:10px;border:1px solid #dbeafe;border-radius:9px;background:#fff;text-align:left;font-size:10px;line-height:1.45;overflow:hidden}.shinsangHistoryDetailHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}.shinsangHistoryDetailTableWrap{width:100%;overflow:auto;max-height:360px;border:1px solid #e2e8f0;border-radius:7px}.shinsangHistoryDetail table{width:100%;min-width:760px;border-collapse:collapse;font-size:10px}.shinsangHistoryDetail th,.shinsangHistoryDetail td{padding:5px 7px;position:static;vertical-align:top}.shinsangHistoryDetail th{white-space:nowrap;background:#f8fafc;position:sticky;top:0;z-index:1}.shinsangHistoryDetail .memo{white-space:pre-wrap;min-width:150px}.shinsangHistoryDetail .shinsangMoney{white-space:nowrap;text-align:right}.shinsangHistoryProgress{color:#4338ca;font-weight:800}
   .genericFileUi{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;max-width:100%}.genericFileChip{display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:4px 6px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:10px;color:#475569}.genericFileChip .gfname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.genericFileChip button{border:0;background:transparent;color:#64748b;cursor:pointer;padding:0 1px;font-size:14px;line-height:1}.genericFileChip button:hover{color:#dc2626}.filePickLabel.fileDragReady{border-style:dashed}.filePickLabel.fileDragReady::after{content:'↧';font-size:11px;color:#6366f1}.filePickLabel.fileDragOver,.genericDropTarget.fileDragOver{outline:2px dashed #6366f1;outline-offset:2px;background:#eef2ff!important}.genericDropTarget{transition:.12s}
-  @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
+  @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.arAssigneeGrid{grid-template-columns:1fr}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
 
 
   /* ===== v3.46 통합 규칙관리 ===== */
@@ -598,7 +599,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.68 · 당일 요청완료 · 익일 결과확정</div>
+      <div class="badge">v3.69 · 미수관리 로직개편 · 담당자별 분리</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -737,7 +738,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="arHero">
       <div>
         <h2>미수관리</h2>
-        <p>월요일 미수잔액 + 판매내역 + 입금내역을 자동분석하고, 확실하지 않은 건은 날짜를 확정하지 않고 <b>○/○경부터로 추정</b>으로 남깁니다.<br>정리 후에는 그 주 동안 물건출고 X · 입금완료 · 연락완료 · 재연락일 · 특이사항을 계속 관리할 수 있습니다.</p>
+        <p>월요일 잔액파일에서 <b>전주 미완결 거래처</b>를 확정하고 판매·반품·입금 이력으로 마지막 입금일, 미수 시작거래일, SAMPLE 잔액을 분석합니다.<br>잔액파일의 입금요일을 우선 적용하고, 남평화/일반 담당자와 입금요일 지정 여부를 나눠 관리합니다.</p>
       </div>
       <div id="arHistoryStatus" class="arHistoryStatus">로그인 후 저장된 판매·입금 이력을 불러옵니다.</div>
     </div>
@@ -745,19 +746,19 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="arSetupGrid">
       <div class="arMiniCard">
         <h3>① 월요일 미수잔액</h3>
-        <div class="hint">현재 사용 중인 미수 정리파일 또는 거래처별 잔액 파일을 넣으세요. `기초채권/재고매출/수금합계/잔액`이 있으면 이월잔액도 그대로 연결합니다.</div>
+        <div class="hint">전주 거래 마감 후 뽑은 거래처별 잔액 파일을 넣으세요. <b>잔액 &gt; 0</b>인 거래처가 이번 주 관리대상이 됩니다. 파일의 `입금지정요일/입금요일`과 `창고/남평화` 값은 이번 주 정리에 우선 적용합니다.</div>
         <input id="arBalanceFile" class="arFileInput" type="file" accept=".xlsx,.xls">
         <div id="arBalanceFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
       <div class="arMiniCard">
         <h3>② 판매 거래내역</h3>
-        <div class="hint">여러 파일을 한꺼번에 선택해도 됩니다. 같은 장끼번호의 모든 행을 묶고, 어느 행에든 적요가 있으면 장끼 전체 메모로 인식합니다.</div>
+        <div class="hint">미수 시작거래일과 SAMPLE 구성을 찾는 기준입니다. 여러 파일을 한꺼번에 선택해도 되고, SAMPLE 판매와 SAMPLE 반품이 서로 다른 날짜/장끼에 있어도 거래처별 순액으로 계산합니다.</div>
         <input id="arSalesFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
         <div id="arSalesFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
       <div class="arMiniCard">
         <h3>③ 입금 거래내역</h3>
-        <div class="hint">판매와 마찬가지로 여러 파일을 선택할 수 있습니다. 처음엔 1/1~현재 전체, 이후엔 최근 1~2개월을 겹쳐 넣어도 최신자료로 해당 기간을 교체합니다.</div>
+        <div class="hint">거래처별 <b>마지막 입금일</b>과 미수 흐름 분석에 필요합니다. 처음엔 1/1~현재 전체, 이후엔 최근 1~2개월을 겹쳐 넣어도 최신자료로 해당 기간을 교체합니다.</div>
         <input id="arPaymentFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
         <div id="arPaymentFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
@@ -771,7 +772,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button id="arSyncHistoryBtn" class="btn light" type="button">판매·입금 자료 동기화</button>
         <button id="arRunBtn" class="btn" type="button">월요일 미수 자동정리</button>
       </div>
-      <div class="arNotice"><strong>수정 대비:</strong> 이후 주에는 최근 자료를 겹쳐 넣어도 됩니다. 프로그램은 이번에 넣은 판매/입금 파일의 날짜구간을 Firebase의 최신 정규화 거래이력으로 교체하므로, 지난주 거래가 뒤늦게 수정된 경우도 다시 반영됩니다.</div>
+      <div class="arNotice"><strong>기준:</strong> 연락대상은 일요일 매출 여부가 아니라 <b>잔액파일에 남은 전주 미수</b>로 판단합니다. 이후 주에는 최근 판매/입금 자료를 겹쳐 넣어도 해당 날짜구간을 최신자료로 교체합니다.</div>
       <div id="arRunStatus" class="arNotice"></div>
     </div>
 
@@ -782,6 +783,18 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <div><small>정상대기/제외</small><b id="arSumWait">0</b></div>
       <div><small>입금완료 후보</small><b id="arSumCandidate">0</b></div>
       <div><small>입금완료</small><b id="arSumPaid">0</b></div>
+    </div>
+
+    <div class="arMiniCard">
+      <div class="arSectionHead">
+        <div><h3>담당자별 월요일 정리</h3><div class="arWeekHint">입금요일이 정해진 거래처는 즉시 연락목록과 분리하고, 남평화와 일반/창고 담당자도 각각 나눠 표시합니다.</div></div>
+      </div>
+      <div class="arAssigneeGrid">
+        <div class="arAssigneeBox"><h4>일반/창고 · 바로 확인/연락 <span id="arGrpWarehouseNowCount">0</span></h4><div id="arGrpWarehouseNow" class="arGroupList"><div class="jobEmpty">대상 없음</div></div></div>
+        <div class="arAssigneeBox"><h4>남평화 · 바로 확인/연락 <span id="arGrpNampNowCount">0</span></h4><div id="arGrpNampNow" class="arGroupList"><div class="jobEmpty">대상 없음</div></div></div>
+        <div class="arAssigneeBox scheduled"><h4>일반/창고 · 입금요일 지정 <span id="arGrpWarehouseDayCount">0</span></h4><div id="arGrpWarehouseDay" class="arGroupList"><div class="jobEmpty">대상 없음</div></div></div>
+        <div class="arAssigneeBox scheduled"><h4>남평화 · 입금요일 지정 <span id="arGrpNampDayCount">0</span></h4><div id="arGrpNampDay" class="arGroupList"><div class="jobEmpty">대상 없음</div></div></div>
+      </div>
     </div>
 
     <div class="arMiniCard">
@@ -1904,7 +1917,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.68',
+    appVersion:'v3.69',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -9061,47 +9074,62 @@ async function loadArCustomerSettings(){arState.customerSettings=new Map();if(!u
 async function saveArCustomerSetting(code,patch){if(!user)return;code=norm(code);const prev=arState.customerSettings.get(code)||{},next={...prev,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};arState.customerSettings.set(code,{...prev,...patch});await userCol('arCustomerSettings').doc(arSafeCode(code)).set({code,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
 
 function arPaymentDayNumber(text){text=norm(text);if(/요일답장필요/.test(text))return null;if(/당일/.test(text))return 0;if(/월/.test(text))return 1;if(/화/.test(text))return 2;if(/수/.test(text))return 3;if(/목/.test(text))return 4;if(/금/.test(text))return 5;if(/토/.test(text))return 6;if(/일/.test(text))return 7;return null}
+function arHasScheduledPaymentDay(text){return arPaymentDayNumber(text)!==null}
+function arSampleLabel(x){if(!x)return '';const base=x.full&&!x.uncertain?`SAMPLE ${arMoney(x.amount)}`:`SAMPLE 포함 ${arMoney(x.amount)}`;return x.generalAmount>0?`${base} / 일반 ${arMoney(x.generalAmount)}`:base}
 function arTransactionsFor(code,cutoff){const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff),payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff);return {sales,payments}}
 function arLastPayment(code,through){const p=arState.payments.filter(x=>x.code===code&&x.date<=through).sort((a,b)=>b.date.localeCompare(a.date));return p[0]?.date||''}
 function arEstimateOutstandingStart(code,target,cutoff){
-  if(target<=0)return {label:'',exact:true,date:'',diff:0};const {sales,payments}=arTransactionsFor(code,cutoff),daily=new Map();
-  for(const x of sales){const d=daily.get(x.date)||0;daily.set(x.date,d+x.amount)}for(const x of payments){const d=daily.get(x.date)||0;daily.set(x.date,d-x.amount)}
-  const dates=[...daily.keys()].sort((a,b)=>b.localeCompare(a));let cum=0,lastDate='';
-  for(const date of dates){cum+=daily.get(date)||0;lastDate=date;if(cum===target)return {label:`${arShortDate(date)}부터`,exact:true,date,diff:0,cum};if(cum>target)return {label:`${arShortDate(date)}경부터로 추정`,exact:false,date,diff:cum-target,cum};}
-  if(lastDate)return {label:`${arShortDate(lastDate)} 이전부터로 추정`,exact:false,date:lastDate,diff:target-cum,cum};return {label:'거래이력 부족',exact:false,date:'',diff:target,cum:0};
+  if(target<=0)return {label:'',exact:true,date:'',diff:0};
+  const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff).map(x=>({date:x.date,amount:Number(x.amount||0),kind:'sale',key:x.key||''}));
+  const payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff).map(x=>({date:x.date,amount:-Math.abs(Number(x.amount||0)),kind:'payment',key:x.key||''}));
+  const tx=[...sales,...payments].filter(x=>x.date&&x.amount).sort((a,b)=>b.date.localeCompare(a.date)||String(b.key).localeCompare(String(a.key)));
+  let need=Math.round(target),oldest='';
+  for(const x of tx){
+    oldest=x.date;
+    if(x.amount<0){need+=Math.abs(Math.round(x.amount));continue}
+    const a=Math.max(0,Math.round(x.amount));if(!a)continue;
+    if(a>=need)return {label:`${arShortDate(x.date)} 거래부터`,exact:true,date:x.date,diff:0,needed:need,saleAmount:a};
+    need-=a;
+  }
+  if(oldest)return {label:`${arShortDate(oldest)} 이전 거래부터로 추정`,exact:false,date:oldest,diff:Math.max(0,need)};
+  return {label:'거래이력 부족',exact:false,date:'',diff:target};
 }
-function arFindSampleMatch(code,target,cutoff){
-  if(target<=0)return null;const samples=arState.sales.filter(x=>x.code===code&&x.sample&&x.amount>0&&x.date<=cutoff);if(!samples.length)return null;
-  const byDate=new Map();for(const x of samples)byDate.set(x.date,(byDate.get(x.date)||0)+x.amount);
-  const exactDates=[...byDate.entries()].filter(([,a])=>Math.round(a)===Math.round(target)).sort((a,b)=>b[0].localeCompare(a[0]));
-  if(exactDates.length){const [date,amount]=exactDates[0];return {date,amount,old:arOneMonthPassed(date,cutoff),source:'해당일 SAMPLE 장끼합계와 미수잔액 일치'}}
-  const one=samples.filter(x=>Math.round(x.amount)===Math.round(target)).sort((a,b)=>b.date.localeCompare(a.date))[0];if(one)return {date:one.date,amount:one.amount,old:arOneMonthPassed(one.date,cutoff),source:'SAMPLE 장끼금액과 미수잔액 일치'};
-  return null;
+function arFindSampleMatch(code,target,cutoff,startDate=''){
+  if(target<=0)return null;const from=startDate||'00000000';
+  const xs=arState.sales.filter(x=>x.code===code&&x.sample&&x.date<=cutoff&&x.date>=from);if(!xs.length)return null;
+  const saleAmount=Math.round(xs.filter(x=>Number(x.amount||0)>0).reduce((s,x)=>s+Number(x.amount||0),0));
+  const returnAmount=Math.round(Math.abs(xs.filter(x=>Number(x.amount||0)<0).reduce((s,x)=>s+Number(x.amount||0),0)));
+  const net=Math.round(saleAmount-returnAmount);if(net<=0)return null;
+  const amount=Math.min(Math.round(target),net),generalAmount=Math.max(0,Math.round(target)-amount);if(amount<=0)return null;
+  const positives=xs.filter(x=>Number(x.amount||0)>0).sort((a,b)=>a.date.localeCompare(b.date));
+  const date=positives[0]?.date||xs.map(x=>x.date).sort()[0]||'',lastDate=xs.map(x=>x.date).sort().slice(-1)[0]||date;
+  const uncertain=net>Math.round(target),full=!uncertain&&Math.abs(amount-Math.round(target))<=1;
+  return {date,lastDate,amount,netAmount:net,saleAmount,returnAmount,generalAmount,full,uncertain,old:date?arOneMonthPassed(date,cutoff):false,source:`SAMPLE 판매 ${arMoney(saleAmount)} - SAMPLE 반품 ${arMoney(returnAmount)} = SAMPLE 순액 ${arMoney(net)}`};
 }
 function arPaymentsAfter(code,cutoff,through='99999999'){return arState.payments.filter(x=>x.code===code&&x.date>cutoff&&x.date<=through).reduce((s,x)=>s+x.amount,0)}
 function arSalesOn(code,date){return arState.sales.filter(x=>x.code===code&&x.date===date).reduce((s,x)=>s+x.amount,0)}
 function arLatestHistoryDate(){const d=[...arState.sales.map(x=>x.date),...arState.payments.map(x=>x.date)].filter(Boolean).sort();return d[d.length-1]||''}
 function arClassifyRow(b,runDate,cutoff){
-  const setting=arState.customerSettings.get(norm(b.code))||{},paymentDay=norm(setting.paymentDay||b.paymentDay),location=arLocationFrom(b),permanentExclude=!!setting.permanentExclude;
-  const baseBalance=Math.round(b.balance||0),latest=arLatestHistoryDate()||runDate,weekPaid=arPaymentsAfter(b.code,cutoff,latest),remaining=Math.max(0,baseBalance-weekPaid),lastPayment=arLastPayment(b.code,latest),est=arEstimateOutstandingStart(b.code,baseBalance,cutoff),sample=arFindSampleMatch(b.code,baseBalance,cutoff);
-  const sundaySales=Math.max(0,arSalesOn(b.code,cutoff)),olderAmount=Math.max(0,baseBalance-sundaySales),fileDiff=(b.carryover==null||b.periodSales==null||b.periodReceipts==null)?null:Math.round((b.carryover+b.periodSales-b.periodReceipts)-baseBalance);
-  let status='contact',reason='미수 확인 필요';
-  if(Math.abs(baseBalance)<1000){status='excluded';reason='1,000원 미만 자동제외'}
+  const setting=arState.customerSettings.get(norm(b.code))||{},paymentDay=norm(b.paymentDay||setting.paymentDay),location=arLocationFrom(b),permanentExclude=!!setting.permanentExclude;
+  const baseBalance=Math.round(b.balance||0),latest=arLatestHistoryDate()||runDate,weekPaid=arPaymentsAfter(b.code,cutoff,latest),remaining=Math.max(0,baseBalance-weekPaid),lastPayment=arLastPayment(b.code,cutoff),est=arEstimateOutstandingStart(b.code,baseBalance,cutoff),sample=arFindSampleMatch(b.code,baseBalance,cutoff,est.date);
+  const fileDiff=(b.carryover==null||b.periodSales==null||b.periodReceipts==null)?null:Math.round((b.carryover+b.periodSales-b.periodReceipts)-baseBalance);
+  let status='contact',reason='전주 미수잔액 남음';const samplePrefix=sample?`${arSampleLabel(sample)} · `:'';
+  if(baseBalance<=0){status='excluded';reason='미수잔액 없음'}
+  else if(Math.abs(baseBalance)<1000){status='excluded';reason='1,000원 미만 자동제외'}
   else if(permanentExclude){status='excluded';reason='못 받는 미수 확정 · 영구제외'}
   else if(fileDiff!=null&&fileDiff!==0){status='review';reason=`미수파일 계산불일치 ${arMoney(fileDiff)} · 거래내역 확인 필요`}
-  else if(sample){if(sample.old){status='contact';reason=`${arShortDate(sample.date)} SAMPLE · 1개월 경과 · 반납요청`}else{status='excluded';reason=`${arShortDate(sample.date)} SAMPLE 금액 일치 · 1개월 미만 연락제외`}}
-  else if(!est.exact){status='review';reason=`${est.label} · 잔액과 거래흐름 정확히 일치하지 않음${est.diff?` (차이 ${arMoney(est.diff)})`:''}`}
+  else if(sample&&sample.full&&!sample.uncertain){if(sample.old){status='contact';reason=`${sample.source} · 1개월 경과 · 반납요청`}else{status='excluded';reason=`${sample.source} · 1개월 미만 연락제외`}}
   else {
-    const due=arPaymentDayNumber(paymentDay);const runObj=arDateObj(runDate),runDow=runObj?((runObj.getDay()+6)%7)+1:1;
-    if(/요일답장필요/.test(paymentDay)){status='review';reason='입금요일 답장/확인 필요'}
-    else if(olderAmount>0){status='contact';reason=`이전 주기 미수 ${arMoney(olderAmount)} 남음`}
-    else if(due===0){status=remaining>0?'contact':'wait';reason=remaining>0?'당일입금 거래처 · 미입금잔액 있음':'당일입금 완결'}
-    else if(due===1){status=remaining>0?'contact':'wait';reason=remaining>0?'월요일 입금 거래처 · 일요일 금액까지 완결 필요':'월요일 입금 완결'}
-    else if(due&&runDow<due){status='wait';reason=`${paymentDay} 입금예정 · 아직 입금요일 전`}
-    else if(due&&runDow>=due){status=remaining>0?'contact':'wait';reason=remaining>0?`${paymentDay} 입금일 경과 · 미입금잔액 있음`:`${paymentDay} 입금 완결`}
-    else {status='wait';reason='이번 일요일 발생분만 남음 · 다음 정산주기 대기'}
+    const due=arPaymentDayNumber(paymentDay),runObj=arDateObj(runDate),runDow=runObj?((runObj.getDay()+6)%7)+1:1;
+    if(/요일답장필요/.test(paymentDay)){status='review';reason=samplePrefix+'입금요일 답장/확인 필요'}
+    else if(due!==null){
+      if(due===0){status=remaining>0?'contact':'wait';reason=samplePrefix+(remaining>0?'당일입금 거래처 · 전주 미수 미입금':'당일입금 완결')}
+      else if(runDow<due){status='wait';reason=samplePrefix+`${paymentDay} 입금예정 · 해당 요일에 확인`}
+      else {status=remaining>0?'contact':'wait';reason=samplePrefix+(remaining>0?`${paymentDay} 입금일 도래/경과 · 미입금 확인`:`${paymentDay} 입금 완결`)}
+    } else {status=remaining>0?'contact':'wait';reason=samplePrefix+(remaining>0?'전주 미수잔액 남음 · 입금요일 미지정':'전주 미수 완결')}
+    if(!est.exact&&status!=='excluded')reason+=` · 미수 시작일 ${est.label}`;
   }
-  return {...b,weekKey:runDate,runDate,cutoff,paymentDay,location,permanentExclude,baseBalance,weekPaid,remaining,lastPayment,outstandingLabel:est.label,outstandingExact:est.exact,outstandingDate:est.date,outstandingDiff:est.diff,sampleMatch:sample,status,reason,fileDiff,sundaySales,olderAmount,action:{}};
+  return {...b,weekKey:runDate,runDate,cutoff,paymentDay,location,permanentExclude,baseBalance,weekPaid,remaining,lastPayment,lastPaymentAtCutoff:lastPayment,outstandingLabel:est.label,outstandingExact:est.exact,outstandingDate:est.date,outstandingDiff:est.diff,sampleMatch:sample,status,reason,fileDiff,action:{}};
 }
 
 async function saveArWeekBase(runDate,cutoff,rows,periodText=''){
@@ -9115,29 +9143,36 @@ async function loadArWeeksIndex(){arState.weeks=[];if(!user)return;const snap=aw
 async function loadArWeekActions(weekKey){arState.actions=new Map();if(!user||!weekKey)return;const snap=await userCol('arWeekActions').where('weekKey','==',weekKey).get();for(const d of snap.docs){const x=d.data()||{};arState.actions.set(norm(x.code),x)}}
 async function loadArWeek(weekKey){if(!user||!weekKey)return;arSetLoading(true,'저장된 주간정리를 불러오는 중…');try{const metaSnap=await userCol('arWeeks').doc(safeId(weekKey)).get();if(!metaSnap.exists)throw new Error('선택한 주간정리를 찾지 못했습니다.');const meta=metaSnap.data()||{},version=String(meta.version||'');const snap=await userCol('arWeekChunks').where('weekKey','==',weekKey).get();const docs=snap.docs.map(d=>d.data()).filter(x=>String(x.version||'')===version).sort((a,b)=>Number(a.index||0)-Number(b.index||0));const rows=[];for(const d of docs)rows.push(...(d.rows||[]));arState.activeWeek=weekKey;arState.weekMeta=meta;arState.weekRows=rows;await loadArWeekActions(weekKey);refreshArWeekPayments();if($('arRunDate'))$('arRunDate').value=arYmdToIso(meta.runDate);if($('arWeekSelect'))$('arWeekSelect').value=weekKey;try{localStorage.setItem(AR_LAST_WEEK_KEY,weekKey)}catch(e){}renderArAll();$('arRunStatus').textContent=`${arYmdToIso(meta.runDate)} 주간정리를 불러왔습니다.`}finally{arSetLoading(false)}}
 async function saveArAction(code,patch){if(!user||!arState.activeWeek)return;code=norm(code);const prev=arState.actions.get(code)||{},next={...prev,...patch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};arState.actions.set(code,next);await userCol('arWeekActions').doc(safeId(`${arState.activeWeek}|${code}`)).set({...next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});refreshArWeekPayments();renderArAll();}
-function refreshArWeekPayments(){const latest=arLatestHistoryDate();for(const r of arState.weekRows){r.weekPaid=arPaymentsAfter(r.code,r.cutoff,latest||'99999999');r.remaining=Math.max(0,Number(r.baseBalance||0)-r.weekPaid);r.lastPayment=arLastPayment(r.code,latest||r.runDate);r.action=arState.actions.get(norm(r.code))||{};r.paidCandidate=r.baseBalance>0&&r.remaining<=0&&!r.action.paymentComplete}}
-
+function refreshArWeekPayments(){const latest=arLatestHistoryDate();for(const r of arState.weekRows){r.weekPaid=arPaymentsAfter(r.code,r.cutoff,latest||'99999999');r.remaining=Math.max(0,Number(r.baseBalance||0)-r.weekPaid);r.lastPayment=arLastPayment(r.code,latest||r.runDate);if(!r.lastPaymentAtCutoff)r.lastPaymentAtCutoff=arLastPayment(r.code,r.cutoff);r.action=arState.actions.get(norm(r.code))||{};r.paidCandidate=r.baseBalance>0&&r.remaining<=0&&!r.action.paymentComplete}}
 function arRowMatchesFilter(r){const f=arState.filter,action=r.action||{};if(arState.location!=='all'&&r.location!==arState.location)return false;const q=norm(arState.search).toLowerCase();if(q&&!([r.code,r.name,r.jangkiName,r.reason,action.note,r.paymentDay].join(' ').toLowerCase().includes(q)))return false;if(f==='all')return true;if(f==='paid')return !!action.paymentComplete;if(f==='shipx')return !!action.shipmentStop;if(f==='sample')return !!r.sampleMatch;if(f==='review')return r.status==='review'&&!action.paymentComplete;if(f==='contact')return r.status==='contact'&&!action.paymentComplete;if(f==='wait')return (r.status==='wait'||r.status==='excluded')&&!action.paymentComplete;return true}
 function arCounts(){const rows=arState.weekRows||[];return {all:rows.length,review:rows.filter(x=>x.status==='review'&&!x.action?.paymentComplete).length,contact:rows.filter(x=>x.status==='contact'&&!x.action?.paymentComplete).length,wait:rows.filter(x=>(x.status==='wait'||x.status==='excluded')&&!x.action?.paymentComplete).length,sample:rows.filter(x=>x.sampleMatch).length,paid:rows.filter(x=>x.action?.paymentComplete).length,shipx:rows.filter(x=>x.action?.shipmentStop).length,candidate:rows.filter(x=>x.paidCandidate).length}}
 function renderArSummary(){const c=arCounts(),rows=arState.weekRows||[];$('arSumBalance').textContent=arMoney(rows.reduce((s,x)=>s+Number(x.baseBalance||0),0));$('arSumReview').textContent=c.review;$('arSumContact').textContent=c.contact;$('arSumWait').textContent=c.wait;$('arSumCandidate').textContent=c.candidate;$('arSumPaid').textContent=c.paid;for(const [id,k] of [['arCntAll','all'],['arCntReview','review'],['arCntContact','contact'],['arCntWait','wait'],['arCntSample','sample'],['arCntPaid','paid'],['arCntShipX','shipx']])if($(id))$(id).textContent=c[k]||0;document.querySelectorAll('[data-ar-filter]').forEach(b=>b.classList.toggle('active',b.dataset.arFilter===arState.filter))}
 function renderArResultTable(){const box=$('arResultTable');if(!box)return;const rows=(arState.weekRows||[]).filter(arRowMatchesFilter).sort((a,b)=>{const rank=x=>x.action?.paymentComplete?9:x.status==='review'?0:x.status==='contact'?1:x.status==='wait'?3:4;return rank(a)-rank(b)||Number(b.baseBalance||0)-Number(a.baseBalance||0)});if(!rows.length){box.innerHTML='<div class="jobEmpty">현재 필터에 해당하는 거래처가 없습니다.</div>';return}
-  box.innerHTML=`<table><thead><tr><th>구분</th><th>입금요일</th><th>거래처</th><th>이월잔액</th><th>기준미수</th><th>주중입금</th><th>남은금액</th><th>마지막입금</th><th>미수시점</th><th>판정</th><th>물건출고X</th><th>입금완료</th><th>연락완료</th><th>재연락일</th><th>특이사항</th><th>영구제외</th></tr></thead><tbody>${rows.map(r=>{const a=r.action||{},sample=r.sampleMatch?`${arShortDate(r.sampleMatch.date)} SAMPLE${r.sampleMatch.old?' · 1개월↑':''}`:'';return `<tr><td>${arLocationLabel(r.location)}</td><td><input class="arTinyInput" value="${escAttr(r.paymentDay||'')}" onchange="arEditPaymentDay('${escAttr(r.code)}',this.value)"></td><td class="arName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}${r.jangkiName?' · '+esc(r.jangkiName):''}</span>${sample?`<br><span class="arStatus sample">${esc(sample)}</span>`:''}</td><td>${r.carryover==null?'-':arMoney(r.carryover)}</td><td><b>${arMoney(r.baseBalance)}</b></td><td>${arMoney(r.weekPaid)}</td><td class="${r.remaining>0?'arRemainBad':'arRemainOk'}">${arMoney(r.remaining)}${r.paidCandidate?'<br><span class="arCandidate">입금완료 후보</span>':''}</td><td>${r.lastPayment?arShortDate(r.lastPayment):'-'}</td><td>${esc(r.outstandingLabel||'-')}</td><td class="arReason"><span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span><br>${esc(r.reason||'')}</td><td><input type="checkbox" ${a.shipmentStop?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','shipmentStop',this.checked)"></td><td><input type="checkbox" ${a.paymentComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','paymentComplete',this.checked)"></td><td><input type="checkbox" ${a.contactComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','contactComplete',this.checked)"></td><td><input class="arTinyInput" type="date" value="${escAttr(a.recontactDate||'')}" onchange="arToggleAction('${escAttr(r.code)}','recontactDate',this.value)"></td><td><input class="arTinyInput arNoteInput" value="${escAttr(a.note||'')}" placeholder="특이사항" onchange="arToggleAction('${escAttr(r.code)}','note',this.value)"></td><td><input type="checkbox" ${r.permanentExclude?'checked':''} onchange="arTogglePermanentExclude('${escAttr(r.code)}',this.checked)"></td></tr>`}).join('')}</tbody></table>`;
+  box.innerHTML=`<table><thead><tr><th>구분</th><th>입금요일</th><th>거래처</th><th>이월잔액</th><th>기준미수</th><th>주중입금</th><th>남은금액</th><th>마지막입금</th><th>미수 시작거래일</th><th>SAMPLE</th><th>판정</th><th>물건출고X</th><th>입금완료</th><th>연락완료</th><th>재연락일</th><th>특이사항</th><th>영구제외</th></tr></thead><tbody>${rows.map(r=>{const a=r.action||{},sample=arSampleLabel(r.sampleMatch);return `<tr><td>${arLocationLabel(r.location)}</td><td><input class="arTinyInput" value="${escAttr(r.paymentDay||'')}" onchange="arEditPaymentDay('${escAttr(r.code)}',this.value)"></td><td class="arName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}${r.jangkiName?' · '+esc(r.jangkiName):''}</span></td><td>${r.carryover==null?'-':arMoney(r.carryover)}</td><td><b>${arMoney(r.baseBalance)}</b></td><td>${arMoney(r.weekPaid)}</td><td class="${r.remaining>0?'arRemainBad':'arRemainOk'}">${arMoney(r.remaining)}${r.paidCandidate?'<br><span class="arCandidate">입금완료 후보</span>':''}</td><td>${r.lastPayment?arShortDate(r.lastPayment):'-'}</td><td>${esc(r.outstandingLabel||'-')}</td><td>${sample?`<span class="arStatus sample">${esc(sample)}</span><br><span class="small">${esc(r.sampleMatch?.source||'')}</span>`:'-'}</td><td class="arReason"><span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span><br>${esc(r.reason||'')}</td><td><input type="checkbox" ${a.shipmentStop?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','shipmentStop',this.checked)"></td><td><input type="checkbox" ${a.paymentComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','paymentComplete',this.checked)"></td><td><input type="checkbox" ${a.contactComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','contactComplete',this.checked)"></td><td><input class="arTinyInput" type="date" value="${escAttr(a.recontactDate||'')}" onchange="arToggleAction('${escAttr(r.code)}','recontactDate',this.value)"></td><td><input class="arTinyInput arNoteInput" value="${escAttr(a.note||'')}" placeholder="특이사항" onchange="arToggleAction('${escAttr(r.code)}','note',this.value)"></td><td><input type="checkbox" ${r.permanentExclude?'checked':''} onchange="arTogglePermanentExclude('${escAttr(r.code)}',this.checked)"></td></tr>`}).join('')}</tbody></table>`;
 }
+
 function renderArWeeklyTable(){const box=$('arWeeklyTable');if(!box)return;const rows=(arState.weekRows||[]).filter(r=>r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete).sort((a,b)=>Number(b.remaining||0)-Number(a.remaining||0));if(!rows.length){box.innerHTML='<div class="jobEmpty">주간 관리대상이 없습니다.</div>';return}box.innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>입금요일</th><th>월요일 기준미수</th><th>주중입금</th><th>미입금잔액</th><th>상태</th><th>물건출고X</th><th>입금완료</th><th>연락완료</th><th>재연락일</th><th>특이사항</th></tr></thead><tbody>${rows.map(r=>{const a=r.action||{};return `<tr><td>${arLocationLabel(r.location)}</td><td class="arName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}</span></td><td>${esc(r.paymentDay||'-')}</td><td>${arMoney(r.baseBalance)}</td><td>${arMoney(r.weekPaid)}</td><td class="${r.remaining>0?'arRemainBad':'arRemainOk'}">${arMoney(r.remaining)}</td><td>${a.paymentComplete?'<span class="arStatus paid">입금완료</span>':r.paidCandidate?'<span class="arStatus paid">입금완료 후보</span>':`<span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span>`}</td><td><input type="checkbox" ${a.shipmentStop?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','shipmentStop',this.checked)"></td><td><input type="checkbox" ${a.paymentComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','paymentComplete',this.checked)"></td><td><input type="checkbox" ${a.contactComplete?'checked':''} onchange="arToggleAction('${escAttr(r.code)}','contactComplete',this.checked)"></td><td><input class="arTinyInput" type="date" value="${escAttr(a.recontactDate||'')}" onchange="arToggleAction('${escAttr(r.code)}','recontactDate',this.value)"></td><td><input class="arTinyInput arNoteInput" value="${escAttr(a.note||'')}" onchange="arToggleAction('${escAttr(r.code)}','note',this.value)"></td></tr>`}).join('')}</tbody></table>`}
-function renderArAll(){refreshArWeekPayments();renderArSummary();renderArResultTable();renderArWeeklyTable()}
+function renderArAssigneeGroups(){
+  const all=(arState.weekRows||[]).filter(r=>Number(r.baseBalance||0)>0&&!r.action?.paymentComplete);
+  const groups={warehouseNow:all.filter(r=>r.location==='warehouse'&&!arHasScheduledPaymentDay(r.paymentDay)),nampNow:all.filter(r=>r.location==='nampyeonghwa'&&!arHasScheduledPaymentDay(r.paymentDay)),warehouseDay:all.filter(r=>r.location==='warehouse'&&arHasScheduledPaymentDay(r.paymentDay)),nampDay:all.filter(r=>r.location==='nampyeonghwa'&&arHasScheduledPaymentDay(r.paymentDay))};
+  const cfg=[['warehouseNow','arGrpWarehouseNow','arGrpWarehouseNowCount'],['nampNow','arGrpNampNow','arGrpNampNowCount'],['warehouseDay','arGrpWarehouseDay','arGrpWarehouseDayCount'],['nampDay','arGrpNampDay','arGrpNampDayCount']];
+  const render=(rows)=>{rows=[...rows].sort((a,b)=>(arPaymentDayNumber(a.paymentDay)??99)-(arPaymentDayNumber(b.paymentDay)??99)||Number(b.remaining||b.baseBalance||0)-Number(a.remaining||a.baseBalance||0));if(!rows.length)return '<div class="jobEmpty">대상 없음</div>';return `<table><thead><tr><th>입금요일</th><th>거래처</th><th>기준미수</th><th>마지막입금</th><th>미수 시작</th><th>SAMPLE</th><th>판정</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.paymentDay||'-')}</td><td class="grpName"><b>${esc(r.name)}</b><br><span class="small">${esc(r.code)}</span></td><td><b>${arMoney(r.baseBalance)}</b></td><td>${r.lastPaymentAtCutoff?arShortDate(r.lastPaymentAtCutoff):'-'}</td><td>${esc(r.outstandingLabel||'-')}</td><td class="arGroupSample">${esc(arSampleLabel(r.sampleMatch)||'-')}</td><td class="arGroupReason"><span class="arStatus ${arStatusClass(r)}">${esc(arStatusLabel(r))}</span><br>${esc(r.reason||'')}</td></tr>`).join('')}</tbody></table>`};
+  for(const [k,id,cid] of cfg){if($(cid))$(cid).textContent=groups[k].length;if($(id))$(id).innerHTML=render(groups[k])}
+}
+function renderArAll(){refreshArWeekPayments();renderArSummary();renderArAssigneeGroups();renderArResultTable();renderArWeeklyTable()}
 function arReclassifyCode(code){const i=arState.weekRows.findIndex(r=>r.code===code);if(i<0)return;const old=arState.weekRows[i],next=arClassifyRow(old,old.runDate,old.cutoff);next.action=arState.actions.get(norm(code))||old.action||{};arState.weekRows[i]=next;}
 window.arToggleAction=(code,key,value)=>saveArAction(code,{[key]:value}).catch(e=>alert(e.message||e));
 window.arEditPaymentDay=(code,value)=>saveArCustomerSetting(code,{paymentDay:norm(value)}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
 window.arTogglePermanentExclude=(code,value)=>saveArCustomerSetting(code,{permanentExclude:!!value}).then(()=>{arReclassifyCode(code);renderArAll()}).catch(e=>alert(e.message||e));
 
-function arExportRows(location=null,includeExcluded=false){return (arState.weekRows||[]).filter(r=>(!location||r.location===location)&&(includeExcluded||r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete)).map(r=>{const a=r.action||{};return {'구분':arLocationLabel(r.location),'입금요일':r.paymentDay||'','거래처코드':r.code,'거래처명':r.name,'장끼거래처명':r.jangkiName||'','이월잔액':r.carryover==null?'':r.carryover,'재고매출':r.periodSales==null?'':r.periodSales,'수금합계':r.periodReceipts==null?'':r.periodReceipts,'기준미수잔액':r.baseBalance,'주중추가입금':r.weekPaid,'미입금잔액':r.remaining,'마지막입금':r.lastPayment?arYmdToIso(r.lastPayment):'','미수잔액시점':r.outstandingLabel||'','판정':arStatusLabel(r),'연락/확인사유':r.reason||'','샘플':r.sampleMatch?`${arYmdToIso(r.sampleMatch.date)} SAMPLE${r.sampleMatch.old?' / 1개월경과':''}`:'','물건출고X':a.shipmentStop?'O':'','입금완료':a.paymentComplete?'O':r.paidCandidate?'후보':'','연락완료':a.contactComplete?'O':'','재연락일':a.recontactDate||'','특이사항':a.note||'','영구제외':r.permanentExclude?'O':''}})}
+function arExportRows(location=null,includeExcluded=false){return (arState.weekRows||[]).filter(r=>(!location||r.location===location)&&(includeExcluded||r.status!=='excluded'||r.action?.shipmentStop||r.action?.paymentComplete)).map(r=>{const a=r.action||{},scheduled=arHasScheduledPaymentDay(r.paymentDay);return {'구분':arLocationLabel(r.location),'관리구분':scheduled?'입금요일 지정':'바로 확인/연락','입금요일':r.paymentDay||'','거래처코드':r.code,'거래처명':r.name,'장끼거래처명':r.jangkiName||'','이월잔액':r.carryover==null?'':r.carryover,'재고매출':r.periodSales==null?'':r.periodSales,'수금합계':r.periodReceipts==null?'':r.periodReceipts,'기준미수잔액':r.baseBalance,'주중추가입금':r.weekPaid,'미입금잔액':r.remaining,'마지막입금':r.lastPayment?arYmdToIso(r.lastPayment):'','미수시작거래일':r.outstandingDate?arYmdToIso(r.outstandingDate):'','미수시점판정':r.outstandingLabel||'','SAMPLE잔액':r.sampleMatch?Number(r.sampleMatch.amount||0):'','일반미수추정':r.sampleMatch?Number(r.sampleMatch.generalAmount||0):Number(r.baseBalance||0),'SAMPLE상세':r.sampleMatch?r.sampleMatch.source||'':'','판정':arStatusLabel(r),'연락/확인사유':r.reason||'','물건출고X':a.shipmentStop?'O':'','입금완료':a.paymentComplete?'O':r.paidCandidate?'후보':'','연락완료':a.contactComplete?'O':'','재연락일':a.recontactDate||'','특이사항':a.note||'','영구제외':r.permanentExclude?'O':''}})}
 function arMakeSheet(rows){const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'안내':'해당 거래처 없음'}]);ws['!cols']=[{wch:9},{wch:13},{wch:17},{wch:28},{wch:25},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:13},{wch:20},{wch:13},{wch:34},{wch:22},{wch:11},{wch:11},{wch:11},{wch:13},{wch:34},{wch:10}];ws['!autofilter']={ref:ws['!ref']||'A1:A1'};return ws}
-function exportArExcel(mode){if(!arState.weekRows.length){alert('저장할 주간 미수정리가 없습니다.');return}const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value),suffix=date||'미수정리';if(mode==='warehouse'){XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false)),'창고');XLSX.writeFile(wb,`미수정리_창고담당자_${suffix}.xlsx`);return}if(mode==='nampyeonghwa'){XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false)),'남평화');XLSX.writeFile(wb,`미수정리_남평화담당자_${suffix}.xlsx`);return}XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,false)),'전체');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false)),'창고');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false)),'남평화');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,true).filter(x=>x['판정']==='자동제외')),'자동제외내역');XLSX.writeFile(wb,`미수정리_대표용전체_${suffix}.xlsx`)}
+function exportArExcel(mode){if(!arState.weekRows.length){alert('저장할 주간 미수정리가 없습니다.');return}const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value),suffix=date||'미수정리',scheduled=x=>x['관리구분']==='입금요일 지정';if(mode==='warehouse'){const xs=arExportRows('warehouse',false);XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(x=>!scheduled(x))),'바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(scheduled)),'입금요일지정');XLSX.writeFile(wb,`미수정리_창고담당자_${suffix}.xlsx`);return}if(mode==='nampyeonghwa'){const xs=arExportRows('nampyeonghwa',false);XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(x=>!scheduled(x))),'바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(xs.filter(scheduled)),'입금요일지정');XLSX.writeFile(wb,`미수정리_남평화담당자_${suffix}.xlsx`);return}XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,false)),'전체');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false).filter(x=>!scheduled(x))),'창고_바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('warehouse',false).filter(scheduled)),'창고_입금요일');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false).filter(x=>!scheduled(x))),'남평화_바로확인');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows('nampyeonghwa',false).filter(scheduled)),'남평화_입금요일');XLSX.utils.book_append_sheet(wb,arMakeSheet(arExportRows(null,true).filter(x=>x['판정']==='자동제외')),'자동제외내역');XLSX.writeFile(wb,`미수정리_대표용전체_${suffix}.xlsx`)}
 
 async function runArMonday(){
   if(!user)throw new Error('로그인이 필요합니다.');if(!arSelectedFiles.balance)throw new Error('월요일 미수잔액 파일을 선택해 주세요.');const runDate=arIsoToYmd($('arRunDate').value);if(!runDate)throw new Error('정리 기준일을 선택해 주세요.');arSetLoading(true,'미수자료 분석 중…');
-  try{if(arSelectedFiles.sales.length||arSelectedFiles.payments.length){$('arRunStatus').textContent='판매·입금 최신자료를 먼저 Firebase 거래이력에 동기화하는 중…';await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments)}if(!arState.sales.length&&!arState.payments.length)throw new Error('판매·입금 거래이력이 없습니다. 첫 실행은 1/1~현재 전체 판매·입금 자료를 함께 넣어 주세요.');const parsed=parseArBalanceFile(await readWb(arSelectedFiles.balance)),cutoff=arPrevSunday(runDate),rows=parsed.rows.map(b=>arClassifyRow(b,runDate,cutoff));await saveArWeekBase(runDate,cutoff,rows,parsed.periodText);$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} 정리완료 · 기준잔액 ${rows.length.toLocaleString()}곳 · 판매/입금 분석 기준 ${arShortDate(cutoff)}까지 · 주중 입금은 별도 체크표에서 계속 반영됩니다.`}finally{arSetLoading(false)}}
-async function applyArMidweek(){if(!arSelectedFiles.midweek.length)throw new Error('주중 새 입금파일을 선택해 주세요.');if(!arState.activeWeek)throw new Error('먼저 월요일 정리결과를 불러와 주세요.');arSetLoading(true,'주중 입금자료 동기화 중…');try{await syncArHistoryFromSelected([],arSelectedFiles.midweek);refreshArWeekPayments();renderArAll();$('arRunStatus').textContent=`✓ 주중 입금 반영 완료 · 입금완료 후보 ${arCounts().candidate}곳`;arSelectedFiles.midweek=[];$('arMidweekPaymentFiles').value='';$('arMidweekFileNames').textContent='선택된 파일 없음'}finally{arSetLoading(false)}}
+  try{if(arSelectedFiles.sales.length||arSelectedFiles.payments.length){$('arRunStatus').textContent='판매·입금 최신자료를 먼저 Firebase 거래이력에 동기화하는 중…';await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments)}if(!arState.sales.length)throw new Error('판매 거래이력이 없습니다. 첫 실행은 1/1~현재 판매자료를 넣어 주세요.');if(!arState.payments.length)throw new Error('입금 거래이력이 없습니다. 마지막 입금일 분석을 위해 첫 실행은 1/1~현재 입금자료를 넣어 주세요.');const parsed=parseArBalanceFile(await readWb(arSelectedFiles.balance)),cutoff=arPrevSunday(runDate),targets=parsed.rows.filter(b=>Number(b.balance||0)>0),rows=targets.map(b=>arClassifyRow(b,runDate,cutoff));await saveArWeekBase(runDate,cutoff,rows,parsed.periodText);await safeLogActivity('미수관리','월요일 미수 자동정리',`${arYmdToIso(runDate)} · ${rows.length.toLocaleString()}곳 · ${arMoney(rows.reduce((s,x)=>s+Number(x.baseBalance||0),0))}`,`남평화 ${rows.filter(x=>x.location==='nampyeonghwa').length}곳 · 일반/창고 ${rows.filter(x=>x.location==='warehouse').length}곳 · 입금요일 지정 ${rows.filter(x=>arHasScheduledPaymentDay(x.paymentDay)).length}곳`,`arweek:${runDate}`);$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} 정리완료 · 전주 미완결 ${rows.length.toLocaleString()}곳 · 판매/입금 분석 기준 ${arShortDate(cutoff)}까지 · 입금요일은 잔액파일 값을 우선 적용했습니다.`}finally{arSetLoading(false)}}
+async function applyArMidweek(){if(!arSelectedFiles.midweek.length)throw new Error('주중 새 입금파일을 선택해 주세요.');if(!arState.activeWeek)throw new Error('먼저 월요일 정리결과를 불러와 주세요.');arSetLoading(true,'주중 입금자료 동기화 중…');try{await syncArHistoryFromSelected([],arSelectedFiles.midweek);refreshArWeekPayments();renderArAll();await safeLogActivity('미수관리','주중 입금 반영',`${arYmdToIso(arState.activeWeek)} · 입금완료 후보 ${arCounts().candidate}곳`,`주중 새 입금자료 반영 후 미입금잔액 재계산`,`arweekpay:${arState.activeWeek}:${Date.now()}`);$('arRunStatus').textContent=`✓ 주중 입금 반영 완료 · 입금완료 후보 ${arCounts().candidate}곳`;arSelectedFiles.midweek=[];$('arMidweekPaymentFiles').value='';$('arMidweekFileNames').textContent='선택된 파일 없음'}finally{arSetLoading(false)}}
 async function loadArData(){if(!user)return;try{await Promise.all([loadArHistory(),loadArCustomerSettings(),loadArWeeksIndex()]);let week='';try{week=localStorage.getItem(AR_LAST_WEEK_KEY)||''}catch(e){}if(!week&&arState.weeks.length)week=arState.weeks[0].weekKey;if(week&&arState.weeks.some(x=>x.weekKey===week))await loadArWeek(week);else renderArAll()}catch(e){console.warn('미수관리 Firebase 불러오기 실패',e);if($('arHistoryStatus'))$('arHistoryStatus').textContent='미수관리 Firebase 자료 불러오기 실패: '+(e.message||e)}}
 function setupArUI(){
   const bindFiles=(id,key,labelId,multiple=true)=>{$(id)?.addEventListener('change',e=>{let arr=[...e.target.files];const seen=new Set();arr=arr.filter(f=>{const k=`${f.name}|${f.size}|${f.lastModified}`;if(seen.has(k))return false;seen.add(k);return true});if(multiple)arSelectedFiles[key]=arr;else arSelectedFiles[key]=arr[0]||null;$(labelId).textContent=multiple?arFileListText(arr):(arr[0]?.name||'선택된 파일 없음')})};
