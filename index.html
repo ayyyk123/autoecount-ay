@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.44</title>
+<title>아도라블 매출 자동화 v3.53</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -582,7 +582,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.52 · 일반- 거래처 발급정보·이월·추가매출</div>
+      <div class="badge">v3.53 · 일반- 거래처 발급정보·이월·추가매출</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1862,7 +1862,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.52',
+    appVersion:'v3.53',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3349,7 +3349,7 @@ async function createGeneralSettlements(){
     const b=db.batch();
     for(const r of rows.slice(i,i+350)){
       const signed=Number(r.amount||0),amount=Math.abs(signed),id='GA_TX_'+simpleHash(String(r.id));
-      let data={cust:r.cust,entryIds:[r.id],netAmount:signed,amount,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',opening:!!r.opening,openingId:r.openingId||'',openingCurrentAmount:r.openingCurrentAmount};
+      let data={cust:r.cust,entryIds:[r.id],netAmount:signed,amount,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',opening:!!r.opening,openingId:r.openingId||'',...(r.opening?{openingCurrentAmount:Number(r.openingCurrentAmount||0)}:{})};
       if(signed>0){const info=issueInfoForCustomer(r.cust);data={...data,type:'issue',status:'pending',issueMethod:info.issueMethod,issueNumber:info.issueNumber};}
       else{
         const rec=recommendCancelTargets(r.cust,amount);
