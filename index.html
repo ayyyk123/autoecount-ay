@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.61</title>
+<title>아도라블 매출 자동화 v3.62</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.61 · 거래처코드 원천확정 · 정산 자동보정</div>
+      <div class="badge">v3.62 · 거래처코드 재확정 · 상계 강제정규화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.61',
+    appVersion:'v3.62',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3363,7 +3363,7 @@ async function saveGeneralStartDate(){
   await safeLogActivity('현금영수증','관리 시작일 저장',ymdToInput(v),`일반- 판매자료 ${rows.filter(r=>!r.opening).length}건 다시 불러오기`);
   alert(`관리 시작일을 ${ymdToInput(v)}로 저장했고, 기존 매출변환 작업목록에서 일반- 판매자료 ${rows.filter(r=>!r.opening).length}건을 다시 불러왔습니다.`);
 }
-function trustedGeneralCodeSource(src){return ['source','sales-ticket','import-code','manual-code','direct-code'].includes(norm(src))}
+function trustedGeneralCodeSource(src){return ['source','sales-ticket','import-code','manual-code','direct-code','settlement-resolved'].includes(norm(src))}
 function generalCustomerIdentity(value,explicitCode='',codeSource=''){
   const raw=norm(value),givenCode=norm(explicitCode),src=norm(codeSource);
   let code='',matchedBy='nameFallback',resolved=null;
@@ -3573,6 +3573,56 @@ function pairSameDayExactSaleReturns(rows){
   return {pairs,remaining:rows.filter(r=>!used.has(r.id))};
 }
 
+// v3.62: 정산 직전 거래처코드를 원본 거래처명→기준정보/수동규칙으로 다시 확정한다.
+// 과거 버전에서 잘못 붙은 sales-ticket 코드가 남아 있어도 동일 원본명이 유일하게
+// 하나의 거래처코드로 해석되면 그 코드로 통일한 뒤 '코드 우선'으로 상계한다.
+function settlementCanonicalIdentity(row){
+  const raw=norm(row?.sourceCustomerName||row?.cust||'');
+  const storedCode=norm(row?.custCode||'');
+  const storedSource=norm(row?.custCodeSource||'');
+  let resolved=null;
+  if(raw&&cloud.customerMaps){
+    const rr=resolveCustomer(cloud.customerMaps,raw);
+    if(rr?.ok&&norm(rr.value))resolved=norm(rr.value);
+  }
+  const code=resolved||storedCode;
+  const master=code?(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===code):null;
+  return {
+    code,
+    cust:norm(master?.name||row?.cust||raw),
+    codeSource:resolved?'settlement-resolved':storedSource,
+    raw
+  };
+}
+async function canonicalizeGeneralTransactionsForSettlement(){
+  let changed=0;const patches=[];
+  for(const r of generalTransactions||[]){
+    const ident=settlementCanonicalIdentity(r);
+    if(!ident.code)continue;
+    const nextCust=ident.cust||r.cust||'';
+    const nextSource=ident.codeSource||r.custCodeSource||'';
+    if(norm(r.custCode)===ident.code&&norm(r.cust)===norm(nextCust)&&norm(r.custCodeSource)===norm(nextSource))continue;
+    r.custCode=ident.code;r.cust=nextCust;r.custCodeSource=nextSource;
+    patches.push({id:r.id,custCode:ident.code,cust:nextCust,custCodeSource:nextSource});
+  }
+  for(let i=0;i<patches.length;i+=300){
+    const b=db.batch();
+    for(const p of patches.slice(i,i+300))b.set(userCol('generalReceiptTransactions').doc(p.id),{cust:p.cust,custCode:p.custCode,custCodeSource:p.custCodeSource,settlementCanonicalizedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await b.commit();
+  }
+  changed=patches.length;
+  return changed;
+}
+function generalSettlementConflictRows(rows){
+  const byName=new Map();
+  for(const r of rows||[]){
+    const raw=generalPairCust(r.sourceCustomerName||r.cust||'');if(!raw)continue;
+    if(!byName.has(raw))byName.set(raw,new Set());
+    const code=norm(r.custCode||'');if(code)byName.get(raw).add(code);
+  }
+  return [...byName.entries()].filter(([,codes])=>codes.size>1).map(([name,codes])=>({name,codes:[...codes]}));
+}
+
 function generalSettlementEngineSelfTest(){
   const rows=[
     // 자체검사용 가상 거래처코드는 실제 원천코드와 동일하게 취급해야 한다.
@@ -3635,12 +3685,20 @@ async function createGeneralSettlements(opts={}){
   assertGeneralSettlementEngine();
   const silent=!!opts.silent;
   const cutoff=dateInputToYmd($('generalCutoffDate').value)||dateInputToYmd(new Date().toISOString().slice(0,10));
+  // 정산 전 기존 일반- 원장의 거래처코드를 최신 기준정보/사용자 매칭규칙으로 다시 확정한다.
+  // 이 단계 뒤부터는 거래처코드를 1순위 식별값으로 사용한다.
+  const canonicalized=await canonicalizeGeneralTransactionsForSettlement();
   const replaced=await clearPendingGeneralActionsForRebuild();
   const consumed=consumedGeneralIds();
   const allRows=collectGeneralRows();
   const saleRows=allRows
     .filter(r=>!r.opening&&!consumed.has(r.id)&&String(r.date||'')<=cutoff&&Number(r.amount||0)!==0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||Number(a.no||0)-Number(b.no||0)||String(a.cust||'').localeCompare(String(b.cust||'')));
+  const codeConflicts=generalSettlementConflictRows(saleRows);
+  if(codeConflicts.length){
+    const sample=codeConflicts.slice(0,5).map(x=>`${x.name}: ${x.codes.join(', ')}`).join('\n');
+    throw new Error(`같은 원본 거래처명에 서로 다른 거래처코드가 남아 있어 정산을 중단했습니다.\n${sample}\n규칙관리에서 해당 거래처를 하나의 코드로 확정한 뒤 다시 실행해 주세요.`);
+  }
   const positiveOpeningRows=allRows
     .filter(r=>r.opening&&!consumed.has(r.id)&&String(r.date||'')<=cutoff&&Number(r.amount||0)>0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||'')));
@@ -3735,15 +3793,15 @@ async function createGeneralSettlements(opts={}){
   await loadGeneralLedgerData();
   if(!silent){
     const logParts=[];if(issueCount)logParts.push(`발급 ${issueCount}건`);if(cancelCount)logParts.push(`취소확인 ${cancelCount}건`);if(offsetCount)logParts.push(`이월상계 ${offsetCount}건`);if(saleOffsetCount)logParts.push(`판매·반품상계 ${saleOffsetCount}쌍`);
-    await safeLogActivity('현금영수증','판매건별 발급대상 생성',logParts.join(' · ')||'처리대상 없음',`정산 기준일 ${ymdToInput(cutoff)}${replaced?` · 기존 미완료/상계 ${replaced}건 재계산`:''}`);
+    await safeLogActivity('현금영수증','판매건별 발급대상 생성',logParts.join(' · ')||'처리대상 없음',`정산 기준일 ${ymdToInput(cutoff)}${canonicalized?` · 거래처코드 ${canonicalized}건 재확정`:''}${replaced?` · 기존 미완료/상계 ${replaced}건 재계산`:''}`);
     const parts=[];
     if(issueCount)parts.push(`발급 ${issueCount}건`);
     if(cancelCount)parts.push(`취소 ${cancelCount}건`);
     if(offsetCount)parts.push(`이월상계 ${offsetCount}건`);
     if(saleOffsetCount)parts.push(`판매·반품상계 ${saleOffsetCount}쌍`);
-    alert(`${created}건을 다시 계산했습니다. (${parts.join(' · ')||'처리대상 없음'})${replaced?`\n기존 미완료/상계 ${replaced}건은 현재 이월잔액 기준으로 다시 계산했습니다.`:''}`);
+    alert(`${created}건을 다시 계산했습니다. (${parts.join(' · ')||'처리대상 없음'})${canonicalized?`\n거래처코드 ${canonicalized}건을 최신 기준으로 다시 확정했습니다.`:''}${replaced?`\n기존 미완료/상계 ${replaced}건은 현재 이월잔액 기준으로 다시 계산했습니다.`:''}`);
   }
-  return {created,replaced,issue:issueCount,cancel:cancelCount,offset:offsetCount,saleOffset:saleOffsetCount};
+  return {created,replaced,canonicalized,issue:issueCount,cancel:cancelCount,offset:offsetCount,saleOffset:saleOffsetCount};
 }
 function pendingGeneralIssues(){return (generalActions||[]).filter(a=>a.type==='issue'&&a.status==='pending'&&(a.entryIds||[]).length===1)}
 function hasGroupedPendingGeneralActions(){return (generalActions||[]).some(a=>(a.type==='issue'||a.type==='cancel')&&a.status==='pending'&&(a.entryIds||[]).length!==1)}
