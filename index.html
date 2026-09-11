@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.60</title>
+<title>아도라블 매출 자동화 v3.61</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.60 · 거래처코드 원천확정 · 정산 자동보정</div>
+      <div class="badge">v3.61 · 거래처코드 원천확정 · 정산 자동보정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.60',
+    appVersion:'v3.61',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3575,10 +3575,13 @@ function pairSameDayExactSaleReturns(rows){
 
 function generalSettlementEngineSelfTest(){
   const rows=[
-    {id:'t1',cust:'일반-코코리치',custCode:'C-KOKO',date:'20260903',no:1,amount:23000},
-    {id:'t2',cust:'일반-코코리치',custCode:'C-KOKO',date:'2026-09-03',no:2,amount:11500},
-    {id:'t3',cust:'완전히 다른 표시명이어도 코드가 같음',custCode:'C-KOKO',date:'2026/09/03',no:3,amount:-11500},
-    {id:'t4',cust:'일반-코코리치',custCode:'C-OTHER',date:'20260903',no:4,amount:-23000}
+    // 자체검사용 가상 거래처코드는 실제 원천코드와 동일하게 취급해야 한다.
+    // codeSource가 없으면 현재 로드된 거래처 기준정보의 이름매칭 결과에 따라
+    // 가상 코드(C-KOKO)가 덮여 테스트가 오탐할 수 있다.
+    {id:'t1',cust:'일반-코코리치',custCode:'C-KOKO',custCodeSource:'sales-ticket',date:'20260903',no:1,amount:23000},
+    {id:'t2',cust:'일반-코코리치',custCode:'C-KOKO',custCodeSource:'sales-ticket',date:'2026-09-03',no:2,amount:11500},
+    {id:'t3',cust:'완전히 다른 표시명이어도 코드가 같음',custCode:'C-KOKO',custCodeSource:'sales-ticket',date:'2026/09/03',no:3,amount:-11500},
+    {id:'t4',cust:'일반-코코리치',custCode:'C-OTHER',custCodeSource:'sales-ticket',date:'20260903',no:4,amount:-23000}
   ];
   const p=pairSameDayExactSaleReturns(rows);
   if(p.pairs.length!==1||p.remaining.length!==2||!p.remaining.some(x=>Number(x.amount)===23000&&x.custCode==='C-KOKO')||!p.remaining.some(x=>x.custCode==='C-OTHER'))throw new Error('거래처코드 우선 판매·반품 상계 자체검사 실패');
