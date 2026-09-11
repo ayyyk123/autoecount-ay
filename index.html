@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.67</title>
+<title>아도라블 매출 자동화 v3.68</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.67 · 당일 요청완료 · 익일 결과확정</div>
+      <div class="badge">v3.68 · 당일 요청완료 · 익일 결과확정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.67',
+    appVersion:'v3.68',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3893,7 +3893,7 @@ window.requestGeneralIssue=async function(id){
     const a=generalActions.find(x=>x.id===id);if(!a)throw new Error('발급대상을 찾지 못했습니다.');
     const requestDate=generalTodayYmd(),info=issueInfoForAction(a);
     await userCol('generalReceiptActions').doc(id).set({status:'issue_requested',requestDate,requestedAtMs:Date.now(),issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    await loadGeneralLedgerData();finishRender();
+    await loadGeneralLedgerData();
     await safeLogActivity('현금영수증','발급요청 완료',`${a.cust||''} · ${Number(a.amount||0).toLocaleString()}원`,`요청일 ${ymdToInput(requestDate)} · 익일 홈택스 결과 확인 대기`);
   }catch(e){alert(e.message||e)}
 }
@@ -3902,7 +3902,7 @@ window.requestGeneralCancel=async function(id){
     const a=generalActions.find(x=>x.id===id);if(!a)throw new Error('취소대상을 찾지 못했습니다.');
     const requestDate=generalTodayYmd();
     await userCol('generalReceiptActions').doc(id).set({status:'cancel_requested',requestDate,requestedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    await loadGeneralLedgerData();finishRender();
+    await loadGeneralLedgerData();
     await safeLogActivity('현금영수증','취소요청 완료',`${a.cust||''} · ${Number(a.amount||0).toLocaleString()}원`,`요청일 ${ymdToInput(requestDate)} · 익일 홈택스 결과 확인 대기`);
   }catch(e){alert(e.message||e)}
 }
@@ -3911,7 +3911,7 @@ window.revertGeneralRequest=async function(id){
     const a=generalActions.find(x=>x.id===id);if(!a)return;
     const next=a.type==='issue'?'pending':'pending';
     await userCol('generalReceiptActions').doc(id).set({status:next,requestDate:firebase.firestore.FieldValue.delete(),requestedAtMs:firebase.firestore.FieldValue.delete(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    await loadGeneralLedgerData();finishRender();
+    await loadGeneralLedgerData();
     await safeLogActivity('현금영수증','요청표시 취소',`${a.cust||''} · ${Number(a.amount||0).toLocaleString()}원`,'발급/취소 요청완료 표시를 대기 상태로 되돌림');
   }catch(e){alert(e.message||e)}
 }
@@ -7769,12 +7769,13 @@ async function processAll(ticketOverrides={}){try{
   await safeLogActivity('매출변환','자동 변환·검수',deriveJobName(state),`판매 ${state.salesRows.length.toLocaleString()}행 · 현금 ${state.cashRows.length.toLocaleString()}행 · 일반- 거래 ${state.generalCustomerRows.length.toLocaleString()}건`);
 }catch(e){showError(e)}}
 function finishRender(){
-  const d=dedupeIssues(state.issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
-  renderDailySalesTop(state.settlementDayTotals||[]);renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]);renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]);$('stats').classList.remove('hidden');$('sSales').textContent=state.salesRows.length;$('sCash').textContent=state.cashRows.length;$('sVat').textContent=state.vatPending.length;$('sCust').textContent=custN;$('sItem').textContent=itemN;renderVat(state.vatPending);renderAutoVat(state.autoVatApplied||[]);$('issueSection').classList.remove('hidden');renderIssues(state.issues,state.meta);renderGeneralLedger();
-  const blocking=receiptPending>0||state.vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||state.meta.unclassifiedFiles.length>0;
-  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||state.meta.unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length;$('receiptBtn').textContent=receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기';$('reviewBtn').disabled=false;
-  let msg=`<p><b>판매 ${state.salesRows.length.toLocaleString()}행</b>, 현금 ${state.cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(state.meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(state.meta.customerFileName)}</b> · ${Number(state.meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length)msg+=`<p class="${receiptPending?'warn':'ok'}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료'}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
-  if(state.meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${state.meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(state.meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${state.meta.sampleExcludedTickets.toLocaleString()}장끼 / ${state.meta.sampleExcludedRows.toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`;if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭 검수와 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
+  const issues=state.issues||[],salesRows=state.salesRows||[],cashRows=state.cashRows||[],vatPending=state.vatPending||[],meta=state.meta||{},unclassifiedFiles=meta.unclassifiedFiles||[];
+  const d=dedupeIssues(issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
+  renderDailySalesTop(state.settlementDayTotals||[]);renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]);renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]);$('stats').classList.remove('hidden');$('sSales').textContent=salesRows.length;$('sCash').textContent=cashRows.length;$('sVat').textContent=vatPending.length;$('sCust').textContent=custN;$('sItem').textContent=itemN;renderVat(vatPending);renderAutoVat(state.autoVatApplied||[]);$('issueSection').classList.remove('hidden');renderIssues(issues,meta);renderGeneralLedger();
+  const blocking=receiptPending>0||vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||unclassifiedFiles.length>0;
+  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length;$('receiptBtn').textContent=receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기';$('reviewBtn').disabled=false;
+  let msg=`<p><b>판매 ${salesRows.length.toLocaleString()}행</b>, 현금 ${cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(meta.customerFileName)}</b> · ${Number(meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length)msg+=`<p class="${receiptPending?'warn':'ok'}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료'}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
+  if(meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${Number(meta.sampleExcludedTickets||0).toLocaleString()}장끼 / ${Number(meta.sampleExcludedRows||0).toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`;if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭 검수와 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
 }
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(jobId=activeJobId){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'sales')}
