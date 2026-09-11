@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.59</title>
+<title>아도라블 매출 자동화 v3.60</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.59 · 거래처코드 우선매칭 · 일자별 작업기록</div>
+      <div class="badge">v3.60 · 거래처코드 원천확정 · 정산 자동보정</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.59',
+    appVersion:'v3.60',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2455,7 +2455,7 @@ function analyzeSettlements(settlements,issues){
 
       if(cust.startsWith('일반-')){
         const ident=generalCustomerIdentity(cust),gid=keyTicket(f.loc,date,o['No.'],cust),amount=s-r;
-        if(!generalMap.has(gid))generalMap.set(gid,{id:gid,ticketKey:gid,date,no:Number(o['No.'])||0,loc:f.loc,cust:ident.cust||cust,custCode:ident.code||'',amount:0});
+        if(!generalMap.has(gid))generalMap.set(gid,{id:gid,ticketKey:gid,date,no:Number(o['No.'])||0,loc:f.loc,cust:ident.cust||cust,custCode:ident.code||'',custCodeSource:ident.code?'resolved':'',sourceCustomerName:cust,amount:0});
         generalMap.get(gid).amount+=amount;
       }
 
@@ -2926,6 +2926,21 @@ function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){
 
   return {out,rowMeta,pending,autoVatApplied,sourceProductCount};
 }
+function attachGeneralCodesFromSalesTickets(rows,tickets,customerMaps){
+  const byTicket=new Map();
+  for(const t of tickets||[]){
+    const raw=norm(t.cust||'');if(!raw.startsWith('일반-'))continue;
+    const cm=resolveCustomer(customerMaps,raw);if(!cm?.ok)continue;
+    const code=norm(cm.value);if(!code)continue;
+    byTicket.set(keyTicket(t.loc,t.date,t.no,raw),code);
+  }
+  return (rows||[]).map(r=>{
+    const raw=norm(r.sourceCustomerName||r.cust||''),code=byTicket.get(r.ticketKey||r.id)||'';
+    if(code){const ident=generalCustomerIdentity(raw||r.cust,code,'sales-ticket');return {...r,cust:ident.cust||r.cust,custCode:code,custCodeSource:'sales-ticket'};}
+    const ident=generalCustomerIdentity(raw||r.cust,r.custCode||'',r.custCodeSource||'');
+    return {...r,cust:ident.cust||r.cust,custCode:ident.code||'',custCodeSource:ident.codeSource||r.custCodeSource||''};
+  });
+}
 function dedupeIssues(items){
   const m=new Map();
   for(const x of items){
@@ -3286,7 +3301,7 @@ async function loadGeneralLedgerData(){
     const [as,os,ts,cs,ss]=await Promise.all([userCol('generalReceiptActions').get(),userCol('generalOpeningBalances').get(),userCol('generalReceiptTransactions').get(),userCol('generalReceiptCustomerSettings').get(),userCol('settings').doc('generalReceipt').get()]);
     generalActions=as.docs.map(d=>({id:d.id,...d.data()}));generalOpenings=os.docs.map(d=>({id:d.id,...d.data()}));generalTransactions=ts.docs.map(d=>({id:d.id,...d.data()}));generalCustomerSettings=cs.docs.map(d=>({id:d.id,...d.data()}));
     const codeBackfilled=await backfillGeneralCustomerCodes();
-    if(codeBackfilled)console.info('일반- 기존데이터 거래처코드 자동보정',codeBackfilled);
+    if(codeBackfilled)console.info('일반- 기존데이터 거래처코드 재검증/자동보정',codeBackfilled);
     const autoOffsetMigrated=await migratePendingSameDaySaleReturnOffsets();
     if(autoOffsetMigrated)console.info('동일금액 판매·반품 상계 자동보정',autoOffsetMigrated);
     if(ss.exists&&ss.data().startDate)generalStartDate=String(ss.data().startDate);
@@ -3348,28 +3363,39 @@ async function saveGeneralStartDate(){
   await safeLogActivity('현금영수증','관리 시작일 저장',ymdToInput(v),`일반- 판매자료 ${rows.filter(r=>!r.opening).length}건 다시 불러오기`);
   alert(`관리 시작일을 ${ymdToInput(v)}로 저장했고, 기존 매출변환 작업목록에서 일반- 판매자료 ${rows.filter(r=>!r.opening).length}건을 다시 불러왔습니다.`);
 }
-function generalCustomerIdentity(value,explicitCode=''){
-  const raw=norm(value),givenCode=norm(explicitCode);
-  // 1순위: 문서/입력값에 거래처코드가 있으면 그 코드를 그대로 식별키로 사용한다.
-  let code=givenCode;
-  if(!code&&raw){
-    const direct=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===raw);
-    if(direct)code=norm(direct.code);
-  }
-  // 2순위: 코드가 없을 때만 저장된 수동매칭 + 최신 거래처 기준정보로 코드를 찾는다.
-  if(!code&&raw&&cloud.customerMaps){
-    const resolved=resolveCustomer(cloud.customerMaps,raw);
-    if(resolved?.ok)code=norm(resolved.value);
+function trustedGeneralCodeSource(src){return ['source','sales-ticket','import-code','manual-code','direct-code'].includes(norm(src))}
+function generalCustomerIdentity(value,explicitCode='',codeSource=''){
+  const raw=norm(value),givenCode=norm(explicitCode),src=norm(codeSource);
+  let code='',matchedBy='nameFallback',resolved=null;
+  // 실제 원천에서 확인된 거래처코드는 무조건 1순위다.
+  if(givenCode&&trustedGeneralCodeSource(src)){
+    code=givenCode;matchedBy='sourceCode';
+  }else{
+    // 입력값 자체가 거래처코드인 경우도 코드로 확정한다.
+    if(raw){
+      const direct=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===raw);
+      if(direct){code=norm(direct.code);matchedBy='directCode'}
+    }
+    // 과거 버전에서 이름으로 추정해 저장한 custCode는 그대로 신뢰하지 않고
+    // 최신 거래처 기준정보/수동매칭으로 다시 검증한다.
+    if(!code&&raw&&cloud.customerMaps){
+      resolved=resolveCustomer(cloud.customerMaps,raw);
+      if(resolved?.ok){code=norm(resolved.value);matchedBy='resolvedCode'}
+    }
+    // 이름으로 재확정할 수 없는 과거 데이터만 기존 코드를 최후 보조값으로 사용한다.
+    if(!code&&givenCode){code=givenCode;matchedBy='legacyStoredCode'}
   }
   const master=code?(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===code):null;
   const cust=norm(master?.name||raw);
-  return {code,cust,matchedBy:givenCode?'storedCode':code?'resolvedCode':'nameFallback'};
+  const outSource=matchedBy==='sourceCode'?src:matchedBy==='directCode'?'direct-code':matchedBy==='resolvedCode'?'resolved':givenCode?'legacy-stored':'';
+  return {code,cust,matchedBy,codeSource:outSource};
 }
-function generalCustomerKey(value,explicitCode=''){
+function generalCustomerKey(value,explicitCode='',codeSource=''){
   const obj=(value&&typeof value==='object')?value:null;
   const cust=obj?norm(obj.cust||obj.customerName||''):norm(value);
   const code=obj?norm(obj.custCode||obj.customerCode||explicitCode):norm(explicitCode);
-  const ident=generalCustomerIdentity(cust,code);
+  const src=obj?norm(obj.custCodeSource||obj.customerCodeSource||codeSource):norm(codeSource);
+  const ident=generalCustomerIdentity(cust,code,src);
   return ident.code?`C:${ident.code}`:`N:${generalPairCust(ident.cust||cust)}`;
 }
 function resolveCustomerNameInput(v){return generalCustomerIdentity(v).cust||norm(v)}
@@ -3389,15 +3415,16 @@ async function backfillGeneralCustomerCodes(){
   for(const [colName,rows] of groups){
     const patches=[];
     for(const row of rows||[]){
-      if(norm(row.custCode))continue;
-      const ident=generalCustomerIdentity(row.cust||'');
+      const ident=generalCustomerIdentity(row.cust||'',row.custCode||'',row.custCodeSource||'');
       if(!ident.code)continue;
-      row.custCode=ident.code;
-      patches.push({id:row.id,code:ident.code});
+      const nextSource=ident.codeSource||row.custCodeSource||'resolved';
+      if(norm(row.custCode)===ident.code&&norm(row.custCodeSource)===nextSource)continue;
+      row.custCode=ident.code;row.custCodeSource=nextSource;
+      patches.push({id:row.id,code:ident.code,source:nextSource});
     }
     for(let i=0;i<patches.length;i+=350){
       const b=db.batch();
-      for(const x of patches.slice(i,i+350))b.set(userCol(colName).doc(x.id),{custCode:x.code,customerCodeBackfilledAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      for(const x of patches.slice(i,i+350))b.set(userCol(colName).doc(x.id),{custCode:x.code,custCodeSource:x.source,customerCodeBackfilledAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
       await b.commit();
     }
     changed+=patches.length;
@@ -3451,10 +3478,10 @@ async function importOpeningBalances(file){
   if((!nameKey&&!codeKey)||!amountKey)throw new Error('이월잔액 파일에서 거래처/잔액 열을 찾지 못했습니다.');
   const batch=db.batch();let n=0;const now=Date.now(),defaultBasis=dateInputToYmd($('openingBasisDate')?.value)||generalStartDate;
   for(const o of p.rows){
-    const rawCode=codeKey?norm(o[codeKey]):'',rawName=nameKey?norm(o[nameKey]):'',ident=generalCustomerIdentity(rawName||rawCode,rawCode),cust=ident.cust,custCode=ident.code,amount=num(o[amountKey]),basisDate=(dateKey?excelValueToYmd(o[dateKey]):'')||defaultBasis;
+    const rawCode=codeKey?norm(o[codeKey]):'',rawName=nameKey?norm(o[nameKey]):'',ident=generalCustomerIdentity(rawName||rawCode,rawCode,rawCode?'import-code':''),cust=ident.cust,custCode=ident.code,amount=num(o[amountKey]),basisDate=(dateKey?excelValueToYmd(o[dateKey]):'')||defaultBasis;
     if(!cust.startsWith('일반-')||!Number.isFinite(amount)||!basisDate)continue;
     const identityKey=generalCustomerKey(cust,custCode),existing=(generalOpenings||[]).find(x=>generalCustomerKey(x)===identityKey),history=[...(existing?.history||[]),{basisDate,amount,changedAtMs:now}].slice(-30),docId=existing?.id||safeId(custCode?`CODE_${custCode}`:cust);
-    batch.set(userCol('generalOpeningBalances').doc(docId),{cust,custCode,amount,basisDate,history,version:now,...(amount<=0?{processedAmount:0,processedAtMs:0}:{}),updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});n++;
+    batch.set(userCol('generalOpeningBalances').doc(docId),{cust,custCode,custCodeSource:rawCode?'import-code':(ident.codeSource||'resolved'),amount,basisDate,history,version:now,...(amount<=0?{processedAmount:0,processedAtMs:0}:{}),updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});n++;
   }
   if(!n)throw new Error('등록할 일반- 이월잔액을 찾지 못했습니다.');
   await batch.commit();
@@ -3464,10 +3491,10 @@ async function importOpeningBalances(file){
 }
 async function saveGeneralOpening(){
   const shouldRebuild=hasRebuildableGeneralDrafts();
-  const ident=generalCustomerIdentity($('openingCustomer').value),cust=ident.cust,custCode=ident.code,amount=num($('openingAmount').value),basisDate=dateInputToYmd($('openingBasisDate').value);
+  const openingRaw=norm($('openingCustomer').value),openingDirect=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===openingRaw),ident=generalCustomerIdentity(openingRaw,openingDirect?openingRaw:'',openingDirect?'manual-code':''),cust=ident.cust,custCode=ident.code,amount=num($('openingAmount').value),basisDate=dateInputToYmd($('openingBasisDate').value);
   if(!cust||!cust.startsWith('일반-'))throw new Error('일반- 거래처를 입력해 주세요.');if(!basisDate)throw new Error('이월잔액 기준일을 선택해 주세요.');if(!Number.isFinite(amount))throw new Error('이월잔액을 입력해 주세요.');
   const identityKey=generalCustomerKey(cust,custCode),existing=(generalOpenings||[]).find(x=>generalCustomerKey(x)===identityKey),ref=userCol('generalOpeningBalances').doc(existing?.id||safeId(custCode?`CODE_${custCode}`:cust)),snap=await ref.get(),old=snap.exists?snap.data():{},now=Date.now(),history=[...(old.history||[]),{basisDate,amount,changedAtMs:now}].slice(-30);
-  await ref.set({cust,custCode,amount,basisDate,history,version:now,...(amount<=0?{processedAmount:0,processedAtMs:0}:{}),updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  await ref.set({cust,custCode,custCodeSource:ident.codeSource||(openingDirect?'manual-code':'resolved'),amount,basisDate,history,version:now,...(amount<=0?{processedAmount:0,processedAtMs:0}:{}),updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   $('openingCustomer').value='';$('openingAmount').value='';
   await refreshGeneralSettlementsAfterOpeningChange(shouldRebuild);
   await safeLogActivity('이월잔액','이월잔액 저장',`${cust} · ${Number(amount).toLocaleString()}원`,`기준일 ${ymdToInput(basisDate)}${shouldRebuild?' · 발급/취소 대기 자동 재계산':''}`,`opening:${safeId(cust)}:${now}`)
@@ -3579,7 +3606,7 @@ async function migratePendingSameDaySaleReturnOffsets(){
   const removed=new Set(),added=[];
   for(let i=0;i<pairs.length;i+=250){const b=db.batch();for(const [iss,can] of pairs.slice(i,i+250)){
     const posId=(iss.entryIds||[])[0],negId=(can.entryIds||[])[0],amount=generalPairWon(iss.amount),id='GA_NET_'+simpleHash(String(posId)+'|'+String(negId)),createdAtMs=Math.min(Number(iss.createdAtMs||Date.now()),Number(can.createdAtMs||Date.now()));
-    const data={id,type:'saleOffset',status:'offset',cust:iss.cust||can.cust,custCode:iss.custCode||can.custCode||'',entryIds:[posId,negId],amount,netAmount:0,createdAtMs,cutoffDate:iss.cutoffDate||can.cutoffDate||'',saleDate:iss.saleDate||can.saleDate||'',saleNo:Number(iss.saleNo||0),positiveEntryId:posId,negativeEntryId:negId,positiveNo:Number(iss.saleNo||0),negativeNo:Number(can.saleNo||0),sourceJobId:iss.sourceJobId||can.sourceJobId||'',migratedFromPending:true};
+    const data={id,type:'saleOffset',status:'offset',cust:iss.cust||can.cust,custCode:iss.custCode||can.custCode||'',custCodeSource:iss.custCodeSource||can.custCodeSource||'',entryIds:[posId,negId],amount,netAmount:0,createdAtMs,cutoffDate:iss.cutoffDate||can.cutoffDate||'',saleDate:iss.saleDate||can.saleDate||'',saleNo:Number(iss.saleNo||0),positiveEntryId:posId,negativeEntryId:negId,positiveNo:Number(iss.saleNo||0),negativeNo:Number(can.saleNo||0),sourceJobId:iss.sourceJobId||can.sourceJobId||'',migratedFromPending:true};
     b.delete(userCol('generalReceiptActions').doc(iss.id));b.delete(userCol('generalReceiptActions').doc(can.id));b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});removed.add(iss.id);removed.add(can.id);added.push(data)
   }await b.commit()}
   generalActions=(generalActions||[]).filter(a=>!removed.has(a.id)).concat(added);
@@ -3673,25 +3700,25 @@ async function createGeneralSettlements(opts={}){
     for(const item of actionRows.slice(i,i+350)){
       if(item.kind==='saleOffset'){
         const pos=item.positive,neg=item.negative,amount=Math.abs(Number(item.amount||0)),id='GA_NET_'+simpleHash(String(pos.id)+'|'+String(neg.id));
-        const data={type:'saleOffset',status:'offset',cust:pos.cust,custCode:pos.custCode||neg.custCode||'',entryIds:[pos.id,neg.id],amount,netAmount:0,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:pos.date||neg.date||'',saleNo:Number(pos.no||0),positiveEntryId:pos.id,negativeEntryId:neg.id,positiveNo:Number(pos.no||0),negativeNo:Number(neg.no||0),sourceJobId:pos.sourceJobId||neg.sourceJobId||''};
+        const data={type:'saleOffset',status:'offset',cust:pos.cust,custCode:pos.custCode||neg.custCode||'',custCodeSource:pos.custCodeSource||neg.custCodeSource||'',entryIds:[pos.id,neg.id],amount,netAmount:0,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:pos.date||neg.date||'',saleNo:Number(pos.no||0),positiveEntryId:pos.id,negativeEntryId:neg.id,positiveNo:Number(pos.no||0),negativeNo:Number(neg.no||0),sourceJobId:pos.sourceJobId||neg.sourceJobId||''};
         b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
         created++;saleOffsetCount++;continue;
       }
       const r=item.row,signed=Number(r.amount||0),id='GA_TX_'+simpleHash(String(r.id));
       if(item.kind==='offset'){
         const delta=Number(item.openingDeltaApplied||0),before=Number(item.openingBalanceBefore||0),after=Number(item.openingBalanceAfter||0);
-        const data={type:'offset',status:'offset',cust:r.cust,custCode:r.custCode||'',entryIds:[r.id],amount:Math.abs(signed),netAmount:signed,originalAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',openingCarryId:item.opening?.id||'',openingDeltaApplied:delta,openingBalanceBefore:before,openingBalanceAfter:after};
+        const data={type:'offset',status:'offset',cust:r.cust,custCode:r.custCode||'',custCodeSource:r.custCodeSource||'',entryIds:[r.id],amount:Math.abs(signed),netAmount:signed,originalAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',openingCarryId:item.opening?.id||'',openingDeltaApplied:delta,openingBalanceBefore:before,openingBalanceAfter:after};
         b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
         created++;offsetCount++;continue;
       }
       if(item.kind==='partialIssue'){
         const issueAmount=Number(item.issueAmount||0),info=issueInfoForCustomer(r.cust,'','',r.custCode||'');
-        const data={type:'issue',status:'pending',cust:r.cust,custCode:r.custCode||'',entryIds:[r.id],amount:issueAmount,netAmount:issueAmount,grossAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',issueMethod:info.issueMethod,issueNumber:info.issueNumber,openingCarryId:item.opening?.id||'',openingDeltaApplied:Number(item.openingDeltaApplied||0),openingBalanceBefore:Number(item.openingBalanceBefore||0),openingBalanceAfter:Number(item.openingBalanceAfter||0)};
+        const data={type:'issue',status:'pending',cust:r.cust,custCode:r.custCode||'',custCodeSource:r.custCodeSource||'',entryIds:[r.id],amount:issueAmount,netAmount:issueAmount,grossAmount:signed,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',issueMethod:info.issueMethod,issueNumber:info.issueNumber,openingCarryId:item.opening?.id||'',openingDeltaApplied:Number(item.openingDeltaApplied||0),openingBalanceBefore:Number(item.openingBalanceBefore||0),openingBalanceAfter:Number(item.openingBalanceAfter||0)};
         b.set(userCol('generalReceiptActions').doc(id),{...data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
         created++;issueCount++;continue;
       }
       const amount=Math.abs(signed);
-      let data={cust:r.cust,custCode:r.custCode||'',entryIds:[r.id],netAmount:signed,amount,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',opening:!!r.opening,openingId:r.openingId||'',...(r.opening?{openingCurrentAmount:Number(r.openingCurrentAmount||0)}:{})};
+      let data={cust:r.cust,custCode:r.custCode||'',custCodeSource:r.custCodeSource||'',entryIds:[r.id],netAmount:signed,amount,createdAtMs:Date.now(),cutoffDate:cutoff,saleDate:r.date||'',saleNo:Number(r.no||0),sourceJobId:r.sourceJobId||'',opening:!!r.opening,openingId:r.openingId||'',...(r.opening?{openingCurrentAmount:Number(r.openingCurrentAmount||0)}:{})};
       if(signed>0){const info=issueInfoForCustomer(r.cust,'','',r.custCode||'');data={...data,type:'issue',status:'pending',issueMethod:info.issueMethod,issueNumber:info.issueNumber};issueCount++;}
       else{
         const rec=recommendCancelTargetsReserved(r.cust,amount,cancelReservations,r.custCode||'');
@@ -3786,9 +3813,11 @@ function renderGeneralLedger(){
   const un=rows.filter(r=>!r.opening&&!consumed.has(r.id)&&Number(r.amount||0)!==0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||''))||Number(a.no||0)-Number(b.no||0));
   const by=new Set(un.map(r=>generalCustomerKey(r)));
+  const codeDiagMap=new Map();for(const r of generalTransactions||[]){const n=generalPairCust(r.cust||'');if(!n)continue;if(!codeDiagMap.has(n))codeDiagMap.set(n,new Set());if(r.custCode)codeDiagMap.get(n).add(norm(r.custCode));}
+  const codeConflicts=[...codeDiagMap.entries()].filter(([,codes])=>codes.size>1);
   const pendingIssue=(generalActions||[]).filter(a=>a.type==='issue'&&a.status==='pending').length,pendingCancel=(generalActions||[]).filter(a=>a.type==='cancel'&&a.status==='pending').length,groupedPending=(generalActions||[]).filter(a=>(a.type==='issue'||a.type==='cancel')&&a.status==='pending'&&(a.entryIds||[]).length!==1).length;
   const unDetail=un.length?`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><div class="detailHead"><b>미처리 판매·반품 상세</b><span class="small">0원 거래 제외 · ${un.length.toLocaleString()}건 / ${by.size.toLocaleString()}곳</span></div><table><thead><tr><th>날짜</th><th>거래처</th><th>No.</th><th style="text-align:right">금액</th></tr></thead><tbody>${un.map(r=>`<tr><td>${esc(r.date?formatDisplayDate(r.date):'-')}</td><td>${esc(r.cust||'')}${r.custCode?`<br><span class="small">코드 ${esc(r.custCode)}</span>`:''}</td><td>${r.opening?'이월':(r.no?`No.${Number(r.no)}`:'-')}</td><td class="amount">${Number(r.amount||0).toLocaleString('ko-KR')}원</td></tr>`).join('')}</tbody></table></div>`:`<div id="generalUnprocessedDetails" class="unprocessedDetailBox" hidden><span class="small">현재 미처리 판매·반품이 없습니다. (0원 거래는 미처리 건수에서 제외)</span></div>`;
-  sum.innerHTML=`<div class="ledgerSummary"><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 판매·반품</small><b>${un.length.toLocaleString()}건</b></div><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 거래처</small><b>${by.size.toLocaleString()}곳</b></div><div><small>발급 대기</small><b>${pendingIssue}건</b></div><div><small>취소 대기</small><b>${pendingCancel}건</b></div></div>${unDetail}${groupedPending?`<div class="warnBox" style="margin-top:8px">기존 거래처별 합산 대기 ${groupedPending}건이 남아 있습니다. <b>판매건별 발급대상 생성</b>을 누르면 완료되지 않은 합산 대기를 지우고 장끼 1건씩 다시 만듭니다.</div>`:''}`;
+  sum.innerHTML=`<div class="ledgerSummary"><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 판매·반품</small><b>${un.length.toLocaleString()}건</b></div><div class="clickableSummary" role="button" tabindex="0" title="미처리 상세 보기" onclick="toggleGeneralUnprocessedDetails()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGeneralUnprocessedDetails()}"><small>미처리 거래처</small><b>${by.size.toLocaleString()}곳</b></div><div><small>발급 대기</small><b>${pendingIssue}건</b></div><div><small>취소 대기</small><b>${pendingCancel}건</b></div></div>${unDetail}${groupedPending?`<div class="warnBox" style="margin-top:8px">기존 거래처별 합산 대기 ${groupedPending}건이 남아 있습니다. <b>판매건별 발급대상 생성</b>을 누르면 완료되지 않은 합산 대기를 지우고 장끼 1건씩 다시 만듭니다.</div>`:''}${codeConflicts.length?`<div class="warnBox" style="margin-top:8px"><b>거래처코드 충돌 ${codeConflicts.length}곳</b> · 같은 표시명의 거래에 서로 다른 코드가 남아 있습니다. 최신 거래처 기준정보로 자동보정 후 다시 계산됩니다.<br><span class="small">${codeConflicts.slice(0,5).map(([n,c])=>`${esc(n)}: ${[...c].map(esc).join(', ')}`).join('<br>')}</span></div>`:''}`;
   if(opening){
     opening.innerHTML=(generalOpenings||[]).length?`<table><thead><tr><th>거래처</th><th>기준일</th><th>등록잔액</th><th>현재잔액</th><th>상계내역</th><th>변경이력</th><th></th></tr></thead><tbody>${[...(generalOpenings||[])].sort((a,b)=>String(a.cust||'').localeCompare(String(b.cust||''))).map(o=>{const hist=(o.history||[]).slice().sort((a,b)=>Number(b.changedAtMs||0)-Number(a.changedAtMs||0)),detail=hist.length?`<details><summary>${hist.length}건</summary>${hist.map(x=>`<div class="small">${esc(ymdToInput(x.basisDate||''))} 기준 · ${Number(x.amount||0).toLocaleString()}원</div>`).join('')}</details>`:'-',current=openingCurrentBalance(o);return `<tr><td>${esc(o.cust||'')}${o.custCode?`<br><span class="small">코드 ${esc(o.custCode)}</span>`:''}</td><td>${esc(ymdToInput(o.basisDate||generalStartDate))}</td><td><b>${Number(o.amount||0).toLocaleString()}원</b>${Number(o.processedAmount||0)!==0?`<br><span class="small">완료처리 ${Number(o.processedAmount||0).toLocaleString()}원</span>`:''}</td><td><b>${Number(current).toLocaleString()}원</b>${current<0?'<br><span class="small">다음 판매와 자동 상계</span>':current===0?'<br><span class="small">상계 완료</span>':''}</td><td>${openingCarryDetailHtml(o)}</td><td>${detail}</td><td><button class="btn light" onclick="editGeneralOpening('${o.id}')">수정</button> <button class="btn light" onclick="deleteGeneralOpening('${o.id}')">삭제</button></td></tr>`}).join('')}</tbody></table>`:'<span class="small">등록된 이월잔액 없음</span>';
   }
@@ -3806,7 +3835,7 @@ function renderGeneralLedger(){
     const carryNote=Number(a.openingDeltaApplied||0)!==0?`<div class="small" style="margin-bottom:4px">이월잔액 ${Number(a.openingBalanceBefore||0).toLocaleString()}원 → ${Number(a.openingBalanceAfter||0).toLocaleString()}원 · ${Math.abs(Number(a.openingDeltaApplied||0)).toLocaleString()}원 상계${Number(a.grossAmount||0)>Number(a.amount||0)?` · 판매 ${Number(a.grossAmount||0).toLocaleString()}원 중 ${Number(a.amount||0).toLocaleString()}원만 발급`:''}</div>`:'';
     const st=a.status==='issued'?'<span class="statusPill ok">발급완료</span>':grouped?'<span class="statusPill bad">재생성필요</span>':'<span class="statusPill warn">발급 대기</span>';
     const action=a.status==='issued'?`${esc(a.issueDate||'')} / 승인 ${esc(a.approvalNo||'')}`:grouped?'<span class="small">판매건별 발급대상 생성을 다시 눌러주세요.</span>':`<div class="ledgerAction"><input id="gIssueDate_${safeDomId(a.id)}" type="date"><input id="gApproval_${safeDomId(a.id)}" placeholder="승인번호"><button class="btn light" onclick="completeGeneralIssue('${a.id}')">발급완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
-    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b></td><td>${methodText}</td><td><b>${esc(memo)}</b></td><td>${carryNote}${action}</td></tr>`;
+    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b></td><td>${methodText}</td><td><b>${esc(memo)}</b></td><td>${carryNote}${action}</td></tr>`;
   }).join(''):'<tr><td colspan="8" class="small">현재 발급대상 없음</td></tr>';
 
   const offsetRows=offsetActs.length?offsetActs.slice(0,500).map(a=>{
@@ -3814,10 +3843,10 @@ function renderGeneralLedger(){
     if(a.type==='saleOffset'){
       const pos=es.find(r=>Number(r.amount||0)>0),neg=es.find(r=>Number(r.amount||0)<0),amt=Math.abs(Number(a.amount||0));
       const pair=`<div class="offsetPair">판매 ${pos?.no?`No.${Number(pos.no)}`:'-'} +${amt.toLocaleString()}원<br>반품 ${neg?.no?`No.${Number(neg.no)}`:'-'} -${amt.toLocaleString()}원</div>`;
-      return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}</td><td>${pair}</td><td class="amount">0원</td><td><b>서로 상계</b><br><span class="small">현금영수증 발급·취소 없음</span></td></tr>`;
+      return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${pair}</td><td class="amount">0원</td><td><b>서로 상계</b><br><span class="small">현금영수증 발급·취소 없음</span></td></tr>`;
     }
     const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
-    return `<tr><td><span class="statusPill ok">이월상계</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">${signed.toLocaleString()}원</td><td>${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · <b>${before.toLocaleString()} → ${after.toLocaleString()}원</b></td></tr>`;
+    return `<tr><td><span class="statusPill ok">이월상계</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">${signed.toLocaleString()}원</td><td>${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · <b>${before.toLocaleString()} → ${after.toLocaleString()}원</b></td></tr>`;
   }).join(''):'<tr><td colspan="6" class="small">현재 상계처리 내역 없음</td></tr>';
 
   const cancelRows=cancelActs.length?cancelActs.slice(0,500).map(a=>{
@@ -3826,7 +3855,7 @@ function renderGeneralLedger(){
     const missing=!targets.length?`<span class="cancelMissing">과거 발행건 없음</span><div class="small" style="margin-top:4px">이카운트/홈택스에서 과거 발행건을 직접 찾아 취소한 뒤 아래 수기완료 버튼을 눌러주세요.</div>`:shortfall>0?`${targetHtml}<div class="cancelMissing" style="margin-top:4px">추가 과거 발행건 ${shortfall.toLocaleString()}원 부족</div>`:targetHtml;
     const st=a.status==='cancelled'?'<span class="statusPill ok">취소완료</span>':'<span class="statusPill bad">취소 확인</span>';
     const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:`${missing}<div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기취소발행완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
-    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>-${Number(a.amount||0).toLocaleString()}원</b></td><td>${a.status==='cancelled'?(targets.length?targetHtml:'수기 확인 완료'):missing}</td><td>${action}</td></tr>`;
+    return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>-${Number(a.amount||0).toLocaleString()}원</b></td><td>${a.status==='cancelled'?(targets.length?targetHtml:'수기 확인 완료'):missing}</td><td>${action}</td></tr>`;
   }).join(''):'<tr><td colspan="7" class="small">현재 취소 확인이 필요한 반품 없음</td></tr>';
 
   const legacyRows=legacyActs.length?`<details style="margin-top:8px"><summary class="small">등록된 과거 승인건 ${legacyActs.length}건 보기</summary><div style="padding-top:6px">${legacyActs.map(a=>`<div class="small">${esc(a.cust||'')} · ${esc(a.issueDate?formatDisplayDate(a.issueDate):'-')} · 승인 ${esc(a.approvalNo||'')} · 남은 취소가능 ${remainingForApproval(a).toLocaleString()}원</div>`).join('')}</div></details>`:'';
@@ -7466,8 +7495,9 @@ async function processAll(ticketOverrides={}){try{
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
   const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,receiptLink=buildReceiptRowsFromSales(tickets,mc.memo),br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
+  const canonicalGeneralRows=attachGeneralCodesFromSalesTickets(settlementAnalysis.generalRows||[],tickets,runtimeCustomer.maps);
   const bizRegConditionalReview=await reviewConditionalExclusionsForSales(tickets,runtimeCustomer.maps);
-  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:settlementAnalysis.generalRows||[],receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
+  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:canonicalGeneralRows,receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
   applyAllSalesMemos();finishRender();await persistCurrentJob();
   await safeLogActivity('매출변환','자동 변환·검수',deriveJobName(state),`판매 ${state.salesRows.length.toLocaleString()}행 · 현금 ${state.cashRows.length.toLocaleString()}행 · 일반- 거래 ${state.generalCustomerRows.length.toLocaleString()}건`);
 }catch(e){showError(e)}}
@@ -7589,7 +7619,7 @@ function compactJobRecord(st,old={}){
   };
 }
 
-async function syncGeneralTransactionsForJob(jobId,rows){if(!user||!jobId)return;const colRef=userCol('generalReceiptTransactions'),old=await colRef.where('sourceJobId','==',jobId).get();for(let i=0;i<old.docs.length;i+=350){const b=db.batch();old.docs.slice(i,i+350).forEach(d=>b.delete(d.ref));await b.commit()}const clean=(rows||[]).filter(r=>String(r.date||'')>=generalStartDate).map(r=>{const ident=generalCustomerIdentity(r.cust||'',r.custCode||r.customerCode||'');return {...r,cust:ident.cust||r.cust,custCode:ident.code||r.custCode||''}});for(let i=0;i<clean.length;i+=350){const b=db.batch();for(const r of clean.slice(i,i+350)){const rid='GT_'+simpleHash(r.id||r.ticketKey||JSON.stringify(r));b.set(colRef.doc(rid),{...r,id:r.id||r.ticketKey,sourceJobId:jobId,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}await b.commit()}}
+async function syncGeneralTransactionsForJob(jobId,rows){if(!user||!jobId)return;const colRef=userCol('generalReceiptTransactions'),old=await colRef.where('sourceJobId','==',jobId).get();for(let i=0;i<old.docs.length;i+=350){const b=db.batch();old.docs.slice(i,i+350).forEach(d=>b.delete(d.ref));await b.commit()}const clean=(rows||[]).filter(r=>String(r.date||'')>=generalStartDate).map(r=>{const ident=generalCustomerIdentity(r.sourceCustomerName||r.cust||'',r.custCode||r.customerCode||'',r.custCodeSource||r.customerCodeSource||'');return {...r,cust:ident.cust||r.cust,custCode:ident.code||r.custCode||'',custCodeSource:ident.codeSource||r.custCodeSource||''}});for(let i=0;i<clean.length;i+=350){const b=db.batch();for(const r of clean.slice(i,i+350)){const rid='GT_'+simpleHash(r.id||r.ticketKey||JSON.stringify(r));b.set(colRef.doc(rid),{...r,id:r.id||r.ticketKey,sourceJobId:jobId,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}await b.commit()}}
 
 async function persistCurrentJob(){
   if(loadingJob||!user)return;
