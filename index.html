@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.62</title>
+<title>아도라블 매출 자동화 v3.63</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.62 · 거래처코드 재확정 · 상계 강제정규화</div>
+      <div class="badge">v3.63 · 거래처코드 재확정 · 상계 강제정규화</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.62',
+    appVersion:'v3.63',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3295,11 +3295,13 @@ async function applyVatChoices(){try{const overrides={...(state.parsed?.ticketOv
 
 
 // ===== 일반- 거래처 현금영수증 원장 =====
+// v3.63: 거래의 업무상 id(ticketKey)는 상계/적요 연결용으로 유지하고, Firestore 문서 id는 _docId로 별도 보관한다.
+// 거래처명에 / 가 포함되어도 업무상 id를 Firestore .doc() 경로로 직접 사용하지 않는다.
 async function loadGeneralLedgerData(){
   if(!user)return;
   try{
     const [as,os,ts,cs,ss]=await Promise.all([userCol('generalReceiptActions').get(),userCol('generalOpeningBalances').get(),userCol('generalReceiptTransactions').get(),userCol('generalReceiptCustomerSettings').get(),userCol('settings').doc('generalReceipt').get()]);
-    generalActions=as.docs.map(d=>({id:d.id,...d.data()}));generalOpenings=os.docs.map(d=>({id:d.id,...d.data()}));generalTransactions=ts.docs.map(d=>({id:d.id,...d.data()}));generalCustomerSettings=cs.docs.map(d=>({id:d.id,...d.data()}));
+    generalActions=as.docs.map(d=>({id:d.id,...d.data(),_docId:d.id}));generalOpenings=os.docs.map(d=>({id:d.id,...d.data(),_docId:d.id}));generalTransactions=ts.docs.map(d=>{const x=d.data();return {...x,id:x.id||d.id,_docId:d.id}});generalCustomerSettings=cs.docs.map(d=>({id:d.id,...d.data(),_docId:d.id}));
     const codeBackfilled=await backfillGeneralCustomerCodes();
     if(codeBackfilled)console.info('일반- 기존데이터 거래처코드 재검증/자동보정',codeBackfilled);
     const autoOffsetMigrated=await migratePendingSameDaySaleReturnOffsets();
@@ -3420,11 +3422,11 @@ async function backfillGeneralCustomerCodes(){
       const nextSource=ident.codeSource||row.custCodeSource||'resolved';
       if(norm(row.custCode)===ident.code&&norm(row.custCodeSource)===nextSource)continue;
       row.custCode=ident.code;row.custCodeSource=nextSource;
-      patches.push({id:row.id,code:ident.code,source:nextSource});
+      patches.push({id:row.id,docId:row._docId||row.id,code:ident.code,source:nextSource});
     }
     for(let i=0;i<patches.length;i+=350){
       const b=db.batch();
-      for(const x of patches.slice(i,i+350))b.set(userCol(colName).doc(x.id),{custCode:x.code,custCodeSource:x.source,customerCodeBackfilledAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+      for(const x of patches.slice(i,i+350))b.set(userCol(colName).doc(x.docId||x.id),{custCode:x.code,custCodeSource:x.source,customerCodeBackfilledAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
       await b.commit();
     }
     changed+=patches.length;
@@ -3573,7 +3575,7 @@ function pairSameDayExactSaleReturns(rows){
   return {pairs,remaining:rows.filter(r=>!used.has(r.id))};
 }
 
-// v3.62: 정산 직전 거래처코드를 원본 거래처명→기준정보/수동규칙으로 다시 확정한다.
+// v3.63: 정산 직전 거래처코드를 원본 거래처명→기준정보/수동규칙으로 다시 확정한다.
 // 과거 버전에서 잘못 붙은 sales-ticket 코드가 남아 있어도 동일 원본명이 유일하게
 // 하나의 거래처코드로 해석되면 그 코드로 통일한 뒤 '코드 우선'으로 상계한다.
 function settlementCanonicalIdentity(row){
@@ -3603,11 +3605,11 @@ async function canonicalizeGeneralTransactionsForSettlement(){
     const nextSource=ident.codeSource||r.custCodeSource||'';
     if(norm(r.custCode)===ident.code&&norm(r.cust)===norm(nextCust)&&norm(r.custCodeSource)===norm(nextSource))continue;
     r.custCode=ident.code;r.cust=nextCust;r.custCodeSource=nextSource;
-    patches.push({id:r.id,custCode:ident.code,cust:nextCust,custCodeSource:nextSource});
+    patches.push({id:r.id,docId:r._docId||r.id,custCode:ident.code,cust:nextCust,custCodeSource:nextSource});
   }
   for(let i=0;i<patches.length;i+=300){
     const b=db.batch();
-    for(const p of patches.slice(i,i+300))b.set(userCol('generalReceiptTransactions').doc(p.id),{cust:p.cust,custCode:p.custCode,custCodeSource:p.custCodeSource,settlementCanonicalizedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    for(const p of patches.slice(i,i+300))b.set(userCol('generalReceiptTransactions').doc(p.docId||p.id),{cust:p.cust,custCode:p.custCode,custCodeSource:p.custCodeSource,settlementCanonicalizedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
     await b.commit();
   }
   changed=patches.length;
