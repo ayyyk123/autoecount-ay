@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.63</title>
+<title>아도라블 매출 자동화 v3.64</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -598,7 +598,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.63 · 거래처코드 재확정 · 상계 강제정규화</div>
+      <div class="badge">v3.64 · 현금영수증 발급목록 엑셀 다운로드</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1904,7 +1904,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.63',
+    appVersion:'v3.64',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -3865,6 +3865,45 @@ function downloadGeneralMemoChecklist(){
     XLSX.writeFile(wb,'일반거래처_자진발급_적요반영목록.xlsx',{bookType:'xlsx'});
   }catch(e){showError(e)}
 }
+
+function downloadGeneralIssueListExcel(){
+  try{
+    const acts=[...(generalActions||[])].filter(a=>a.type==='issue').sort((a,b)=>{
+      const ar=generalActionEntries(a)[0]||{},br=generalActionEntries(b)[0]||{};
+      return String(ar.date||a.saleDate||'').localeCompare(String(br.date||b.saleDate||''))||Number(ar.no||a.saleNo||0)-Number(br.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0);
+    });
+    if(!acts.length)throw new Error('현재 현금영수증 발급 목록이 없습니다.');
+    const rows=acts.map(a=>{
+      const entry=generalActionEntries(a)[0]||{};
+      const saleDate=entry.date||a.saleDate||'';
+      const saleNo=entry.no!==undefined?entry.no:(a.saleNo||0);
+      const info=issueInfoForAction(a);
+      const method=info.issueMethod==='mobile'?'휴대폰번호':'자진발급';
+      return [
+        a.status==='issued'?'발급완료':'발급대기',
+        saleDate?formatDisplayDate(saleDate):'',
+        a.cust||entry.cust||'',
+        a.custCode||entry.custCode||'',
+        saleNo?Number(saleNo):'',
+        Number(a.amount||0),
+        method,
+        info.issueNumber||'',
+        generalActionMemoText(a)||'',
+        a.issueDate?formatDisplayDate(a.issueDate):'',
+        a.approvalNo||''
+      ];
+    });
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.aoa_to_sheet([['상태','판매일','거래처','거래처코드','장끼 No.','발급금액','발급방식','발급수단번호','적요','실제 발급일','승인번호'],...rows]);
+    ws['!cols']=[{wch:11},{wch:12},{wch:24},{wch:14},{wch:10},{wch:14},{wch:12},{wch:18},{wch:28},{wch:12},{wch:22}];
+    XLSX.utils.book_append_sheet(wb,ws,'현금영수증 발급 목록');
+    const today=new Date(),pad=n=>String(n).padStart(2,'0');
+    const ymdName=`${today.getFullYear()}${pad(today.getMonth()+1)}${pad(today.getDate())}`;
+    XLSX.writeFile(wb,`일반거래처_현금영수증_발급목록_${ymdName}.xlsx`,{bookType:'xlsx'});
+  }catch(e){showError(e)}
+}
+window.downloadGeneralIssueListExcel=downloadGeneralIssueListExcel;
+
 function toggleGeneralUnprocessedDetails(){
   const el=$('generalUnprocessedDetails');
   if(!el)return;
@@ -3924,7 +3963,7 @@ function renderGeneralLedger(){
   const legacyRows=legacyActs.length?`<details style="margin-top:8px"><summary class="small">등록된 과거 승인건 ${legacyActs.length}건 보기</summary><div style="padding-top:6px">${legacyActs.map(a=>`<div class="small">${esc(a.cust||'')} · ${esc(a.issueDate?formatDisplayDate(a.issueDate):'-')} · 승인 ${esc(a.approvalNo||'')} · 남은 취소가능 ${remainingForApproval(a).toLocaleString()}원</div>`).join('')}</div></details>`:'';
 
   box.innerHTML=`<div class="generalActionPanels">
-    <div class="generalActionPanel"><h4>현금영수증 발급 목록</h4><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 표시합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${issueRows}</tbody></table></div>
+    <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">현재 발급목록 엑셀</button></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 표시합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다. 홈택스 업로드 양식이 아닌 현재 목록 그대로 엑셀로 받을 수 있습니다.</div><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${issueRows}</tbody></table></div>
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">같은 날 동일금액 판매·반품 상계와 음수 이월잔액 상계를 따로 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
     <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내하고, 없으면 ‘과거 발행건 없음’으로 표시합니다. 홈택스 발급내역 엑셀에서 취소건이 매칭되면 자동으로 취소완료·적요 준비됩니다.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
