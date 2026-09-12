@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.87</title>
+<title>아도라블 매출 자동화 v3.88</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -630,6 +630,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 .arBoxSearchWrap label{font-size:10px;font-weight:900;color:#64748b;white-space:nowrap}
 .arBoxSearchInput{width:min(280px,100%);height:29px!important;padding:4px 8px!important;font-size:10px!important;border:1px solid #cbd5e1!important;border-radius:7px!important;background:#fff!important}
 .arBoxSearchCount{font-size:9px;color:#64748b;white-space:nowrap}
+.arBoxSearchBtn{height:29px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;border-radius:7px;padding:4px 10px;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}.arBoxSearchBtn:hover{background:#e0e7ff}.arBoxSearchClear{background:#fff;color:#64748b;border-color:#cbd5e1}
 .arManagerSearchWrap{padding:7px 10px;border-bottom:1px solid #eef2f7;background:#fff}
 @media(max-width:900px){.arViewToolbar{justify-content:flex-start}.arSectionHead{align-items:flex-start}.arBoxSearchInput{width:100%}}
 </style>
@@ -660,7 +661,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.87 · 대용량 최신자료 저장 안정화 · 상계/합산 · 못받음 수기등록 · 입금해소 수동체크 · 열 설정 프리셋</div>
+      <div class="badge">v3.88 · 검색버튼 방식 안정화 · 대용량 백업 · 상계/합산 · 못받음 수기등록 · 입금해소 수동체크</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1947,7 +1948,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.87',
+    appVersion:'v3.88',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -9869,28 +9870,37 @@ arRowsForBox=function(boxKey){
   let rows=_arRowsForBox380(boxKey);const q=norm(arState.boxSearches?.[boxKey]||'').toLowerCase();if(!q)return rows;
   return rows.filter(r=>[r.code,r.name,r.jangkiName].map(x=>norm(x).toLowerCase()).some(x=>x.includes(q)));
 };
-const arBoxSearchTimers={};
-window.arSetBoxSearch=function(boxKey,value,input,ev,forceCommit=false){
+// 박스별 검색은 입력할 때마다 표 전체를 다시 그리지 않는다.
+// 검색 버튼 또는 Enter를 눌렀을 때만 적용해 한글 입력/삭제 중 멈춤을 방지한다.
+window.arSetBoxSearchDraft=function(boxKey,value){
+  if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
+  arState.boxSearchDrafts[boxKey]=value;
+};
+window.arCommitBoxSearch=function(boxKey,input){
   if(!arState.boxSearches)arState.boxSearches={};
+  if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
+  const value=input?input.value:(arState.boxSearchDrafts[boxKey]??arState.boxSearches[boxKey]??'');
+  arState.boxSearchDrafts[boxKey]=value;
   arState.boxSearches[boxKey]=value;
-  // 한글 IME 조합 중에는 input 자체를 다시 그리지 않는다. (ㅇ → 우 → 울 입력이 끊기는 문제 방지)
-  if(!forceCommit && ev?.isComposing)return;
-  clearTimeout(arBoxSearchTimers[boxKey]);
-  const pos=input?.selectionStart??String(value||'').length;
-  arBoxSearchTimers[boxKey]=setTimeout(()=>{
-    const view=arCaptureViewPosition();
-    renderArResultTable();
-    arRestoreViewPosition(view);
-    requestAnimationFrame(()=>{
-      const el=document.querySelector(`.arBoxSearchInput[data-box-key="${CSS.escape(boxKey)}"]`);
-      if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}
-    });
-  },40);
+  const view=arCaptureViewPosition();
+  renderArResultTable();
+  arRestoreViewPosition(view);
+};
+window.arClearBoxSearch=function(boxKey){
+  if(!arState.boxSearches)arState.boxSearches={};
+  if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
+  arState.boxSearchDrafts[boxKey]='';
+  arState.boxSearches[boxKey]='';
+  const view=arCaptureViewPosition();
+  renderArResultTable();
+  arRestoreViewPosition(view);
 };
 const _arBoxHtml380=arBoxHtml;
 arBoxHtml=function(def,rows){
   const total=rows.reduce((s,r)=>s+Number(arEffectiveBalance(r)||0),0),open=arBoxIsOpen(def.key),filtered=arRowsForBox(def.key),q=arState.boxSearches?.[def.key]||'';
-  return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(q)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearch('${escAttr(def.key)}',this.value,this,event)" oncompositionend="arSetBoxSearch('${escAttr(def.key)}',this.value,this,event,true)"><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
+  if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
+  const draft=Object.prototype.hasOwnProperty.call(arState.boxSearchDrafts,def.key)?arState.boxSearchDrafts[def.key]:q;
+  return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(draft)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearchDraft('${escAttr(def.key)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitBoxSearch('${escAttr(def.key)}',this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitBoxSearch('${escAttr(def.key)}',this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearBoxSearch('${escAttr(def.key)}')">초기화</button><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
 };
 
 // 못 받는 금액 관리 박스에도 거래처 검색
@@ -9899,20 +9909,22 @@ arUncollectibleManagerHtml=function(){
   const entries=[...arState.customerSettings.entries()].map(([code,x])=>({code,amount:Number(x?.uncollectibleAmount||0),reason:norm(x?.uncollectibleReason||''),name:arWeekRowByCode(code)?.name||arCustomerMaster(code)?.name||''})).filter(x=>Number.isFinite(x.amount)&&x.amount>0).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
   const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
   const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><button class="arTinyAction danger" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다. 각 거래처 행의 ‘못받음 등록’에서 금액과 사유를 등록할 수 있습니다.')+'</div>';
-  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다. 등록삭제하면 현재 잔액이 남아 있는 거래처는 즉시 원래 해당 박스로 돌아갑니다.</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearch)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearch(this.value,this,event)" oncompositionend="arSetUncollectibleSearch(this.value,this,event,true)"><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다. 등록삭제하면 현재 잔액이 남아 있는 거래처는 즉시 원래 해당 박스로 돌아갑니다.</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearchDraft)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitUncollectibleSearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitUncollectibleSearch(document.getElementById('arUncollectibleSearch'))">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearUncollectibleSearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
 };
-let arUncollectibleSearchTimer=null;
-window.arSetUncollectibleSearch=function(value,input,ev,forceCommit=false){
-  arUncollectibleSearch=value;
-  if(!forceCommit && ev?.isComposing)return;
-  clearTimeout(arUncollectibleSearchTimer);
-  const pos=input?.selectionStart??String(value||'').length;
-  arUncollectibleSearchTimer=setTimeout(()=>{
-    const view=arCaptureViewPosition();
-    renderArResultTable();
-    arRestoreViewPosition(view);
-    requestAnimationFrame(()=>{const el=$('arUncollectibleSearch');if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-  },40);
+let arUncollectibleSearchDraft=arUncollectibleSearch;
+window.arSetUncollectibleSearchDraft=function(value){arUncollectibleSearchDraft=value};
+window.arCommitUncollectibleSearch=function(input){
+  arUncollectibleSearch=input?input.value:arUncollectibleSearchDraft;
+  arUncollectibleSearchDraft=arUncollectibleSearch;
+  const view=arCaptureViewPosition();
+  renderArResultTable();
+  arRestoreViewPosition(view);
+};
+window.arClearUncollectibleSearch=function(){
+  arUncollectibleSearch='';arUncollectibleSearchDraft='';
+  const view=arCaptureViewPosition();
+  renderArResultTable();
+  arRestoreViewPosition(view);
 };
 
 // 화면에서 숨긴 열은 엑셀에서도 제외. 박스 검색도 기존 arRowsForBox를 통해 그대로 반영.
@@ -9976,7 +9988,7 @@ arUncollectibleManagerHtml=function(){
   const entries=[...arState.customerSettings.entries()].map(([code,x])=>({code,amount:Number(x?.uncollectibleAmount||0),reason:norm(x?.uncollectibleReason||''),name:arWeekRowByCode(code)?.name||arCustomerMaster(code)?.name||norm(x?.uncollectibleName||'')})).filter(x=>Number.isFinite(x.amount)&&x.amount>0).sort((a,b)=>(a.name||a.code).localeCompare((b.name||b.code),'ko'));
   const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
   const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><button class="arTinyAction danger" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다.')+'</div>';
-  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">자동정리 행의 ‘못받음 등록’뿐 아니라 아래에서 거래처를 직접 수기로 등록할 수 있습니다. 거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다.</div>${arManualUncollectibleFormHtml()}<div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearch)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearch(this.value,this,event)" oncompositionend="arSetUncollectibleSearch(this.value,this,event,true)"><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">자동정리 행의 ‘못받음 등록’뿐 아니라 아래에서 거래처를 직접 수기로 등록할 수 있습니다. 거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다.</div>${arManualUncollectibleFormHtml()}<div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearchDraft)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitUncollectibleSearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitUncollectibleSearch(document.getElementById('arUncollectibleSearch'))">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearUncollectibleSearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
 };
 
 setupArUI();
