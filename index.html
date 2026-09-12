@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.90</title>
+<title>아도라블 매출 자동화 v3.92</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -565,6 +565,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arUncollectibleTag{display:inline-block;border-radius:999px;padding:3px 6px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:800}.arUncollectibleMatch{background:#fee2e2;color:#991b1b}
   .arCarryBadge{display:inline-block;margin-left:4px;padding:1px 5px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:8px;font-weight:900;vertical-align:middle;white-space:nowrap}.arStreakBadge{display:inline-block;padding:2px 6px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:9px;font-weight:900;white-space:nowrap}.arStreakBadge.hot{background:#ffedd5;color:#9a3412}.arStreakBadge.strong{background:#fee2e2;color:#b91c1c}.arInlineCell{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;max-width:100%}.arResolutionCheck{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}.arResolutionCheck input{cursor:pointer}.arManualBadge{display:inline-block;padding:1px 5px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:8px;font-weight:900;white-space:nowrap}.arReviewControls{display:inline-flex!important;grid-template-columns:none!important;gap:4px;align-items:center;margin-top:0!important;vertical-align:middle}.arReviewDoneMeta{display:inline;color:#15803d;line-height:1.2;margin:0 0 0 3px}.arManagerReason{max-width:280px;white-space:normal;line-height:1.35}.arDataTable td{height:30px}.arNameTwoLine{display:block;line-height:1.18;white-space:nowrap}.arNameTwoLine>div{display:block}
   
+  .arEditableValue{display:inline-block;max-width:100%;cursor:text;border-bottom:1px dotted transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}.arEditableValue:hover{border-bottom-color:#94a3b8;background:#f8fafc}.arEditableValue.manual{font-weight:850}.arInlineEditInput{width:100%;min-width:74px;height:24px;padding:2px 5px;border:1px solid #60a5fa;border-radius:5px;background:#fff;font-size:10px;box-sizing:border-box}.arSampleEditableBtn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .arOffsetTag{display:inline-block;border-radius:999px;padding:2px 6px;background:#ecfeff;color:#155e75;font-size:9px;font-weight:900;white-space:nowrap}.arOffsetWarn{background:#fff7ed;color:#9a3412}.arOffsetPopupBackdrop{position:fixed;inset:0;background:rgba(15,23,42,.32);z-index:10040;display:flex;align-items:center;justify-content:center;padding:18px}.arOffsetPopup{width:min(620px,94vw);max-height:78vh;background:#fff;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,.24);display:flex;flex-direction:column;overflow:hidden}.arOffsetPopupHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #e2e8f0}.arOffsetPopupHead b{font-size:13px}.arOffsetPopupBody{padding:10px 12px;overflow:auto}.arOffsetSearch{width:100%;margin-bottom:8px}.arOffsetCandidate{width:100%;display:grid;grid-template-columns:110px 1fr 110px;gap:8px;align-items:center;padding:8px;border:0;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;cursor:pointer;font-size:10px}.arOffsetCandidate:hover{background:#f8fafc}.arOffsetCandidate .amt{text-align:right;font-weight:900}.arOffsetCandidate.neg .amt{color:#1d4ed8}.arOffsetCandidate.pos .amt{color:#b45309}.arOffsetPairText{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.arResultBox[data-ar-box] .arResultBody{scrollbar-gutter:stable}.arDataTable td,.arDataTable td *{line-height:1.15}.arDataTable td br{display:none}
   .arManagerTable{min-width:850px;font-size:10px}.arManagerTable th,.arManagerTable td{padding:6px 7px}.arBoxHint{padding:0 12px 8px;color:#64748b;font-size:10px;line-height:1.45}
   .arBoxWarehouse>summary{background:#f8fafc}.arBoxNampyeonghwa>summary{background:#faf5ff}.arBoxSample>summary{background:#f5f3ff;color:#6d28d9}.arBoxScheduled>summary{background:#ecfeff;color:#155e75}.arBoxLow>summary{background:#fff7ed;color:#9a3412}.arBoxShinsang>summary{background:#eff6ff;color:#1d4ed8}.arBoxReview>summary{background:#fffbeb;color:#92400e}.arBoxManager>summary{background:#f8fafc}
@@ -606,6 +607,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arManualUncollectible .arField{gap:3px}.arManualUncollectible input{width:100%;box-sizing:border-box;height:32px;border:1px solid #cbd5e1;border-radius:7px;padding:5px 8px;background:#fff}
   .arManualUncollectible .btn{height:32px;white-space:nowrap}
   @media(max-width:900px){.arManualUncollectible{grid-template-columns:1fr 1fr}.arManualUncollectible .arManualReason{grid-column:1 / -1}.arManualUncollectible .btn{width:100%}}
+
+  .arManagerReasonEditable{cursor:text;min-width:120px}.arManagerReasonEditable:hover{background:#f8fafc}.arManagerReasonInput{width:100%;min-width:120px;box-sizing:border-box;padding:5px 7px;border:1px solid #93c5fd;border-radius:6px;font:inherit;background:#fff}
 </style>
 
 <style>
@@ -661,7 +664,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.90 · 1,000원 미만 이월허용 거래처 · 검색버튼 안정화 · 상계/합산 · 입금해소 수동체크</div>
+      <div class="badge">v3.92 · 못받음 사유 더블클릭 수정 · 미수 날짜/SAMPLE 수정 · 1,000원 미만 이월허용</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -847,7 +850,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
     <div class="arMiniCard">
       <div class="arSectionHead">
-        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다.</div></div>
+        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다. <b>마지막입금일·미수시작일·SAMPLE은 더블클릭하면 직접 수정</b>할 수 있습니다.</div></div>
         <div class="arViewToolbar">
           <button id="arHiddenColumnsBtn" class="btn light" type="button" onclick="arOpenHiddenColumnsMenu(event)">숨긴 항목 <span id="arHiddenColumnsCount" class="arHiddenCount">0</span></button>
           <span class="arPresetGroup"><button class="btn light" type="button" onclick="arApplyTablePreset('preset1')">설정1</button><button class="arPresetSaveBtn" type="button" onclick="arSaveTablePreset('preset1')" title="현재 열 순서·숨김·너비를 설정1로 저장">저장</button></span>
@@ -1948,7 +1951,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.90',
+    appVersion:'v3.92',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -10108,6 +10111,134 @@ renderArResultTable=function(){
   const groups=arGroupRows();
   box.innerHTML=AR_BOX_DEFS.map(d=>arBoxHtml(d,groups[d.key]||[])).join('')+arUncollectibleManagerHtml()+arSmallCarryManagerHtml();
   arUpdateHiddenColumnsButton();
+};
+
+
+/* ===== v3.91 미수관리: 마지막입금일 / 미수시작일 / SAMPLE 수동 수정 ===== */
+function arManualFieldValue(r,field){
+  const a=r?.action||{};
+  if(field==='lastPayment')return norm(a.manualLastPayment||'');
+  if(field==='outstanding')return a.manualOutstanding==null?'':String(a.manualOutstanding);
+  if(field==='sample')return a.manualSample==null?'':String(a.manualSample);
+  return '';
+}
+function arHasManualField(r,field){
+  const a=r?.action||{};
+  if(field==='lastPayment')return !!norm(a.manualLastPayment||'');
+  if(field==='outstanding')return a.manualOutstanding!=null&&String(a.manualOutstanding)!=='';
+  if(field==='sample')return a.manualSample!=null&&String(a.manualSample)!=='';
+  return false;
+}
+function arDisplayLastPaymentYmd(r){return arHasManualField(r,'lastPayment')?norm(r.action.manualLastPayment):norm(r.lastPayment||'')}
+function arDisplayOutstanding(r){return arHasManualField(r,'outstanding')?String(r.action.manualOutstanding):String(r.outstandingLabel||'')}
+function arDisplaySampleText(r){
+  if(arHasManualField(r,'sample'))return String(r.action.manualSample);
+  return r.sampleMatch?`${arSampleDateLabel(r.sampleMatch)} · ${arMoney(Number(r.sampleMatch.amount||0))}`:'';
+}
+function arEditCurrentValue(r,field){
+  if(field==='lastPayment'){const y=arDisplayLastPaymentYmd(r);return y?arYmdToIso(y):''}
+  if(field==='outstanding')return arDisplayOutstanding(r);
+  if(field==='sample')return arDisplaySampleText(r);
+  return '';
+}
+window.arBeginFieldEdit=function(ev,code,field){
+  ev?.preventDefault?.();ev?.stopPropagation?.();
+  const host=ev?.currentTarget;if(!host||host.dataset.editing==='1')return;
+  const r=arWeekRowByCode(code);if(!r)return;
+  host.dataset.editing='1';
+  const before=host.innerHTML,view=arCaptureViewPosition();
+  const input=document.createElement('input');input.className='arInlineEditInput';input.type=field==='lastPayment'?'date':'text';input.value=arEditCurrentValue(r,field);input.autocomplete='off';
+  if(field==='outstanding')input.placeholder='예: 9/6~';
+  if(field==='sample')input.placeholder='예: 9/6 · 50,000원';
+  host.innerHTML='';host.appendChild(input);input.focus();if(input.type==='text')input.select();
+  let finished=false,cancelled=false;
+  const cancel=()=>{if(finished)return;finished=true;cancelled=true;host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view)};
+  const commit=async()=>{if(finished)return;finished=true;const raw=input.value;let patch={};
+    if(field==='lastPayment')patch={manualLastPayment:raw?arIsoToYmd(raw):null,manualLastPaymentAtMs:raw?Date.now():null};
+    else if(field==='outstanding')patch={manualOutstanding:raw.trim()||null,manualOutstandingAtMs:raw.trim()?Date.now():null};
+    else if(field==='sample')patch={manualSample:raw.trim()||null,manualSampleAtMs:raw.trim()?Date.now():null};
+    try{await saveArAction(code,patch)}catch(e){host.innerHTML=before;delete host.dataset.editing;alert(e.message||e)}
+  };
+  input.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();input.blur()}else if(e.key==='Escape'){e.preventDefault();cancel()}});
+  input.addEventListener('mousedown',e=>e.stopPropagation());input.addEventListener('dblclick',e=>e.stopPropagation());
+  input.addEventListener('blur',()=>{if(!cancelled)commit()},{once:true});
+};
+
+let arSampleClickTimer=null;
+window.arSampleSingleClick=function(ev,code){
+  ev?.preventDefault?.();ev?.stopPropagation?.();
+  if(ev?.detail>1)return;
+  if(arSampleClickTimer)clearTimeout(arSampleClickTimer);
+  arSampleClickTimer=setTimeout(()=>{arSampleClickTimer=null;arToggleSampleDetail(code)},300);
+};
+window.arSampleDoubleClick=function(ev,code){
+  if(arSampleClickTimer){clearTimeout(arSampleClickTimer);arSampleClickTimer=null;}
+  arBeginFieldEdit(ev,code,'sample');
+};
+
+// 기존 SAMPLE 단일클릭 상세보기는 유지하고, 더블클릭 때만 값 수정
+arSampleCell=function(r){
+  const text=arDisplaySampleText(r),x=r.sampleMatch,open=!!arState.sampleExpanded?.[r.code],details=arSampleDetailsForRow(r);let detail='';
+  if(open){detail=`<div class="arSampleDetail">${details.length?details.map(d=>{const n=Number(d.amount||0),cls=n<0?'neg':'pos',kind=n<0?'반품':'판매';return `<div class="arSampleDetailRow"><span>${esc(arShortDate(d.date)||d.date)}${d.seq?` · No.${esc(d.seq)}`:''} · ${kind}</span><b class="${cls}">${n>0?'+':''}${esc(arMoney(n))}</b></div>`}).join(''):'<div>상세 SAMPLE 거래를 찾지 못했습니다.</div>'}</div>`}
+  const general=x&&Number(x.generalAmount||0)>0?` <span class="small">· 일반미수 ${esc(arMoney(x.generalAmount))} 포함</span>`:'';
+  return `<span><span class="arSampleToggle arSampleEditableBtn${arHasManualField(r,'sample')?' manual':''}" role="button" tabindex="0" title="한 번 클릭: SAMPLE 상세 · 더블클릭: 값 수정" onclick="arSampleSingleClick(event,'${escAttr(r.code)}')" ondblclick="arSampleDoubleClick(event,'${escAttr(r.code)}')">${esc(text||'-')} ${open?'▲':'▼'}</span>${general}${detail}</span>`;
+};
+
+const _arPlainValue391=arPlainValue;
+arPlainValue=function(r,key){
+  if(key==='lastPayment')return arDisplayLastPaymentYmd(r);
+  if(key==='outstanding')return arDisplayOutstanding(r);
+  if(key==='sample')return arDisplaySampleText(r)||'없음';
+  return _arPlainValue391(r,key);
+};
+const _arCellHtml391=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  if(key==='lastPayment'){
+    const y=arDisplayLastPaymentYmd(r),txt=y?arShortDateWeekday(y):'-';
+    return `<span class="arEditableValue${arHasManualField(r,'lastPayment')?' manual':''}" title="더블클릭해서 마지막입금일 수정 · 빈값 저장 시 자동값 복귀" ondblclick="arBeginFieldEdit(event,'${escAttr(r.code)}','lastPayment')">${esc(txt)}</span>`;
+  }
+  if(key==='outstanding'){
+    const txt=arDisplayOutstanding(r)||'-';
+    return `<span class="arEditableValue${arHasManualField(r,'outstanding')?' manual':''}" title="더블클릭해서 미수시작일 수정 · 빈값 저장 시 자동값 복귀" ondblclick="arBeginFieldEdit(event,'${escAttr(r.code)}','outstanding')">${esc(txt)}</span>`;
+  }
+  if(key==='sample')return arSampleCell(r);
+  return _arCellHtml391(r,key,boxKey);
+};
+const _arExportRowObject391=arExportRowObject;
+arExportRowObject=function(r){
+  const o=_arExportRowObject391(r),y=arDisplayLastPaymentYmd(r);
+  o.lastPayment=y?arShortDateWeekday(y):'';o.outstanding=arDisplayOutstanding(r)||'';o.sample=arDisplaySampleText(r)||'';return o;
+};
+
+
+/* ===== v3.92 못 받는 금액 확정 관리: 기존 등록 사유 바로 수정 ===== */
+window.arBeginUncollectibleReasonEdit=function(ev,code,host){
+  ev?.preventDefault?.();ev?.stopPropagation?.();
+  host=host||ev?.currentTarget;if(!host||host.dataset.editing==='1')return;
+  code=norm(code);const setting=arState.customerSettings.get(code)||{};
+  host.dataset.editing='1';const before=host.innerHTML,view=arCaptureViewPosition();
+  const input=document.createElement('input');input.type='text';input.className='arManagerReasonInput';input.value=norm(setting.uncollectibleReason||'');input.placeholder='사유 입력';input.autocomplete='off';
+  host.innerHTML='';host.appendChild(input);input.focus();input.select();
+  let finished=false,cancelled=false;
+  const cancel=()=>{if(finished)return;finished=true;cancelled=true;host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view)};
+  const commit=async()=>{if(finished)return;finished=true;const reason=norm(input.value);
+    try{await saveArCustomerSetting(code,{uncollectibleReason:reason});renderArAll();arRestoreViewPosition(view)}
+    catch(e){host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view);alert(e.message||e)}
+  };
+  input.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();input.blur()}else if(e.key==='Escape'){e.preventDefault();cancel()}});
+  input.addEventListener('mousedown',e=>e.stopPropagation());input.addEventListener('dblclick',e=>e.stopPropagation());
+  input.addEventListener('blur',()=>{if(!cancelled)commit()},{once:true});
+};
+window.arEditUncollectibleReasonFromButton=function(ev,code,btn){
+  ev?.preventDefault?.();ev?.stopPropagation?.();const cell=btn?.closest('tr')?.querySelector('.arManagerReasonEditable');if(cell)arBeginUncollectibleReasonEdit(ev,code,cell);
+};
+
+// 최종 못받음 관리 렌더: 사유 셀 더블클릭 + 사유 수정 버튼
+arUncollectibleManagerHtml=function(){
+  const entries=[...arState.customerSettings.entries()].map(([code,x])=>({code,amount:Number(x?.uncollectibleAmount||0),reason:norm(x?.uncollectibleReason||''),name:arWeekRowByCode(code)?.name||arCustomerMaster(code)?.name||norm(x?.uncollectibleName||'')})).filter(x=>Number.isFinite(x.amount)&&x.amount>0).sort((a,b)=>(a.name||a.code).localeCompare((b.name||b.code),'ko'));
+  const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
+  const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason arManagerReasonEditable" title="더블클릭해서 사유 수정" ondblclick="arBeginUncollectibleReasonEdit(event,'${escAttr(x.code)}',this)">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><span class="arInlineCell"><button class="arTinyAction" type="button" onclick="arEditUncollectibleReasonFromButton(event,'${escAttr(x.code)}',this)">사유 수정</button><button class="arTinyAction danger" type="button" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></span></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다.')+'</div>';
+  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">자동정리 행의 ‘못받음 등록’뿐 아니라 아래에서 거래처를 직접 수기로 등록할 수 있습니다. 이미 등록된 거래처의 <b>사유 칸을 더블클릭</b>하거나 ‘사유 수정’을 누르면 사유를 바로 수정할 수 있습니다.</div>${arManualUncollectibleFormHtml()}<div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearchDraft)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitUncollectibleSearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitUncollectibleSearch(document.getElementById('arUncollectibleSearch'))">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearUncollectibleSearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
 };
 
 setupArUI();
