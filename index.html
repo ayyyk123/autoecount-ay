@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.78</title>
+<title>아도라블 매출 자동화 v3.80</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -513,7 +513,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arHero{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:14px}
   .arHero h2{font-size:19px;margin:0 0 5px}.arHero p{margin:0;color:#64748b;font-size:12px;line-height:1.55}
   .arHistoryStatus{font-size:11px;line-height:1.55;color:#475569;text-align:right;max-width:440px}
-  .arSetupGrid{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:10px}
+  .arSetupGrid{display:flex;gap:10px;align-items:stretch}.arSetupGrid>.arMiniCard{flex:1 1 0;min-width:0}
   .arMiniCard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
   .arMiniCard h3{font-size:14px;margin:0 0 6px}.arMiniCard .hint{font-size:11px;margin-bottom:8px}
   .arFileInput{font-size:11px;width:100%;padding:7px;border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc}
@@ -589,7 +589,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .shinsangHowto{margin:8px 0 10px;padding:9px 10px;border:1px solid #c7d2fe;border-radius:9px;background:#eef2ff;font-size:11px;line-height:1.55;color:#3730a3}
   .shinsangReviewCell{min-width:105px;text-align:center}.shinsangReviewCheck{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;white-space:nowrap}.shinsangReviewCheck input{width:15px;height:15px}.shinsangReviewMemo{width:100%;min-width:150px;max-width:240px;padding:5px 6px!important;font-size:10px!important;border-radius:6px!important}.shinsangConfirmedAmount{width:105px!important;min-width:105px!important;padding:5px 6px!important;font-size:10px!important;text-align:right;font-variant-numeric:tabular-nums}.shinsangAmountNeed{font-size:9px;color:#dc2626;font-weight:800;margin-top:2px;white-space:nowrap}.shinsangAutoAmount{font-size:9px;color:#15803d;margin-top:2px;white-space:nowrap}.shinsangTable tr.reviewDone td{background:#f0fdf4}.shinsangReviewSaved{font-size:9px;color:#15803d;margin-top:2px}.shinsangHistoryExpanded{margin-top:8px}.shinsangHistoryDetail{padding:10px;border:1px solid #dbeafe;border-radius:9px;background:#fff;text-align:left;font-size:10px;line-height:1.45;overflow:hidden}.shinsangHistoryDetailHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}.shinsangHistoryDetailTableWrap{width:100%;overflow:auto;max-height:360px;border:1px solid #e2e8f0;border-radius:7px}.shinsangHistoryDetail table{width:100%;min-width:760px;border-collapse:collapse;font-size:10px}.shinsangHistoryDetail th,.shinsangHistoryDetail td{padding:5px 7px;position:static;vertical-align:top}.shinsangHistoryDetail th{white-space:nowrap;background:#f8fafc;position:sticky;top:0;z-index:1}.shinsangHistoryDetail .memo{white-space:pre-wrap;min-width:150px}.shinsangHistoryDetail .shinsangMoney{white-space:nowrap;text-align:right}.shinsangHistoryProgress{color:#4338ca;font-weight:800}
   .genericFileUi{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;max-width:100%}.genericFileChip{display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:4px 6px;border:1px solid #dbe2ea;border-radius:999px;background:#f8fafc;font-size:10px;color:#475569}.genericFileChip .gfname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.genericFileChip button{border:0;background:transparent;color:#64748b;cursor:pointer;padding:0 1px;font-size:14px;line-height:1}.genericFileChip button:hover{color:#dc2626}.filePickLabel.fileDragReady{border-style:dashed}.filePickLabel.fileDragReady::after{content:'↧';font-size:11px;color:#6366f1}.filePickLabel.fileDragOver,.genericDropTarget.fileDragOver{outline:2px dashed #6366f1;outline-offset:2px;background:#eef2ff!important}.genericDropTarget{transition:.12s}
-  @media(max-width:900px){.arSetupGrid{grid-template-columns:1fr}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.arAssigneeGrid{grid-template-columns:1fr}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
+  @media(max-width:900px){.arSetupGrid{flex-direction:column}.arSummary{grid-template-columns:repeat(2,1fr)}.arHero{flex-direction:column}.arHistoryStatus{text-align:left}.arAssigneeGrid{grid-template-columns:1fr}.workTabs{overflow-x:auto}.workTabBtn{min-width:160px}}
 
 
   /* ===== v3.46 통합 규칙관리 ===== */
@@ -600,6 +600,33 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   /* ===== v3.57 일자별 작업기록 ===== */
   .activityWorkArea{margin:14px 0}.activityHero{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:16px;border:1px solid #dbe2ea;border-radius:14px;background:#fff}.activityHero h2{margin:0 0 6px;font-size:20px}.activityHero p{margin:0;color:#64748b;line-height:1.55}.activityToolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:12px 0}.activityToolbar label{font-size:11px;color:#64748b;font-weight:700}.activityToolbar input,.activityToolbar select{display:block;margin-top:3px}.activitySummary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.activitySummary>div{min-width:120px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.activitySummary small{display:block;color:#64748b}.activitySummary b{display:block;font-size:18px;margin-top:3px}.activityDay{border:1px solid #dbe2ea;border-radius:12px;background:#fff;margin:9px 0;overflow:hidden}.activityDay>summary{cursor:pointer;padding:11px 13px;font-weight:800;background:#f8fafc}.activityDay table{margin:0;border:0}.activityDay td,.activityDay th{font-size:11px}.activityTime{white-space:nowrap;color:#475569;font-weight:700}.activityCategory{white-space:nowrap}.activityDetail{color:#64748b;line-height:1.45}.activityEmpty{padding:24px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc}
 </style>
+
+<style>
+/* ===== v3.80 미수 표 보기설정 ===== */
+.arViewToolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:5px}
+.arViewToolbar .btn{padding:6px 9px;font-size:10px;white-space:nowrap}
+.arPresetGroup{display:inline-flex;align-items:center;gap:3px;padding:2px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
+.arPresetGroup .btn{border-radius:6px;padding:5px 7px}
+.arPresetSaveBtn{border:0;background:transparent;color:#64748b;font-size:9px;font-weight:900;padding:5px 5px;cursor:pointer;border-radius:5px}
+.arPresetSaveBtn:hover{background:#e2e8f0;color:#334155}
+.arHiddenCount{display:inline-flex;min-width:17px;height:17px;padding:0 4px;align-items:center;justify-content:center;border-radius:999px;background:#e2e8f0;color:#475569;font-size:9px;font-weight:900}
+.arHiddenPopup{position:fixed;z-index:100050;width:280px;max-height:420px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 35px rgba(15,23,42,.18);padding:10px;font-size:11px;color:#334155}
+.arHiddenPopupTitle{font-weight:900;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+.arHiddenPopupList{max-height:285px;overflow:auto;border:1px solid #eef2f7;border-radius:7px;padding:4px}
+.arHiddenPopupRow{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:5px}
+.arHiddenPopupRow:hover{background:#f8fafc}
+.arHiddenPopupActions{display:flex;justify-content:flex-end;gap:5px;margin-top:8px}
+.arHiddenPopupActions button{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:850;cursor:pointer}
+.arHiddenPopupActions .primary{background:#4f46e5;color:#fff;border-color:#4f46e5}
+.arColumnHideBtn{margin-right:auto!important;color:#b45309!important}
+.arBoxSearchWrap{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid #eef2f7;background:#fff}
+.arBoxSearchWrap label{font-size:10px;font-weight:900;color:#64748b;white-space:nowrap}
+.arBoxSearchInput{width:min(280px,100%);height:29px!important;padding:4px 8px!important;font-size:10px!important;border:1px solid #cbd5e1!important;border-radius:7px!important;background:#fff!important}
+.arBoxSearchCount{font-size:9px;color:#64748b;white-space:nowrap}
+.arManagerSearchWrap{padding:7px 10px;border-bottom:1px solid #eef2f7;background:#fff}
+@media(max-width:900px){.arViewToolbar{justify-content:flex-start}.arSectionHead{align-items:flex-start}.arBoxSearchInput{width:100%}}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -626,7 +653,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.78 · 미수 0원/마이너스 보존 · 거래처명 2줄 표시</div>
+      <div class="badge">v3.80 · 열 숨김/프리셋 · 박스별 거래처검색</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -812,8 +839,13 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
     <div class="arMiniCard">
       <div class="arSectionHead">
-        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, 열 제목의 ▼에서 <b>복수선택 필터·오름/내림차순 정렬</b>을 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다.</div></div>
-        <div class="arExportButtons"><button id="arExportAllBtn" class="btn light" type="button">전체 결과 엑셀</button></div>
+        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, 열 제목의 ▼에서 <b>복수선택 필터·오름/내림차순 정렬</b>을 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다.</div></div>
+        <div class="arViewToolbar">
+          <button id="arHiddenColumnsBtn" class="btn light" type="button" onclick="arOpenHiddenColumnsMenu(event)">숨긴 항목 <span id="arHiddenColumnsCount" class="arHiddenCount">0</span></button>
+          <span class="arPresetGroup"><button class="btn light" type="button" onclick="arApplyTablePreset('preset1')">설정1</button><button class="arPresetSaveBtn" type="button" onclick="arSaveTablePreset('preset1')" title="현재 열 순서·숨김·너비를 설정1로 저장">저장</button></span>
+          <span class="arPresetGroup"><button class="btn light" type="button" onclick="arApplyTablePreset('preset2')">설정2</button><button class="arPresetSaveBtn" type="button" onclick="arSaveTablePreset('preset2')" title="현재 열 순서·숨김·너비를 설정2로 저장">저장</button></span>
+          <button id="arExportAllBtn" class="btn light" type="button">전체 결과 엑셀</button>
+        </div>
       </div>
       <div id="arResultTable" class="arResultBoxes"><div class="jobEmpty">미수 자동정리를 실행하면 결과가 표시됩니다.</div></div>
     </div>
@@ -1907,7 +1939,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.78',
+    appVersion:'v3.80',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -8958,6 +8990,7 @@ function arMoney(v){return Math.round(Number(v||0)).toLocaleString('ko-KR')+'원
 function arIsoToYmd(v){return norm(v).replace(/-/g,'').slice(0,8)}
 function arYmdToIso(v){v=ymd(v);return v?`${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`:''}
 function arShortDate(v){v=ymd(v);return v?`${Number(v.slice(4,6))}/${Number(v.slice(6,8))}`:''}
+function arShortDateWeekday(v){v=ymd(v);if(!v)return '';const d=arDateObj(v);if(!d||Number.isNaN(d.getTime()))return arShortDate(v);const days=['일','월','화','수','목','금','토'];return `${Number(v.slice(4,6))}/${Number(v.slice(6,8))}(${days[d.getDay()]})`}
 function arDateObj(v){v=ymd(v);if(!v)return null;return new Date(Number(v.slice(0,4)),Number(v.slice(4,6))-1,Number(v.slice(6,8)))}
 function arDateDiffDays(a,b){const x=arDateObj(a),y=arDateObj(b);return x&&y?Math.round((y-x)/86400000):0}
 function arPrevSunday(run){const d=arDateObj(run);if(!d)return '';const dow=d.getDay();const diff=dow===0?7:dow;d.setDate(d.getDate()-diff);return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`}
@@ -9276,7 +9309,7 @@ function arPlainValue(r,key){
   return '';
 }
 const AR_MONEY_COLUMN_KEYS=new Set(['carryover','periodSales','periodReceipts','baseBalance','adjustedBalance']);
-function arFilterOptionLabel(key,value){if(value==='')return '(빈값)';if(AR_MONEY_COLUMN_KEYS.has(key)&&Number.isFinite(Number(value)))return arMoney(Number(value));if(key==='streak'&&Number.isFinite(Number(value)))return `${Number(value)}주째`;if(key==='lastPayment')return arShortDate(value)||value;return value}
+function arFilterOptionLabel(key,value){if(value==='')return '(빈값)';if(AR_MONEY_COLUMN_KEYS.has(key)&&Number.isFinite(Number(value)))return arMoney(Number(value));if(key==='streak'&&Number.isFinite(Number(value)))return `${Number(value)}주째`;if(key==='lastPayment')return arShortDateWeekday(value)||value;return value}
 function arBoxRawRows(boxKey){const groups=arGroupRows();return groups[boxKey]||[]}
 function arDistinctFilterValues(boxKey,key){const vals=[...new Set(arBoxRawRows(boxKey).map(r=>String(arPlainValue(r,key)??'')))];vals.sort((a,b)=>arCompareValues(key,a,b));return vals}
 function arCompareValues(key,a,b){
@@ -9360,7 +9393,7 @@ function arCellHtml(r,key,boxKey){
   if(key==='periodSales')return r.periodSales==null?'-':arMoney(r.periodSales);
   if(key==='periodReceipts')return r.periodReceipts==null?'-':arMoney(r.periodReceipts);
   if(key==='baseBalance'){if(r.carriedOnly)return `<span class="small">잔액파일 미등장</span>`;const eff=arEffectiveBalance(r),manual=r.action?.reviewStatus==='done'&&Number.isFinite(Number(r.action?.reviewedBalance));return `<span class="arInlineCell"><b>${arMoney(eff)}</b>${manual&&eff!==Number(r.baseBalance||0)?`<span class="small">· 확인전 ${arMoney(r.baseBalance)}</span>`:''}</span>`;}
-  if(key==='lastPayment')return r.lastPayment?arShortDate(r.lastPayment):'-';
+  if(key==='lastPayment')return r.lastPayment?arShortDateWeekday(r.lastPayment):'-';
   if(key==='outstanding')return esc(r.outstandingLabel||'-');
   if(key==='streak'){const n=Math.max(1,Number(r.consecutiveWeeks||1)),cls=n>=4?' strong':n>=2?' hot':'';return `<span class="arStreakBadge${cls}">${n}주째</span>`;}
   if(key==='sample')return arSampleCell(r);
@@ -9509,7 +9542,7 @@ $('taxCheckMonth').addEventListener('change',()=>{
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupGenericFileInputs();
 
-/* ===== v3.78 미수관리 보강 (v3.77 기반) ===== */
+/* ===== v3.79 미수관리 보강 (v3.78 기반) ===== */
 function arCaptureViewPosition(){
   const state={x:window.scrollX||0,y:window.scrollY||0,bodies:{}};
   document.querySelectorAll('.arResultBox[data-ar-box]').forEach(box=>{const key=box.dataset.arBox,body=box.querySelector('.arResultBody');if(key&&body)state.bodies[key]={top:body.scrollTop,left:body.scrollLeft}});
@@ -9673,7 +9706,7 @@ window.arClearOffset=async function(code){try{
 // 상계/연속등장 포함 엑셀 데이터
 arExportRowObject=function(r){
   const a=r.action||{},i=arOffsetInfo(r),partnerName=i.partner?.name||arCustomerMaster(i.partnerCode)?.name||i.partnerCode||'',setting=arState.customerSettings.get(norm(r.code))||{};
-  return {location:arLocationLabel(r.location),paymentDay:r.paymentDay||'',code:r.code||'',name:[r.name,r.jangkiName].filter(Boolean).join(' / '),carryover:r.carryover==null?'':r.carryover,periodSales:r.periodSales==null?'':r.periodSales,periodReceipts:r.periodReceipts==null?'':r.periodReceipts,baseBalance:r.carriedOnly?'':Math.round(Number(r.baseBalance||0)),offset:i.registered?`${partnerName}${i.valid?` / 상계 ${arMoney(i.applied)}`:` / ${i.reason||'확인필요'}`}`:'',adjustedBalance:arEffectiveBalance(r),lastPayment:r.lastPayment?arYmdToIso(r.lastPayment):'',outstanding:r.outstandingLabel||'',streak:`${Math.max(1,Number(r.consecutiveWeeks||1))}주째`,sample:r.sampleMatch?`${arSampleDateLabel(r.sampleMatch)} · ${arMoney(Number(r.sampleMatch.amount||0))}`:'',resolution:r.runDateResolved?'해소':r.runDatePartial?`부분입금 ${arMoney(r.runDatePaid||0)}`:'미해소',shipStatus:a.shipStatus==='X'?(a.shipAutoCarry?'X · 자동이월':'X'):'O',review:a.reviewStatus==='need'?(a.reviewAutoCarry?'확인필요 · 자동이월':'확인필요'):a.reviewStatus==='done'?`확인완료 · 잔액 ${arMoney(a.reviewedBalance||0)}`:'',uncollectible:arUncollectibleAmount(r.code)>0?`${arMoney(arUncollectibleAmount(r.code))}${setting.uncollectibleReason?` · ${setting.uncollectibleReason}`:''}`:''};
+  return {location:arLocationLabel(r.location),paymentDay:r.paymentDay||'',code:r.code||'',name:[r.name,r.jangkiName].filter(Boolean).join(' / '),carryover:r.carryover==null?'':r.carryover,periodSales:r.periodSales==null?'':r.periodSales,periodReceipts:r.periodReceipts==null?'':r.periodReceipts,baseBalance:r.carriedOnly?'':Math.round(Number(r.baseBalance||0)),offset:i.registered?`${partnerName}${i.valid?` / 상계 ${arMoney(i.applied)}`:` / ${i.reason||'확인필요'}`}`:'',adjustedBalance:arEffectiveBalance(r),lastPayment:r.lastPayment?arShortDateWeekday(r.lastPayment):'',outstanding:r.outstandingLabel||'',streak:`${Math.max(1,Number(r.consecutiveWeeks||1))}주째`,sample:r.sampleMatch?`${arSampleDateLabel(r.sampleMatch)} · ${arMoney(Number(r.sampleMatch.amount||0))}`:'',resolution:r.runDateResolved?'해소':r.runDatePartial?`부분입금 ${arMoney(r.runDatePaid||0)}`:'미해소',shipStatus:a.shipStatus==='X'?(a.shipAutoCarry?'X · 자동이월':'X'):'O',review:a.reviewStatus==='need'?(a.reviewAutoCarry?'확인필요 · 자동이월':'확인필요'):a.reviewStatus==='done'?`확인완료 · 잔액 ${arMoney(a.reviewedBalance||0)}`:'',uncollectible:arUncollectibleAmount(r.code)>0?`${arMoney(arUncollectibleAmount(r.code))}${setting.uncollectibleReason?` · ${setting.uncollectibleReason}`:''}`:''};
 };
 
 // 과거 주차 raw 데이터 읽기
@@ -9720,6 +9753,135 @@ runArMonday=async function(){
 window.arToggleSampleDetail=function(code){if(!arState.sampleExpanded)arState.sampleExpanded={};const p=arCaptureViewPosition();arState.sampleExpanded[code]=!arState.sampleExpanded[code];renderArResultTable();arRestoreViewPosition(p)};
 const _arDropColumn377=window.arDropColumn;window.arDropColumn=function(ev,targetKey){const p=arCaptureViewPosition();_arDropColumn377(ev,targetKey);arRestoreViewPosition(p)};
 
+
+
+/* ===== v3.80 미수 표 보기설정 / 프리셋 / 박스별 검색 ===== */
+const AR_HIDDEN_COLUMNS_KEY='autoecount-ay-ar-hidden-columns-v1';
+let arTablePresets={preset1:null,preset2:null};
+let arUncollectibleSearch='';
+
+function arLoadHiddenColumns(){
+  if(Array.isArray(arState.hiddenColumns))return arState.hiddenColumns;
+  let xs=[];try{xs=JSON.parse(localStorage.getItem(AR_HIDDEN_COLUMNS_KEY)||'[]')}catch(e){}
+  arState.hiddenColumns=(Array.isArray(xs)?xs:[]).filter(k=>AR_DEFAULT_COLUMN_ORDER.includes(k));
+  return arState.hiddenColumns;
+}
+function arHiddenColumns(){return arLoadHiddenColumns()}
+function arVisibleColumnOrder(){const hidden=new Set(arHiddenColumns());return arColumnOrder().filter(k=>!hidden.has(k))}
+function arSaveHiddenColumns(){try{localStorage.setItem(AR_HIDDEN_COLUMNS_KEY,JSON.stringify(arState.hiddenColumns||[]))}catch(e){}}
+function arClearInvisibleColumnFilters(key){
+  for(const f of Object.values(arState.boxFilters||{}))if(f&&Object.prototype.hasOwnProperty.call(f,key))delete f[key];
+  for(const [boxKey,sort] of Object.entries(arState.boxSorts||{}))if(sort?.key===key)delete arState.boxSorts[boxKey];
+}
+window.arHideColumn=function(key){
+  if(!AR_DEFAULT_COLUMN_ORDER.includes(key))return;
+  const visible=arVisibleColumnOrder();if(visible.length<=1){alert('최소 1개 항목은 표시해야 합니다.');return}
+  if(!arHiddenColumns().includes(key))arState.hiddenColumns.push(key);
+  arClearInvisibleColumnFilters(key);arSaveHiddenColumns();arCloseColumnMenu();renderArResultTable();
+}
+window.arShowColumn=function(key){
+  arState.hiddenColumns=arHiddenColumns().filter(k=>k!==key);arSaveHiddenColumns();renderArResultTable();
+}
+window.arShowAllColumns=function(){arState.hiddenColumns=[];arSaveHiddenColumns();renderArResultTable();arCloseHiddenColumnsMenu()}
+function arUpdateHiddenColumnsButton(){const el=$('arHiddenColumnsCount');if(el)el.textContent=String(arHiddenColumns().length)}
+window.arCloseHiddenColumnsMenu=function(){document.querySelectorAll('.arHiddenPopup').forEach(x=>x.remove())}
+window.arOpenHiddenColumnsMenu=function(ev){
+  ev?.preventDefault?.();ev?.stopPropagation?.();arCloseHiddenColumnsMenu();arCloseColumnMenu();
+  const hidden=arHiddenColumns(),btn=ev?.currentTarget||$('arHiddenColumnsBtn'),rect=btn?.getBoundingClientRect?.()||{right:300,bottom:100,top:70};
+  const pop=document.createElement('div');pop.className='arHiddenPopup';pop.addEventListener('mousedown',e=>e.stopPropagation());
+  const title=document.createElement('div');title.className='arHiddenPopupTitle';title.innerHTML=`<span>숨긴 항목</span><span>${hidden.length}개</span>`;pop.appendChild(title);
+  const list=document.createElement('div');list.className='arHiddenPopupList';
+  if(!hidden.length)list.innerHTML='<div class="jobEmpty" style="padding:12px">숨긴 항목이 없습니다.</div>';
+  else for(const key of arColumnOrder().filter(k=>hidden.includes(k))){const d=arColumnDef(key);const row=document.createElement('label');row.className='arHiddenPopupRow';const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;cb.dataset.key=key;const sp=document.createElement('span');sp.textContent=d?.label||key;row.append(cb,sp);list.appendChild(row)}
+  pop.appendChild(list);
+  const actions=document.createElement('div');actions.className='arHiddenPopupActions';const close=document.createElement('button');close.type='button';close.textContent='닫기';close.onclick=arCloseHiddenColumnsMenu;actions.appendChild(close);
+  if(hidden.length){const restore=document.createElement('button');restore.type='button';restore.className='primary';restore.textContent='체크한 항목 다시 보이기';restore.onclick=()=>{const keys=[...list.querySelectorAll('input:checked')].map(x=>x.dataset.key);arState.hiddenColumns=arHiddenColumns().filter(k=>!keys.includes(k));arSaveHiddenColumns();arCloseHiddenColumnsMenu();renderArResultTable()};const all=document.createElement('button');all.type='button';all.textContent='전체 복원';all.onclick=arShowAllColumns;actions.prepend(all,restore)}
+  pop.appendChild(actions);document.body.appendChild(pop);
+  const pw=280,ph=Math.min(420,pop.offsetHeight||420);let left=Math.min(window.innerWidth-pw-8,Math.max(8,rect.right-pw)),top=rect.bottom+4;if(top+ph>window.innerHeight-8)top=Math.max(8,rect.top-ph-4);pop.style.left=left+'px';pop.style.top=top+'px';
+}
+if(!window.__arHiddenMenuOutsideBound){window.__arHiddenMenuOutsideBound=true;document.addEventListener('mousedown',e=>{if(!e.target.closest?.('.arHiddenPopup')&&!e.target.closest?.('#arHiddenColumnsBtn'))arCloseHiddenColumnsMenu()})}
+
+// 보이는 항목만 화면/엑셀에 사용
+arTableWidth=function(){return arVisibleColumnOrder().reduce((s,k)=>s+arColumnWidth(k),0)};
+arHeaderHtml=function(boxKey){
+  const filter=arBoxFilterObj(boxKey),sort=arBoxSortObj(boxKey);
+  return arVisibleColumnOrder().map(key=>{const d=arColumnDef(key);if(!d)return '';const active=Array.isArray(filter[key]),mark=sort.key===key?(sort.dir==='asc'?'▲':'▼'):'',w=arColumnWidth(key);return `<th data-ar-col="${escAttr(key)}" style="width:${w}px;min-width:${w}px;max-width:${w}px" ondragover="event.preventDefault()" ondrop="arDropColumn(event,'${escAttr(key)}')"><div class="arThTop"><span class="arDragHandle" draggable="true" ondragstart="arDragColumnStart(event,'${escAttr(key)}')" title="드래그해서 열 순서 변경">⋮⋮</span><span class="arThLabel">${esc(d.label)}</span>${mark?`<span class="arSortMark">${mark}</span>`:''}<button type="button" class="arHeaderFilterBtn${active?' active':''}" draggable="false" title="필터/정렬/숨기기" onclick="arOpenColumnMenu(event,'${escAttr(boxKey)}','${escAttr(key)}')">▼</button><span class="arColResizer" draggable="false" title="드래그해서 열 너비 조절" onmousedown="arStartResize(event,'${escAttr(key)}')"></span></div></th>`}).join('');
+};
+arRowsTable=function(rows,boxKey){
+  const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터/검색에 해당하는 거래처가 없습니다.</div>';const order=arVisibleColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
+  const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X';return `<tr class="${blocked?'arShipBlocked':''}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+};
+
+// 필터 메뉴에 '이 열 숨기기' 추가
+arOpenColumnMenu=function(ev,boxKey,key){
+  ev.preventDefault();ev.stopPropagation();arCloseColumnMenu();arCloseHiddenColumnsMenu();const def=arColumnDef(key);if(!def)return;const values=arDistinctFilterValues(boxKey,key),current=arBoxFilterObj(boxKey)[key],selected=new Set(Array.isArray(current)?current:values),sort=arBoxSortObj(boxKey),rect=ev.currentTarget.getBoundingClientRect();
+  const pop=document.createElement('div');pop.className='arFilterPopup';pop.addEventListener('mousedown',e=>e.stopPropagation());
+  const title=document.createElement('div');title.className='arFilterPopupTitle';title.textContent=def.label;pop.appendChild(title);
+  const sortRow=document.createElement('div');sortRow.className='arFilterSortRow';let tempDir=sort.key===key?sort.dir:'';[['','정렬없음'],['asc','오름차순'],['desc','내림차순']].forEach(([d,t])=>{const b=document.createElement('button');b.type='button';b.className='arFilterSortBtn'+(tempDir===d?' active':'');b.textContent=t;b.onclick=()=>{tempDir=d;sortRow.querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active')};sortRow.appendChild(b)});pop.appendChild(sortRow);
+  const search=document.createElement('input');search.className='arFilterSearch';search.placeholder='목록 검색';pop.appendChild(search);
+  const quick=document.createElement('div');quick.className='arFilterQuick';const allBtn=document.createElement('button'),noneBtn=document.createElement('button');allBtn.type=noneBtn.type='button';allBtn.textContent='전체 선택';noneBtn.textContent='전체 해제';quick.append(allBtn,noneBtn);pop.appendChild(quick);
+  const list=document.createElement('div');list.className='arFilterList';const checks=[];for(const value of values){const lab=document.createElement('label');lab.className='arFilterCheck';lab.dataset.search=arFilterOptionLabel(key,value).toLowerCase();const cb=document.createElement('input');cb.type='checkbox';cb.checked=selected.has(value);cb.dataset.value=value;const sp=document.createElement('span');sp.textContent=arFilterOptionLabel(key,value);lab.append(cb,sp);list.appendChild(lab);checks.push(cb)}pop.appendChild(list);
+  const setVisible=(checked)=>{list.querySelectorAll('.arFilterCheck').forEach(l=>{if(l.style.display!=='none')l.querySelector('input').checked=checked})};allBtn.onclick=()=>setVisible(true);noneBtn.onclick=()=>setVisible(false);search.oninput=()=>{const q=search.value.trim().toLowerCase();list.querySelectorAll('.arFilterCheck').forEach(l=>l.style.display=!q||l.dataset.search.includes(q)?'flex':'none')};
+  const actions=document.createElement('div');actions.className='arFilterActions';const hide=document.createElement('button'),cancel=document.createElement('button'),apply=document.createElement('button');hide.type=cancel.type=apply.type='button';hide.textContent='이 열 숨기기';hide.className='arColumnHideBtn';hide.onclick=()=>arHideColumn(key);cancel.textContent='취소';apply.textContent='적용';apply.className='apply';cancel.onclick=arCloseColumnMenu;apply.onclick=()=>{const picked=checks.filter(x=>x.checked).map(x=>x.dataset.value);if(picked.length===values.length)delete arBoxFilterObj(boxKey)[key];else arBoxFilterObj(boxKey)[key]=picked;if(tempDir)arSetBoxSort(boxKey,key,tempDir);else if(sort.key===key)arSetBoxSort(boxKey,'','');arCloseColumnMenu();renderArResultTable()};actions.append(hide,cancel,apply);pop.appendChild(actions);
+  document.body.appendChild(pop);const pw=270,ph=Math.min(390,pop.offsetHeight||390);let left=Math.min(window.innerWidth-pw-8,Math.max(8,rect.right-pw)),top=rect.bottom+4;if(top+ph>window.innerHeight-8)top=Math.max(8,rect.top-ph-4);pop.style.left=left+'px';pop.style.top=top+'px';search.focus();
+};
+
+// 박스별 거래처 검색: 코드/거래처명/장끼거래처명
+const _arRowsForBox380=arRowsForBox;
+arRowsForBox=function(boxKey){
+  let rows=_arRowsForBox380(boxKey);const q=norm(arState.boxSearches?.[boxKey]||'').toLowerCase();if(!q)return rows;
+  return rows.filter(r=>[r.code,r.name,r.jangkiName].map(x=>norm(x).toLowerCase()).some(x=>x.includes(q)));
+};
+window.arSetBoxSearch=function(boxKey,value,input){
+  if(!arState.boxSearches)arState.boxSearches={};arState.boxSearches[boxKey]=value;const view=arCaptureViewPosition(),pos=input?.selectionStart??String(value||'').length;renderArResultTable();arRestoreViewPosition(view);requestAnimationFrame(()=>{const el=document.querySelector(`.arBoxSearchInput[data-box-key="${CSS.escape(boxKey)}"]`);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
+};
+const _arBoxHtml380=arBoxHtml;
+arBoxHtml=function(def,rows){
+  const total=rows.reduce((s,r)=>s+Number(arEffectiveBalance(r)||0),0),open=arBoxIsOpen(def.key),filtered=arRowsForBox(def.key),q=arState.boxSearches?.[def.key]||'';
+  return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(q)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearch('${escAttr(def.key)}',this.value,this)"><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
+};
+
+// 못 받는 금액 관리 박스에도 거래처 검색
+const _arUncollectibleManagerHtml380=arUncollectibleManagerHtml;
+arUncollectibleManagerHtml=function(){
+  const entries=[...arState.customerSettings.entries()].map(([code,x])=>({code,amount:Number(x?.uncollectibleAmount||0),reason:norm(x?.uncollectibleReason||''),name:arWeekRowByCode(code)?.name||arCustomerMaster(code)?.name||''})).filter(x=>Number.isFinite(x.amount)&&x.amount>0).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
+  const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><button class="arTinyAction danger" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다. 각 거래처 행의 ‘못받음 등록’에서 금액과 사유를 등록할 수 있습니다.')+'</div>';
+  return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다. 등록삭제하면 현재 잔액이 남아 있는 거래처는 즉시 원래 해당 박스로 돌아갑니다.</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearch)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearch(this.value,this)"><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+};
+window.arSetUncollectibleSearch=function(value,input){arUncollectibleSearch=value;const view=arCaptureViewPosition(),pos=input?.selectionStart??String(value||'').length;renderArResultTable();arRestoreViewPosition(view);requestAnimationFrame(()=>{const el=$('arUncollectibleSearch');if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}})};
+
+// 화면에서 숨긴 열은 엑셀에서도 제외. 박스 검색도 기존 arRowsForBox를 통해 그대로 반영.
+arSheetFromRows=function(rows){
+  const order=arVisibleColumnOrder(),headers=order.map(k=>arColumnDef(k)?.label||k),data=rows.map(r=>{const o=arExportRowObject(r);return order.map(k=>o[k]??'')});const aoa=[headers,...data],ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!autofilter']={ref:`A1:${XLSX.utils.encode_col(Math.max(0,headers.length-1))}${Math.max(1,aoa.length)}`};ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};ws['!cols']=order.map(k=>({wch:Math.max(8,Math.round(arColumnWidth(k)/7))}));
+  rows.forEach((r,i)=>{if(r.action?.shipStatus!=='X')return;for(let c=0;c<headers.length;c++){const addr=XLSX.utils.encode_cell({r:i+1,c});if(ws[addr])ws[addr].s={...(ws[addr].s||{}),font:{...((ws[addr].s||{}).font||{}),color:{rgb:'FFFF0000'}}};}});return ws;
+};
+
+function arCurrentTableLayout(){return {order:[...arColumnOrder()],hidden:[...arHiddenColumns()],widths:{...(arState.columnWidths||arLoadColumnWidths())}}}
+function arNormalizeTableLayout(x){
+  if(!x||typeof x!=='object')return null;const srcOrder=Array.isArray(x.order)?x.order:[],order=srcOrder.filter(k=>AR_DEFAULT_COLUMN_ORDER.includes(k));for(const k of AR_DEFAULT_COLUMN_ORDER)if(!order.includes(k))order.push(k);const hidden=(Array.isArray(x.hidden)?x.hidden:[]).filter(k=>AR_DEFAULT_COLUMN_ORDER.includes(k));const widths={};for(const k of AR_DEFAULT_COLUMN_ORDER){const n=Number(x.widths?.[k]);if(Number.isFinite(n)&&n>=60&&n<=500)widths[k]=Math.round(n)}return {order,hidden,widths};
+}
+async function arLoadTablePresets(){
+  if(!user)return;try{const snap=await userCol('settings').doc('arTablePresets').get();const d=snap.exists?(snap.data()||{}):{};arTablePresets.preset1=arNormalizeTableLayout(d.preset1);arTablePresets.preset2=arNormalizeTableLayout(d.preset2)}catch(e){console.warn('미수 표 프리셋 불러오기 실패',e)}
+}
+window.arSaveTablePreset=async function(slot){try{
+  if(!user)throw new Error('로그인이 필요합니다.');const label=slot==='preset2'?'설정2':'설정1';if(!confirm(`${label}에 현재 열 순서 · 숨긴 항목 · 열 너비를 저장할까요?\n같은 계정으로 다른 PC에서도 불러올 수 있습니다.`))return;
+  const layout=arCurrentTableLayout(),payload={...layout,savedAtMs:Date.now()};arTablePresets[slot]=layout;await userCol('settings').doc('arTablePresets').set({[slot]:payload,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});alert(`${label} 저장 완료`);
+}catch(e){alert(e.message||e)}};
+window.arApplyTablePreset=async function(slot){try{
+  const label=slot==='preset2'?'설정2':'설정1';if(!arTablePresets[slot]&&user)await arLoadTablePresets();const layout=arNormalizeTableLayout(arTablePresets[slot]);if(!layout)throw new Error(`${label}에 저장된 표 설정이 없습니다.`);
+  const view=arCaptureViewPosition();arState.columnOrder=[...layout.order];arState.hiddenColumns=[...layout.hidden];arState.columnWidths={...layout.widths};arSaveColumnOrder();arSaveHiddenColumns();arSaveColumnWidths();renderArResultTable();arRestoreViewPosition(view);
+}catch(e){alert(e.message||e)}};
+
+// 로그인 후 프리셋을 계정에서 읽어 다른 PC에서도 즉시 적용 가능하게 준비
+const _loadArData380=loadArData;
+loadArData=async function(){if(user)await arLoadTablePresets();return _loadArData380()};
+
+// 렌더 후 숨긴 항목 숫자 갱신
+const _renderArResultTable380=renderArResultTable;
+renderArResultTable=function(){_renderArResultTable380();arUpdateHiddenColumnsButton()};
 
 setupArUI();
 setupShinsangCompareUI();
