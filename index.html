@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.88</title>
+<title>아도라블 매출 자동화 v3.90</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -556,7 +556,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arHeaderLabelBtn{display:flex;align-items:center;gap:3px;flex:1 1 auto;min-width:0;max-width:100%;height:22px;padding:1px 3px;border:0;border-radius:5px;background:transparent;color:#334155;font:inherit;font-weight:850;line-height:1.15;text-align:left;cursor:pointer;overflow:hidden}.arHeaderLabelBtn .arHeaderLabelText{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.arHeaderLabelBtn:hover,.arHeaderLabelBtn.active{background:#eef2ff;color:#4338ca}.arHeaderLabelBtn:focus-visible{outline:2px solid #a5b4fc;outline-offset:1px}.arHeaderLabelBtn .arSortMark{flex:0 0 auto}
   .arColResizer{position:absolute;right:-6px;top:-5px;width:10px;height:31px;cursor:col-resize;z-index:6}.arColResizer::after{content:'';position:absolute;right:4px;top:5px;width:1px;height:20px;background:#cbd5e1}.arColResizer:hover::after{background:#6366f1;width:2px}
   .arFilterPopup{position:fixed;z-index:99999;width:270px;max-height:390px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 35px rgba(15,23,42,.18);padding:9px;font-size:11px;color:#334155}.arFilterPopupTitle{font-weight:900;margin-bottom:7px}.arFilterSortRow{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:7px}.arFilterSortBtn{border:1px solid #dbe2ea;background:#fff;border-radius:6px;padding:5px 3px;font-size:10px;font-weight:800;cursor:pointer}.arFilterSortBtn.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}.arFilterSearch{width:100%;height:28px!important;padding:4px 7px!important;font-size:10px!important;margin-bottom:6px}.arFilterQuick{display:flex;gap:5px;margin-bottom:5px}.arFilterQuick button{border:1px solid #dbe2ea;background:#fff;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:800;cursor:pointer}.arFilterList{max-height:205px;overflow:auto;border:1px solid #eef2f7;border-radius:7px;padding:3px}.arFilterCheck{display:flex;align-items:center;gap:6px;padding:4px 5px;border-radius:5px;cursor:pointer;white-space:normal;line-height:1.3}.arFilterCheck:hover{background:#f8fafc}.arFilterCheck input{margin:0}.arFilterActions{display:flex;justify-content:flex-end;gap:5px;margin-top:7px}.arFilterActions button{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:850;cursor:pointer}.arFilterActions .apply{background:#4f46e5;color:#fff;border-color:#4f46e5}
-  .arShipBlocked td{color:#dc2626!important;background:#fff5f5!important}.arShipBlocked td b{color:#dc2626!important}
+  .arShipBlocked td{color:#dc2626!important;background:#fff5f5!important}.arShipBlocked td b{color:#dc2626!important}.arPaymentResolved:not(.arShipBlocked) td{background:#eaf6ff!important}.arPaymentResolved:not(.arShipBlocked) td b{color:inherit}
   .arShipSelect{height:26px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:10px;font-weight:900}.arShipSelect.shipX{color:#dc2626;border-color:#fca5a5;background:#fff1f2}
   .arSampleToggle{border:0;background:transparent;padding:0;color:#6d28d9;font-size:10px;font-weight:900;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}.arSampleDetail{margin-top:5px;padding:6px;border:1px solid #ddd6fe;border-radius:7px;background:#faf5ff;color:#5b21b6;white-space:normal;line-height:1.45;min-width:180px}.arSampleDetailRow{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #e9d5ff;padding:2px 0}.arSampleDetailRow:last-child{border-bottom:0}.arSampleDetailRow .neg{color:#dc2626}.arSampleDetailRow .pos{color:#2563eb}
   .arStarBtn{appearance:none;border:0;background:transparent;font-size:21px;line-height:1;cursor:pointer;padding:1px 3px;color:#cbd5e1}.arStarBtn.need{color:#f59e0b}.arStarBtn.done{color:#16a34a}.arStarBtn:hover{transform:scale(1.08)}
@@ -661,7 +661,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.88 · 검색버튼 방식 안정화 · 대용량 백업 · 상계/합산 · 못받음 수기등록 · 입금해소 수동체크</div>
+      <div class="badge">v3.90 · 1,000원 미만 이월허용 거래처 · 검색버튼 안정화 · 상계/합산 · 입금해소 수동체크</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -808,7 +808,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div class="arSetupGrid">
       <div class="arMiniCard">
         <h3>① 미수잔액 파일</h3>
-        <div class="hint">정리 시점의 거래처별 잔액 파일을 넣으세요. <b>잔액파일의 <b>0원·소액·마이너스 잔액도 버리지 않고</b> 거래처를 정리하며, 이월잔액·매출액·입금액·미수잔액과 입금요일은 이 파일 값을 그대로 사용합니다. 0원·소액·마이너스 잔액은 상계/확인을 위해 별도 목록에 유지합니다. 등록한 ‘못 받는 확정금액’과 현재 잔액이 정확히 같은 거래처만 자동정리 결과에서 제외합니다.</div>
+        <div class="hint">정리 시점의 거래처별 잔액 파일을 넣으세요. <b>잔액파일의 <b>0원·소액·마이너스 잔액도 버리지 않고</b> 거래처를 정리하며, 이월잔액·매출액·입금액·미수잔액과 입금요일은 이 파일 값을 그대로 사용합니다. 0원·소액·마이너스 잔액은 상계/확인을 위해 별도 목록에 유지합니다. 단, 현금대납처럼 잔돈이 반복되는 거래처를 ‘1,000원 미만 이월 허용’으로 등록하면 양수 잔액이 1~999원일 때만 자동정리 결과에서 제외합니다. 등록한 ‘못 받는 확정금액’과 현재 잔액이 정확히 같은 거래처도 자동정리 결과에서 제외합니다.</div>
         <input id="arBalanceFile" class="arFileInput" type="file" accept=".xlsx,.xls">
         <div id="arBalanceFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
@@ -1948,7 +1948,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.88',
+    appVersion:'v3.90',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -9442,7 +9442,7 @@ function arHeaderHtml(boxKey){
 function arRowsTable(rows,boxKey){
   const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터에 해당하는 거래처가 없습니다.</div>';const order=arColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
   const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
-  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X';return `<tr class="${blocked?'arShipBlocked':''}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':''].filter(Boolean).join(' ');return `<tr class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
 }
 const AR_BOX_DEFS=[
   {key:'warehouse',title:'창고 거래처 자동정리',cls:'arBoxWarehouse',hint:'입금요일 미지정 일반 미수 · SAMPLE만/신상마켓/600원 미만/별표 대상은 각각 다른 박스로 분리'},
@@ -9847,7 +9847,7 @@ arHeaderHtml=function(boxKey){
 arRowsTable=function(rows,boxKey){
   const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터/검색에 해당하는 거래처가 없습니다.</div>';const order=arVisibleColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
   const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
-  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X';return `<tr class="${blocked?'arShipBlocked':''}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':''].filter(Boolean).join(' ');return `<tr class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
 };
 
 // 필터 메뉴에 '이 열 숨기기' 추가
@@ -9989,6 +9989,125 @@ arUncollectibleManagerHtml=function(){
   const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
   const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><button class="arTinyAction danger" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다.')+'</div>';
   return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">자동정리 행의 ‘못받음 등록’뿐 아니라 아래에서 거래처를 직접 수기로 등록할 수 있습니다. 거래처별 확정금액과 현재 <b>상계 후/확인 후 남은 잔액</b>이 정확히 같을 때만 자동정리 결과에서 제외합니다.</div>${arManualUncollectibleFormHtml()}<div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearchDraft)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitUncollectibleSearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitUncollectibleSearch(document.getElementById('arUncollectibleSearch'))">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearUncollectibleSearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+};
+
+
+
+/* ===== v3.90 현금대납/잔돈 거래처: 1,000원 미만 양수 잔액 자동제외 ===== */
+const AR_SMALL_CARRY_THRESHOLD=1000;
+if(!AR_COLUMNS.some(x=>x.key==='smallCarry')){
+  AR_COLUMNS.push({key:'smallCarry',label:'1천미만 이월',filter:'smallCarry',action:true});
+  AR_DEFAULT_COLUMN_ORDER.push('smallCarry');
+  AR_DEFAULT_WIDTHS.smallCarry=150;
+}
+function arSmallCarrySetting(code){return arState.customerSettings.get(norm(code))||{}}
+function arSmallCarryEnabled(code){return !!arSmallCarrySetting(code).smallCarryEnabled}
+function arSmallCarryBalance(r){return Math.round(Number(arEffectiveBalance(r)||0))}
+function arSmallCarryHasPriorityAction(r){
+  const a=r.action||{};
+  if(a.reviewStatus==='need'||a.reviewStatus==='done')return true;
+  if(a.shipStatus==='X')return true;
+  if(arOffsetPartnerCode(r.code))return true;
+  return false;
+}
+function arSmallCarryShouldHide(r){
+  if(!arSmallCarryEnabled(r.code))return false;
+  const bal=arSmallCarryBalance(r);
+  // 사용자가 앞서 요청한 0원/마이너스 보존 규칙은 그대로 유지한다.
+  // 현금대납 잔돈 자동제외는 양수 1~999원에만 적용한다.
+  return bal>0&&bal<AR_SMALL_CARRY_THRESHOLD&&!arSmallCarryHasPriorityAction(r);
+}
+function arSmallCarryStatusText(r){
+  const bal=arSmallCarryBalance(r);
+  if(!arSmallCarryEnabled(r.code))return '미등록';
+  if(arSmallCarryHasPriorityAction(r))return '등록됨 · 확인/출고X/상계 우선';
+  if(bal>0&&bal<AR_SMALL_CARRY_THRESHOLD)return '등록됨 · 이번주 자동제외';
+  if(bal>=AR_SMALL_CARRY_THRESHOLD)return '등록됨 · 1,000원 이상 표시';
+  return '등록됨 · 0원/마이너스는 표시';
+}
+function arSmallCarryCell(r){
+  const on=arSmallCarryEnabled(r.code),bal=arSmallCarryBalance(r);
+  if(on){
+    const state=(bal>0&&bal<AR_SMALL_CARRY_THRESHOLD&&!arSmallCarryHasPriorityAction(r))?'1~999원 자동제외':'등록됨';
+    return `<span class="arInlineCell"><span class="arUncollectibleTag" title="현금대납/잔돈 거래처 · 양수 1~999원일 때만 자동정리에서 제외">${esc(state)}</span><button class="arTinyAction danger" type="button" onclick="arClearSmallCarry('${escAttr(r.code)}')">해제</button></span>`;
+  }
+  return `<button class="arTinyAction" type="button" onclick="arRegisterSmallCarry('${escAttr(r.code)}')">1천미만 제외 등록</button>`;
+}
+window.arRegisterSmallCarry=async function(code){try{
+  code=norm(code);if(!code)return;
+  if(!confirm('이 거래처를 ‘1,000원 미만 이월 허용’ 거래처로 등록할까요?\n\n앞으로 양수 미수잔액이 1~999원일 때는 자동정리 결과에서 제외합니다.\n0원·마이너스 잔액은 상계 확인을 위해 기존 소액/마이너스 박스에 계속 표시합니다.'))return;
+  const view=arCaptureViewPosition();
+  await saveArCustomerSetting(code,{smallCarryEnabled:true,smallCarryThreshold:AR_SMALL_CARRY_THRESHOLD,smallCarryRegisteredAtMs:Date.now()});
+  renderArAll();arRestoreViewPosition(view);
+}catch(e){alert(e.message||e)}};
+window.arClearSmallCarry=async function(code){try{
+  code=norm(code);if(!code)return;
+  if(!confirm('이 거래처의 ‘1,000원 미만 이월 허용’ 등록을 해제할까요?\n현재 잔액 조건에 맞는 자동정리 박스로 즉시 다시 표시됩니다.'))return;
+  const view=arCaptureViewPosition();
+  await saveArCustomerSetting(code,{smallCarryEnabled:false,smallCarryThreshold:null,smallCarryRegisteredAtMs:null});
+  renderArAll();arRestoreViewPosition(view);
+}catch(e){alert(e.message||e)}};
+
+const _arPlainValue390=arPlainValue;
+arPlainValue=function(r,key){
+  if(key==='smallCarry')return arSmallCarryStatusText(r);
+  return _arPlainValue390(r,key);
+};
+const _arCellHtml390=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  if(key==='smallCarry')return arSmallCarryCell(r);
+  return _arCellHtml390(r,key,boxKey);
+};
+const _arExportRowObject390=arExportRowObject;
+arExportRowObject=function(r){
+  const o=_arExportRowObject390(r);o.smallCarry=arSmallCarryStatusText(r);return o;
+};
+
+// 1,000원 미만 이월 허용 거래처는 주간 raw 기록에는 남겨 이력은 보존하되,
+// 양수 1~999원일 때만 화면/엑셀 자동정리 대상에서 빼고 관리목록에서 확인한다.
+arGroupRows=function(){
+  const groups={warehouse:[],warehouseSample:[],scheduled:[],nampyeonghwa:[],nampyeonghwaSample:[],shinsang:[],low:[],review:[],excludedUncollectible:[],excludedSmallCarry:[]};
+  for(const r of arState.weekRows||[]){
+    r.action=arState.actions.get(norm(r.code))||r.action||{};
+    if(r.carriedOnly&&r.action?.reviewStatus==='need'){groups.review.push(r);continue;}
+    if(arUncollectibleMatches(r)){groups.excludedUncollectible.push(r);continue;}
+    if(arReviewRouteToBox(r)){groups.review.push(r);continue;}
+    if(arSmallCarryShouldHide(r)){groups.excludedSmallCarry.push(r);continue;}
+    const bal=arEffectiveBalance(r),raw=Math.round(Number(r.baseBalance||0));
+    if(raw<0||bal<=0||Math.abs(bal)<600){groups.low.push(r);continue;}
+    if(arHasScheduledPaymentDay(r.paymentDay)){groups.scheduled.push(r);continue;}
+    if(arIsShinsangRow(r)){groups.shinsang.push(r);continue;}
+    const sampleOnly=arSampleOnly(r);
+    if(r.location==='nampyeonghwa')groups[sampleOnly?'nampyeonghwaSample':'nampyeonghwa'].push(r);
+    else groups[sampleOnly?'warehouseSample':'warehouse'].push(r);
+  }
+  for(const xs of Object.values(groups))xs.sort((a,b)=>Math.abs(Number(arEffectiveBalance(b)))-Math.abs(Number(arEffectiveBalance(a)))||String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  return groups;
+};
+renderArSummary=function(){
+  const groups=arGroupRows(),rows=['warehouse','warehouseSample','scheduled','nampyeonghwa','nampyeonghwaSample','shinsang','low','review'].flatMap(k=>groups[k]);
+  const resolved=rows.filter(r=>arIsResolved(r)).length;
+  if($('arSumCount'))$('arSumCount').textContent=`${rows.length.toLocaleString()}곳`;
+  if($('arSumBalance'))$('arSumBalance').textContent=arMoney(rows.reduce((s,x)=>s+Math.max(0,Number(arEffectiveBalance(x)||0)),0));
+  if($('arSumResolved'))$('arSumResolved').textContent=`${resolved.toLocaleString()}곳`;
+};
+
+let arSmallCarrySearch='',arSmallCarrySearchDraft='';
+window.arSetSmallCarrySearchDraft=function(value){arSmallCarrySearchDraft=value};
+window.arCommitSmallCarrySearch=function(input){arSmallCarrySearch=input?input.value:arSmallCarrySearchDraft;arSmallCarrySearchDraft=arSmallCarrySearch;const view=arCaptureViewPosition();renderArResultTable();arRestoreViewPosition(view)};
+window.arClearSmallCarrySearch=function(){arSmallCarrySearch='';arSmallCarrySearchDraft='';const view=arCaptureViewPosition();renderArResultTable();arRestoreViewPosition(view)};
+function arSmallCarryManagerHtml(){
+  const entries=[...arState.customerSettings.entries()].map(([code,x])=>({code,enabled:!!x?.smallCarryEnabled,name:arWeekRowByCode(code)?.name||arCustomerMaster(code)?.name||'',jangkiName:arWeekRowByCode(code)?.jangkiName||''})).filter(x=>x.enabled).sort((a,b)=>(a.name||a.code).localeCompare((b.name||b.code),'ko'));
+  const q=norm(arSmallCarrySearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.jangkiName].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('smallCarryManager');
+  const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>현재 잔액</th><th>적용상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),bal=r?arSmallCarryBalance(r):null,state=r?arSmallCarryStatusText(r):'현재 정리기록 미등장';return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}${x.jangkiName?`<br><span class="small">(${esc(x.jangkiName)})</span>`:''}</td><td>${bal==null?'-':arMoney(bal)}</td><td>${esc(state)}</td><td><button class="arTinyAction danger" type="button" onclick="arClearSmallCarry('${escAttr(x.code)}')">등록해제</button></td></tr>`}).join('')}</tbody></table>`:`<div class="jobEmpty">${q?'검색 결과가 없습니다.':'등록된 1,000원 미만 이월 허용 거래처가 없습니다. 자동정리 행의 ‘1천미만 이월’ 항목에서 한 번만 등록하면 됩니다.'}</div>`;
+  return `<details data-ar-box="smallCarryManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('smallCarryManager',this.open)"><summary><span>1,000원 미만 이월 허용 거래처 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">현금대납처럼 500원·900원 등의 잔돈이 다음 판매 때 합쳐져 입금되는 거래처용입니다. <b>양수 잔액 1~999원일 때만</b> 자동정리 결과에서 제외하고, 1,000원 이상이면 다시 정상 자동정리에 표시합니다. 0원·마이너스는 상계 확인을 위해 기존 소액/마이너스 박스에 유지합니다.</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" type="search" value="${escAttr(arSmallCarrySearchDraft)}" placeholder="거래처코드 · 거래처명" oninput="arSetSmallCarrySearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitSmallCarrySearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitSmallCarrySearch(this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearSmallCarrySearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+}
+renderArResultTable=function(){
+  const box=$('arResultTable');if(!box)return;
+  if(!(arState.weekRows||[]).length){box.innerHTML='<div class="jobEmpty">미수 자동정리를 실행하면 결과가 표시됩니다.</div>'+arUncollectibleManagerHtml()+arSmallCarryManagerHtml();arUpdateHiddenColumnsButton();return;}
+  const groups=arGroupRows();
+  box.innerHTML=AR_BOX_DEFS.map(d=>arBoxHtml(d,groups[d.key]||[])).join('')+arUncollectibleManagerHtml()+arSmallCarryManagerHtml();
+  arUpdateHiddenColumnsButton();
 };
 
 setupArUI();
