@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.93</title>
+<title>아도라블 매출 자동화 v3.94</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -484,7 +484,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     .compactLoginBar input{min-width:135px}
   }
 
-  .autosaveStatus{font-size:11px;color:#64748b;white-space:nowrap}
+  .autosaveStatus{font-size:11px;color:#64748b;white-space:nowrap;min-height:16px}
   .autosaveStatus.saving{color:#d97706;font-weight:700}
   .autosaveStatus.saved{color:#16a34a;font-weight:700}
   .autosaveStatus.error{color:#dc2626;font-weight:700}
@@ -669,8 +669,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.93 · 미수시작일 이전 수기값 선택 · 못받음 사유 수정 · 1,000원 미만 이월허용</div>
-      <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
+      <div class="badge">v3.94 · 최근 자동저장 날짜·시간 표시 · 미수시작일 이전 수기값 선택</div>
+      <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
         <button id="saveLatestDataBtn" class="btn" type="button">최신자료 저장</button>
@@ -1956,7 +1956,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.93',
+    appVersion:'v3.94',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2146,15 +2146,130 @@ async function restoreLatestManualSnapshot(){
   const pkg=await loadSnapshotPackage(d.snapshotId);
   return restoreOperationalBackupPackage(pkg,`최근 저장본 (${formatMasterUpdateTime(d.savedAtMs)})`);
 }
+const AUTO_SAVE_STATUS_LOCAL_KEY='autoecount-ay-last-auto-save-v1';
+const AUTO_SAVE_STATUS_DOC='latestAutoSave';
+let autoSaveTrackingSuspended=false;
+let autoSaveMarkerTimer=null;
+let autoSaveMarkerMs=0;
+let firestoreAutoSaveHooksInstalled=false;
+let originalFirestoreDocSet=null;
+let originalFirestoreDocDelete=null;
+let originalFirestoreBatchCommit=null;
+let originalFirestoreCollectionAdd=null;
+function autoSaveMomentText(ms){
+  const n=Number(ms||0);if(!n)return'';
+  const d=new Date(n),days=['일','월','화','수','목','금','토'];
+  return `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+function renderAutoSaveMoment(ms){
+  const el=$('autosaveStatus');if(!el)return;
+  const n=Number(ms||0);
+  if(!n){el.className='autosaveStatus';el.textContent='자동저장 준비됨 · 아직 저장기록 없음';return;}
+  el.className='autosaveStatus saved';
+  el.textContent=`✓ 최근 자동저장 ${autoSaveMomentText(n)}`;
+  el.title=`Firebase에 마지막으로 저장이 완료된 시각: ${new Date(n).toLocaleString('ko-KR')}`;
+}
+function setAutoSaveWriting(){
+  if(autoSaveTrackingSuspended)return;
+  const el=$('autosaveStatus');if(!el)return;
+  el.className='autosaveStatus saving';el.textContent='자동저장 중…';
+}
+function setAutoSaveWriteError(){
+  if(autoSaveTrackingSuspended)return;
+  const el=$('autosaveStatus');if(!el)return;
+  let last=0;try{last=Number(localStorage.getItem(AUTO_SAVE_STATUS_LOCAL_KEY)||0)}catch(e){}
+  el.className='autosaveStatus error';
+  el.textContent=last?`자동저장 실패 · 마지막 성공 ${autoSaveMomentText(last)}`:'자동저장 실패';
+}
+function scheduleAutoSaveMarker(ms){
+  if(!user||!originalFirestoreDocSet)return;
+  autoSaveMarkerMs=Math.max(Number(autoSaveMarkerMs||0),Number(ms||0));
+  if(autoSaveMarkerTimer)clearTimeout(autoSaveMarkerTimer);
+  autoSaveMarkerTimer=setTimeout(async()=>{
+    const stamp=Number(autoSaveMarkerMs||Date.now());
+    autoSaveMarkerTimer=null;
+    if(!user||!originalFirestoreDocSet)return;
+    try{
+      const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.94'},{merge:true});
+    }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
+  },1200);
+}
+function noteAutoSaveSuccess(ms=Date.now(),persistCloud=true){
+  if(autoSaveTrackingSuspended)return;
+  const n=Number(ms||Date.now());
+  try{localStorage.setItem(AUTO_SAVE_STATUS_LOCAL_KEY,String(n))}catch(e){}
+  renderAutoSaveMoment(n);
+  if(persistCloud)scheduleAutoSaveMarker(n);
+}
+async function loadAutoSaveMoment(){
+  if(!user){const el=$('autosaveStatus');if(el){el.className='autosaveStatus';el.textContent='로그인 후 자동저장 시각을 확인합니다.'}return;}
+  let best=0;
+  try{best=Number(localStorage.getItem(AUTO_SAVE_STATUS_LOCAL_KEY)||0)}catch(e){}
+  try{
+    const snap=await userCol('settings').doc(AUTO_SAVE_STATUS_DOC).get();
+    if(snap.exists)best=Math.max(best,Number((snap.data()||{}).savedAtMs||0));
+  }catch(e){console.warn('최근 자동저장 시각 불러오기 실패',e)}
+  renderAutoSaveMoment(best);
+}
+function installFirestoreAutoSaveHooks(){
+  if(firestoreAutoSaveHooksInstalled)return;
+  try{
+    const DR=firebase.firestore.DocumentReference&&firebase.firestore.DocumentReference.prototype;
+    const WB=firebase.firestore.WriteBatch&&firebase.firestore.WriteBatch.prototype;
+    const CR=firebase.firestore.CollectionReference&&firebase.firestore.CollectionReference.prototype;
+    if(DR&&typeof DR.set==='function'){
+      originalFirestoreDocSet=DR.set;
+      DR.set=async function(...args){
+        const isMarker=String(this.path||'').endsWith(`/settings/${AUTO_SAVE_STATUS_DOC}`);
+        const track=!autoSaveTrackingSuspended&&!isMarker;
+        if(track)setAutoSaveWriting();
+        try{const out=await originalFirestoreDocSet.apply(this,args);if(track)noteAutoSaveSuccess();return out}
+        catch(e){if(track)setAutoSaveWriteError();throw e}
+      };
+    }
+    if(DR&&typeof DR.delete==='function'){
+      originalFirestoreDocDelete=DR.delete;
+      DR.delete=async function(...args){
+        const isMarker=String(this.path||'').endsWith(`/settings/${AUTO_SAVE_STATUS_DOC}`);
+        const track=!autoSaveTrackingSuspended&&!isMarker;
+        if(track)setAutoSaveWriting();
+        try{const out=await originalFirestoreDocDelete.apply(this,args);if(track)noteAutoSaveSuccess();return out}
+        catch(e){if(track)setAutoSaveWriteError();throw e}
+      };
+    }
+    if(WB&&typeof WB.commit==='function'){
+      originalFirestoreBatchCommit=WB.commit;
+      WB.commit=async function(...args){
+        const track=!autoSaveTrackingSuspended;
+        if(track)setAutoSaveWriting();
+        try{const out=await originalFirestoreBatchCommit.apply(this,args);if(track)noteAutoSaveSuccess();return out}
+        catch(e){if(track)setAutoSaveWriteError();throw e}
+      };
+    }
+    if(CR&&typeof CR.add==='function'){
+      originalFirestoreCollectionAdd=CR.add;
+      CR.add=async function(...args){
+        const track=!autoSaveTrackingSuspended;
+        if(track)setAutoSaveWriting();
+        try{const out=await originalFirestoreCollectionAdd.apply(this,args);if(track)noteAutoSaveSuccess();return out}
+        catch(e){if(track)setAutoSaveWriteError();throw e}
+      };
+    }
+    firestoreAutoSaveHooksInstalled=!!(originalFirestoreDocSet||originalFirestoreBatchCommit||originalFirestoreCollectionAdd);
+  }catch(e){console.warn('자동저장 시각 추적 초기화 실패',e)}
+}
 function initFirebase(){
   try{
     if(!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey || String(window.FIREBASE_CONFIG.apiKey).includes('PASTE_')) throw new Error('firebase-config.js에 Firebase 설정값을 입력해 주세요.');
     app=firebase.initializeApp(window.FIREBASE_CONFIG); auth=firebase.auth(); db=firebase.firestore();
+    installFirestoreAutoSaveHooks();
     auth.onAuthStateChanged(async u=>{
       user=u||null;
       updateAuthUI();
       if(user){
         setFirebaseSyncStatus('Firebase 데이터 불러오는 중…','loading');
+        autoSaveTrackingSuspended=true;
         try{
           await loadCloudData();
         }catch(e){
@@ -2162,9 +2277,13 @@ function initFirebase(){
           updateAuthUI();
           setFirebaseSyncStatus('Firebase 데이터 불러오기 실패 · 새로고침 또는 네트워크 확인','error');
           showError(e);
+        }finally{
+          autoSaveTrackingSuspended=false;
         }
+        await loadAutoSaveMoment();
       }else{
         resetCloud();
+        await loadAutoSaveMoment();
       }
     });
   }catch(e){$('authStatus').textContent='Firebase 연결 오류: '+e.message; $('loginBtn').disabled=true; $('signupBtn').disabled=true; $('statusBox').innerHTML='<p class="warn"><b>Firebase 연결 오류:</b> '+esc(e.message)+'</p>';}
@@ -2185,7 +2304,7 @@ function updateAuthUI(){
   if($('restoreBackupDataFile'))$('restoreBackupDataFile').disabled=!on;
   $('authStatus').textContent=on?('로그인됨: '+user.email):'로그인이 필요합니다.';
 }
-function resetCloud(){activityLogs=[];renderActivityHistory();cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};shinsangHistoryOpenMonths=new Set();renderRulesDashboard();renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.');}
+function resetCloud(){activityLogs=[];renderActivityHistory();cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()}; monthlyCompareHistory=[];shinsangDepositAliases=new Map();shinsangCompareHistory=[];shinsangCompareState={sales:[],deposits:[],rows:[],filter:'mismatch',search:'',meta:{},reviews:{}};shinsangHistoryOpenMonths=new Set();renderRulesDashboard();renderMonthlySalesCompareHistory();renderShinsangCompareHistory();renderShinsangCompare(); updateMasterStats(); updateAuthUI(); setDataSafetyStatus('로그인 후 백업 기능을 사용할 수 있습니다.'); setFirebaseSyncStatus('로그인 후 Firebase 데이터를 불러옵니다.'); if($('autosaveStatus')){$('autosaveStatus').className='autosaveStatus';$('autosaveStatus').textContent='로그인 후 자동저장 시각을 확인합니다.';}}
 function userCol(name){if(!user)throw new Error('로그인이 필요합니다.'); return db.collection('users').doc(user.uid).collection(name)}
 function activityLocalYmd(ms=Date.now()){const d=new Date(Number(ms)||Date.now());return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`}
 function activityTimeText(ms){const d=new Date(Number(ms)||Date.now());return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`}
@@ -2351,7 +2470,6 @@ async function loadCloudData(){
   cloud.ready=true;
   updateAuthUI();
   $('statusBox').innerHTML=`<p class="ok">✓ Firebase 기준정보 동기화 완료: 거래처 ${cloud.customers.length.toLocaleString()}개 · 품목 ${cloud.items.length.toLocaleString()}개 · 수동매칭 ${cloud.aliases.size.toLocaleString()}개</p>`;
-  if($('autosaveStatus')&&$('autosaveStatus').textContent==='자동저장 대기')$('autosaveStatus').textContent='자동저장 준비됨';
   const now=new Date();
   setFirebaseSyncStatus(`✓ Firebase 데이터 불러오기 완료 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,'ok');
   await loadLatestDataSaveStatus();
@@ -7864,12 +7982,8 @@ function setJobSyncStatus(msg,kind=''){
   }
   const auto=$('autosaveStatus');
   if(auto){
-    let cls='',text=msg||'자동저장 대기';
-    if(kind==='ok'){cls='saved';text='✓ '+(msg||'자동저장 완료').replace(/^✓\s*/,'');}
-    else if(kind==='bad'){cls='error';}
-    else if(msg&&msg.includes('저장 중')){cls='saving';}
-    auto.className='autosaveStatus '+cls;
-    auto.textContent=text;
+    if(kind==='bad')setAutoSaveWriteError();
+    else if(msg&&msg.includes('저장 중'))setAutoSaveWriting();
   }
 }
 function simpleHash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16)}
@@ -7975,6 +8089,7 @@ async function persistCurrentJob(){
     await localPutJob({id,...compact,state,files:{jangki:[...selectedFiles.jangki],customer:[...selectedFiles.customer]}});
     const _savedNow=new Date();
     setJobSyncStatus(`자동저장 완료 ${String(_savedNow.getHours()).padStart(2,'0')}:${String(_savedNow.getMinutes()).padStart(2,'0')}`,'ok');
+    noteAutoSaveSuccess(_savedNow.getTime());
     await refreshJobCache();
   }catch(e){
     setJobSyncStatus('Firebase 작업 저장 실패: '+(e.message||e),'bad');
@@ -9127,7 +9242,7 @@ async function loadArHistory(){
 function renderArHistoryStatus(){const el=$('arHistoryStatus');if(!el)return;const m=arState.historyMeta;if(!m){el.textContent='저장된 미수 판매·입금 이력 없음 · 첫 실행은 1/1~현재 전체자료 권장';return}el.innerHTML=`Firebase 정규화 이력 · 판매장끼 <b>${Number(m.salesCount||0).toLocaleString()}</b>건 · 입금 <b>${Number(m.paymentCount||0).toLocaleString()}</b>건<br>${arShortDate(m.minDate)} ~ ${arShortDate(m.maxDate)} · 원본 엑셀파일 자체는 저장하지 않음`;}
 
 async function loadArCustomerSettings(){arState.customerSettings=new Map();if(!user)return;const snap=await userCol('arCustomerSettings').get();for(const d of snap.docs){const x=d.data()||{};arState.customerSettings.set(norm(x.code||d.id),x)}}
-async function saveArCustomerSetting(code,patch){if(!user)return;code=norm(code);const prev=arState.customerSettings.get(code)||{},next={...prev,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};arState.customerSettings.set(code,{...prev,...patch});await userCol('arCustomerSettings').doc(arSafeCode(code)).set({code,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+async function saveArCustomerSetting(code,patch){if(!user)return;code=norm(code);const prev=arState.customerSettings.get(code)||{},next={...prev,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};arState.customerSettings.set(code,{...prev,...patch});await userCol('arCustomerSettings').doc(arSafeCode(code)).set({code,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();}
 
 function arPaymentDayNumber(text){text=norm(text);if(/요일답장필요/.test(text))return null;if(/당일/.test(text))return 0;if(/월/.test(text))return 1;if(/화/.test(text))return 2;if(/수/.test(text))return 3;if(/목/.test(text))return 4;if(/금/.test(text))return 5;if(/토/.test(text))return 6;if(/일/.test(text))return 7;return null}
 function arHasScheduledPaymentDay(text){return arPaymentDayNumber(text)!==null}
@@ -9704,6 +9819,7 @@ saveArAction=async function(code,patch){
   if(Object.prototype.hasOwnProperty.call(patch,'reviewStatus')&&!Object.prototype.hasOwnProperty.call(patch,'reviewAutoCarry'))patch={...patch,reviewAutoCarry:false,reviewCarryFromWeek:null};
   const next={...prev,...patch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};arState.actions.set(code,next);
   await userCol('arWeekActions').doc(safeId(`${arState.activeWeek}|${code}`)).set({...next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();
   refreshArWeekPayments();renderArAll();arRestoreViewPosition(view);
 }
 window.arSetShipStatus=(code,value)=>saveArAction(code,{shipStatus:value==='X'?'X':'O',shipAutoCarry:false,shipCarryFromWeek:null}).catch(e=>alert(e.message||e));
