@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.92</title>
+<title>아도라블 매출 자동화 v3.93</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -609,6 +609,11 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   @media(max-width:900px){.arManualUncollectible{grid-template-columns:1fr 1fr}.arManualUncollectible .arManualReason{grid-column:1 / -1}.arManualUncollectible .btn{width:100%}}
 
   .arManagerReasonEditable{cursor:text;min-width:120px}.arManagerReasonEditable:hover{background:#f8fafc}.arManagerReasonInput{width:100%;min-width:120px;box-sizing:border-box;padding:5px 7px;border:1px solid #93c5fd;border-radius:6px;font:inherit;background:#fff}
+
+  /* v3.93 미수시작일 이전 수기값 선택 */
+  .arOutstandingWrap{display:inline-flex;align-items:center;gap:3px;max-width:100%}.arOutstandingWrap .arEditableValue{min-width:0;flex:1 1 auto}
+  .arOutstandingHistoryBtn{flex:0 0 auto;width:18px;height:18px;padding:0;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#64748b;font-size:9px;line-height:16px;cursor:pointer}.arOutstandingHistoryBtn:hover,.arOutstandingHistoryBtn.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
+  .arOutstandingHistoryPopup{position:fixed;z-index:100002;min-width:190px;max-width:320px;max-height:280px;overflow:auto;padding:7px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.2);font-size:10px}.arOutstandingHistoryTitle{font-weight:900;color:#334155;padding:2px 4px 6px}.arOutstandingHistoryItem{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;background:#fff;padding:6px 7px;border-radius:6px;text-align:left;cursor:pointer;color:#334155}.arOutstandingHistoryItem:hover{background:#eef2ff}.arOutstandingHistoryItem b{font-size:11px}.arOutstandingHistoryItem small{color:#94a3b8;white-space:nowrap}.arOutstandingHistoryAuto{border-top:1px solid #eef2f7;margin-top:4px;padding-top:5px}
 </style>
 
 <style>
@@ -664,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.92 · 못받음 사유 더블클릭 수정 · 미수 날짜/SAMPLE 수정 · 1,000원 미만 이월허용</div>
+      <div class="badge">v3.93 · 미수시작일 이전 수기값 선택 · 못받음 사유 수정 · 1,000원 미만 이월허용</div>
       <div id="autosaveStatus" class="autosaveStatus">자동저장 대기</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1951,7 +1956,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.92',
+    appVersion:'v3.93',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -9510,7 +9515,7 @@ function exportArAllExcel(){
 async function runArMonday(){
   if(!user)throw new Error('로그인이 필요합니다.');if(!arSelectedFiles.balance)throw new Error('미수잔액 파일을 선택해 주세요.');const runDate=arIsoToYmd($('arRunDate').value);if(!runDate)throw new Error('정리 기준일을 선택해 주세요.');arSetLoading(true,'미수자료 분석 중…');
   try{if(arSelectedFiles.sales.length||arSelectedFiles.payments.length){$('arRunStatus').textContent='판매·입금 최신자료를 먼저 Firebase 거래이력에 동기화하는 중…';await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments)}if(!arState.sales.length)throw new Error('판매 거래이력이 없습니다. 첫 실행은 1/1~현재 판매자료를 넣어 주세요.');if(!arState.payments.length)throw new Error('입금 거래이력이 없습니다. 마지막 입금일 분석을 위해 첫 실행은 1/1~현재 입금자료를 넣어 주세요.');const parsed=parseArBalanceFile(await readWb(arSelectedFiles.balance)),runObj=arDateObj(runDate),mode=(runObj&&runObj.getDay()===1)?'weekly':'current',cutoff=mode==='weekly'?arPrevSunday(runDate):runDate,targets=parsed.rows.filter(b=>Number(b.balance||0)>0),rows=targets.map(b=>arClassifyRow(b,runDate,cutoff,mode));await saveArWeekBase(runDate,cutoff,rows,parsed.periodText,mode);const modeLabel=mode==='weekly'?'월요일 주간정리':'현재기준 정리';await safeLogActivity('미수관리',mode==='weekly'?'월요일 미수 자동정리':'현재기준 미수 자동정리',`${arYmdToIso(runDate)} · ${rows.length.toLocaleString()}곳 · ${arMoney(rows.reduce((s,x)=>s+Number(x.baseBalance||0),0))}`,`남평화 ${rows.filter(x=>x.location==='nampyeonghwa').length}곳 · 일반/창고 ${rows.filter(x=>x.location==='warehouse').length}곳 · 입금요일 지정 ${rows.filter(x=>arHasScheduledPaymentDay(x.paymentDay)).length}곳`,`arweek:${runDate}`);$('arRunStatus').innerHTML=mode==='weekly'?`✓ ${arYmdToIso(runDate)} ${modeLabel} 완료 · 전주 미완결 ${rows.length.toLocaleString()}곳 · 판매/입금 분석 기준 ${arShortDate(cutoff)}까지 · 입금요일은 잔액파일 값을 우선 적용했습니다.`:`✓ ${arYmdToIso(runDate)} ${modeLabel} 완료 · 현재 잔액 0원 초과 ${rows.length.toLocaleString()}곳 · 판매/입금 분석 기준 ${arShortDate(cutoff)}까지 · 입금요일은 잔액파일 값을 우선 적용했습니다.`}finally{arSetLoading(false)}}
-async function loadArData(){if(!user)return;try{await Promise.all([loadArHistory(),loadArCustomerSettings(),loadArWeeksIndex()]);let week='';try{week=localStorage.getItem(AR_LAST_WEEK_KEY)||''}catch(e){}if(!week&&arState.weeks.length)week=arState.weeks[0].weekKey;if(week&&arState.weeks.some(x=>x.weekKey===week))await loadArWeek(week);else renderArAll()}catch(e){console.warn('미수관리 Firebase 불러오기 실패',e);if($('arHistoryStatus'))$('arHistoryStatus').textContent='미수관리 Firebase 자료 불러오기 실패: '+(e.message||e)}}
+async function loadArData(){if(!user)return;try{await Promise.all([loadArHistory(),loadArCustomerSettings(),loadArWeeksIndex(),arLoadOutstandingMemoHistory()]);let week='';try{week=localStorage.getItem(AR_LAST_WEEK_KEY)||''}catch(e){}if(!week&&arState.weeks.length)week=arState.weeks[0].weekKey;if(week&&arState.weeks.some(x=>x.weekKey===week))await loadArWeek(week);else renderArAll()}catch(e){console.warn('미수관리 Firebase 불러오기 실패',e);if($('arHistoryStatus'))$('arHistoryStatus').textContent='미수관리 Firebase 자료 불러오기 실패: '+(e.message||e)}}
 function setupArUI(){
   const bindFiles=(id,key,labelId,multiple=true)=>{$(id)?.addEventListener('change',e=>{let arr=[...e.target.files];const seen=new Set();arr=arr.filter(f=>{const k=`${f.name}|${f.size}|${f.lastModified}`;if(seen.has(k))return false;seen.add(k);return true});if(multiple)arSelectedFiles[key]=arr;else arSelectedFiles[key]=arr[0]||null;if($(labelId))$(labelId).textContent=multiple?arFileListText(arr):(arr[0]?.name||'선택된 파일 없음')})};
   bindFiles('arBalanceFile','balance','arBalanceFileNames',false);bindFiles('arSalesFiles','sales','arSalesFileNames',true);bindFiles('arPaymentFiles','payments','arPaymentFileNames',true);
@@ -10157,7 +10162,7 @@ window.arBeginFieldEdit=function(ev,code,field){
     if(field==='lastPayment')patch={manualLastPayment:raw?arIsoToYmd(raw):null,manualLastPaymentAtMs:raw?Date.now():null};
     else if(field==='outstanding')patch={manualOutstanding:raw.trim()||null,manualOutstandingAtMs:raw.trim()?Date.now():null};
     else if(field==='sample')patch={manualSample:raw.trim()||null,manualSampleAtMs:raw.trim()?Date.now():null};
-    try{await saveArAction(code,patch)}catch(e){host.innerHTML=before;delete host.dataset.editing;alert(e.message||e)}
+    try{await saveArAction(code,patch);if(field==='outstanding'&&raw.trim())arRememberOutstandingMemo(code,raw.trim(),arState.activeWeek)}catch(e){host.innerHTML=before;delete host.dataset.editing;alert(e.message||e)}
   };
   input.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();input.blur()}else if(e.key==='Escape'){e.preventDefault();cancel()}});
   input.addEventListener('mousedown',e=>e.stopPropagation());input.addEventListener('dblclick',e=>e.stopPropagation());
@@ -10208,6 +10213,52 @@ const _arExportRowObject391=arExportRowObject;
 arExportRowObject=function(r){
   const o=_arExportRowObject391(r),y=arDisplayLastPaymentYmd(r);
   o.lastPayment=y?arShortDateWeekday(y):'';o.outstanding=arDisplayOutstanding(r)||'';o.sample=arDisplaySampleText(r)||'';return o;
+};
+
+
+/* ===== v3.93 미수시작일: 이전 주 수기입력값 선택 ===== */
+arState.outstandingMemoHistory=new Map();
+let arOutstandingHistoryPopup=null;
+function arRememberOutstandingMemo(code,value,weekKey,atMs=Date.now()){
+  code=norm(code);value=norm(value);weekKey=norm(weekKey);if(!code||!value)return;
+  if(!(arState.outstandingMemoHistory instanceof Map))arState.outstandingMemoHistory=new Map();
+  const arr=arState.outstandingMemoHistory.get(code)||[];
+  const next=[{value,weekKey,atMs:Number(atMs||0)},...arr.filter(x=>!(norm(x.value)===value&&norm(x.weekKey)===weekKey))]
+    .sort((a,b)=>String(b.weekKey||'').localeCompare(String(a.weekKey||''))||Number(b.atMs||0)-Number(a.atMs||0));
+  arState.outstandingMemoHistory.set(code,next);
+}
+async function arLoadOutstandingMemoHistory(){
+  arState.outstandingMemoHistory=new Map();if(!user)return;
+  let snap;
+  try{snap=await userCol('arWeekActions').where('manualOutstandingAtMs','>',0).get()}
+  catch(e){console.warn('미수시작일 수기값 전용조회 실패 · 전체 actions에서 보완',e);snap=await userCol('arWeekActions').get()}
+  for(const d of snap.docs){const x=d.data()||{},value=norm(x.manualOutstanding||'');if(!value)continue;arRememberOutstandingMemo(norm(x.code||''),value,norm(x.weekKey||''),Number(x.manualOutstandingAtMs||x.updatedAtMs||0))}
+}
+function arOutstandingHistoryOptions(code){
+  const active=String(arState.activeWeek||'');const arr=(arState.outstandingMemoHistory instanceof Map?arState.outstandingMemoHistory.get(norm(code)):null)||[],seen=new Set(),out=[];
+  for(const x of arr){if(active&&String(x.weekKey||'')>=active)continue;const v=norm(x.value);if(!v||seen.has(v))continue;seen.add(v);out.push(x)}
+  return out;
+}
+function arCloseOutstandingHistory(){if(arOutstandingHistoryPopup){arOutstandingHistoryPopup.remove();arOutstandingHistoryPopup=null}document.querySelectorAll('.arOutstandingHistoryBtn.active').forEach(x=>x.classList.remove('active'))}
+window.arOpenOutstandingHistory=function(ev,code){
+  ev?.preventDefault?.();ev?.stopPropagation?.();const btn=ev?.currentTarget,opts=arOutstandingHistoryOptions(code);arCloseOutstandingHistory();if(!opts.length)return;
+  btn?.classList.add('active');const pop=document.createElement('div');pop.className='arOutstandingHistoryPopup';arOutstandingHistoryPopup=pop;
+  const r=arWeekRowByCode(code),auto=String(r?.outstandingLabel||'');
+  pop.innerHTML=`<div class="arOutstandingHistoryTitle">이전 수기입력</div>${opts.map(x=>`<button type="button" class="arOutstandingHistoryItem" data-value="${escAttr(x.value)}"><b>${esc(x.value)}</b><small>${x.weekKey?esc(arShortDate(x.weekKey))+' 정리':''}</small></button>`).join('')}${auto?`<div class="arOutstandingHistoryAuto"><button type="button" class="arOutstandingHistoryItem" data-auto="1"><b>자동값으로 복귀</b><small>${esc(auto)}</small></button></div>`:''}`;
+  document.body.appendChild(pop);const rect=btn.getBoundingClientRect(),pw=pop.offsetWidth||220,ph=pop.offsetHeight||160;let left=Math.min(rect.left,window.innerWidth-pw-8),top=rect.bottom+4;if(top+ph>window.innerHeight-8)top=Math.max(8,rect.top-ph-4);pop.style.left=Math.max(8,left)+'px';pop.style.top=top+'px';
+  pop.querySelectorAll('[data-value]').forEach(el=>el.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();const value=el.getAttribute('data-value')||'';arCloseOutstandingHistory();try{await saveArAction(code,{manualOutstanding:value,manualOutstandingAtMs:Date.now()});arRememberOutstandingMemo(code,value,arState.activeWeek)}catch(err){alert(err.message||err)}}));
+  const autoBtn=pop.querySelector('[data-auto]');if(autoBtn)autoBtn.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();arCloseOutstandingHistory();try{await saveArAction(code,{manualOutstanding:null,manualOutstandingAtMs:null})}catch(err){alert(err.message||err)}});
+  setTimeout(()=>document.addEventListener('mousedown',arOutstandingHistoryOutside,{once:true}),0);
+};
+function arOutstandingHistoryOutside(e){if(arOutstandingHistoryPopup&&arOutstandingHistoryPopup.contains(e.target)){setTimeout(()=>document.addEventListener('mousedown',arOutstandingHistoryOutside,{once:true}),0);return}arCloseOutstandingHistory()}
+
+const _arCellHtml393=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  if(key==='outstanding'){
+    const txt=arDisplayOutstanding(r)||'-',opts=arOutstandingHistoryOptions(r.code),arrow=opts.length?`<button type="button" class="arOutstandingHistoryBtn" title="이전 수기입력 ${opts.length}개" onclick="arOpenOutstandingHistory(event,'${escAttr(r.code)}')">▼</button>`:'';
+    return `<span class="arOutstandingWrap"><span class="arEditableValue${arHasManualField(r,'outstanding')?' manual':''}" title="더블클릭해서 미수시작일 수정 · 빈값 저장 시 자동값 복귀" ondblclick="arBeginFieldEdit(event,'${escAttr(r.code)}','outstanding')">${esc(txt)}</span>${arrow}</span>`;
+  }
+  return _arCellHtml393(r,key,boxKey);
 };
 
 
