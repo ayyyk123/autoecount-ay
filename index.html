@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.94</title>
+<title>아도라블 매출 자동화 v3.95</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.94 · 최근 자동저장 날짜·시간 표시 · 미수시작일 이전 수기값 선택</div>
+      <div class="badge">v3.95 · 홈택스 발급결과 엑셀 열 자동인식 강화 · 최근 자동저장 표시</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1956,7 +1956,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.94',
+    appVersion:'v3.95',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2191,7 +2191,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.94'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.95'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -4334,8 +4334,17 @@ function findRequestedIssueForHometax(amount,date,memoActionId){
 }
 async function importHometaxResult(file){
   try{
-    const parsed=await genericExcelObjects(file),headers=parsed.headers,rows=parsed.rows,approvalKey=findHeaderAlias(headers,['승인번호','승인 번호']),dateKey=findHeaderAlias(headers,['거래일자','발급일자','거래일','발급일']),amountKey=findHeaderAlias(headers,['총거래금액','거래금액','금액']),memoKey=findHeaderAlias(headers,['메모','비고']),typeKey=findHeaderAlias(headers,['거래구분','구분','승인구분']),origKey=findHeaderAlias(headers,['당초승인번호','원승인번호','원 승인번호']);
-    if(!approvalKey||!amountKey)throw new Error('발급결과 파일에서 승인번호/거래금액 열을 찾지 못했습니다.');
+    const parsed=await genericExcelObjects(file),headers=parsed.headers,rows=parsed.rows,
+      approvalKey=findHeaderAlias(headers,['승인번호','승인 번호','승인No','승인 No','승인NO','승인 NO','승인번호(승인)','승인번호(취소)']),
+      dateKey=findHeaderAlias(headers,['매출일시','거래일시','승인일시','발행일시','발급일시','매출일자','거래일자','발급일자','발행일자','매출일','거래일','발급일','발행일']),
+      amountKey=findHeaderAlias(headers,['총금액','총 금액','총거래금액','총 거래금액','결제금액','승인금액','합계금액','거래금액','금액']),
+      memoKey=findHeaderAlias(headers,['비고','메모','적요','비고사항']),
+      typeKey=findHeaderAlias(headers,['거래구분','발행구분','승인구분','처리구분','구분']),
+      origKey=findHeaderAlias(headers,['당초승인번호','원승인번호','원 승인번호','원거래승인번호','원 거래 승인번호','당초 승인번호']);
+    if(!approvalKey||!amountKey){
+      const missing=[!approvalKey?'승인번호':'',!amountKey?'거래금액':''].filter(Boolean).join('/');
+      throw new Error(`발급결과 파일에서 ${missing} 열을 찾지 못했습니다. 인식한 열: ${headers.join(', ')}`);
+    }
     let matched=0,unmatched=0,autoCancelled=0;
     for(const r of rows){
       const approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(!amount){continue;}
@@ -4367,7 +4376,7 @@ async function importHometaxResult(file){
 function excelValueToYmd(v){if(v==null||v==='')return'';if(typeof v==='number'&&v>20000&&v<100000){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}`}return ymd(v)}
 function pad2(n){return String(n).padStart(2,'0')}
 function findHeaderAlias(headers,aliases){const hs=headers.map(norm);for(const a of aliases){const exact=hs.findIndex(h=>h===a);if(exact>=0)return headers[exact]}for(const a of aliases){const idx=hs.findIndex(h=>h.includes(a));if(idx>=0)return headers[idx]}return ''}
-async function genericExcelObjects(file){const wb=await readWb(file);let best=null;const known=['일자','날짜','거래처','거래처명','판매처','금액','잔액','매출액','현금액','수금액','사입비','거래처코드','코드'];for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh);for(let i=0;i<Math.min(30,a.length);i++){const hs=(a[i]||[]).map(norm),score=hs.filter(h=>known.some(k=>h.includes(k))).length;if(!best||score>best.score)best={a,hi:i,score};}}if(!best||best.score<1)throw new Error(`${file.name}: 헤더 행을 자동인식하지 못했습니다.`);const headers=best.a[best.hi].map((x,i)=>norm(x)||`열${i+1}`),rows=best.a.slice(best.hi+1).filter(r=>r.some(v=>v!==null&&v!=='')).map(r=>{const o={};headers.forEach((h,i)=>o[h]=r[i]);return o});return {headers,rows}}
+async function genericExcelObjects(file){const wb=await readWb(file);let best=null;const known=['일자','날짜','거래처','거래처명','판매처','금액','잔액','매출액','현금액','수금액','사입비','거래처코드','코드','승인번호','매출일시','거래일시','발행구분','거래구분','총금액','비고'];for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh);for(let i=0;i<Math.min(30,a.length);i++){const hs=(a[i]||[]).map(norm),score=hs.filter(h=>known.some(k=>h.includes(k))).length;if(!best||score>best.score)best={a,hi:i,score};}}if(!best||best.score<1)throw new Error(`${file.name}: 헤더 행을 자동인식하지 못했습니다.`);const headers=best.a[best.hi].map((x,i)=>norm(x)||`열${i+1}`),rows=best.a.slice(best.hi+1).filter(r=>r.some(v=>v!==null&&v!=='')).map(r=>{const o={};headers.forEach((h,i)=>o[h]=r[i]);return o});return {headers,rows}}
 function extractRows(parsed,kind,loc=''){const h=parsed.headers,dateKey=findHeaderAlias(h,['일자','날짜','거래일자','거래일']),nameKey=findHeaderAlias(h,['거래처명','거래처','판매처','상호','장끼거래처명']),codeKey=findHeaderAlias(h,['거래처코드','거래처 코드','코드']);let amountAliases=kind==='purchase'?['사입비','지출액','현금지출','지급액','금액','합계']:kind==='collection'?['현금수금액','수금액','현금액','금액','합계']:kind==='balance'?['잔액','현재잔액','미수잔액','잔액금액','금액']:['월매출액','매출액','판매액','공급가액','합계','금액'];const amountKey=findHeaderAlias(h,amountAliases);if(!nameKey&&!codeKey)throw new Error('거래처명 또는 거래처코드 열을 찾지 못했습니다.');if(!amountKey)throw new Error('금액 열을 찾지 못했습니다.');if(kind==='purchase'&&!dateKey)throw new Error('사입비 파일에서 날짜 열을 찾지 못했습니다.');return parsed.rows.map(o=>({date:dateKey?(ymd(o[dateKey])||norm(o[dateKey])):'',name:nameKey?norm(o[nameKey]):'',code:codeKey?norm(o[codeKey]):'',amount:num(o[amountKey]),loc})).filter(r=>(r.name||r.code)&&Number.isFinite(r.amount))}
 function sumRows(rows,keyFn){const m=new Map();for(const r of rows){const k=keyFn(r);if(!k)continue;m.set(k,(m.get(k)||0)+Number(r.amount||0));}return m}
 function tableFromMap(m,head1,head2){return `<table><thead><tr><th>${head1}</th><th>${head2}</th></tr></thead><tbody>${[...m.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${Number(v).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
