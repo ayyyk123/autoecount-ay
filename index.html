@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.96</title>
+<title>아도라블 매출 자동화 v3.97</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.96 · 홈택스 중복금액 수동매칭 · 발급결과 자동대조 강화</div>
+      <div class="badge">v3.97 · 미수해소 입금+반품 자동판정 · 홈택스 수동매칭</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -828,7 +828,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
       <div class="arMiniCard">
         <h3>③ 입금 거래내역</h3>
-        <div class="hint">마지막 입금일과 <b>정리일 입금으로 기존 미수가 해소됐는지</b> 확인하는 자료입니다. 새 입금파일을 넣고 동기화하면 입금해소가 자동 갱신되고, 필요하면 체크박스를 직접 수정할 수도 있습니다.</div>
+        <div class="hint">마지막 입금일을 찾는 자료입니다. <b>미수해소는 정리 기준일 이후의 입금 + 반품을 함께 계산</b>합니다. 반품은 ② 판매 거래내역에서, 입금은 이 파일에서 읽으며 새 자료를 동기화하면 미수해소 상태가 자동 갱신됩니다. 필요하면 체크박스를 직접 수정할 수도 있습니다.</div>
         <input id="arPaymentFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
         <div id="arPaymentFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
@@ -850,7 +850,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
     <div id="arSummary" class="arSummary">
       <div><small>미수거래처</small><b id="arSumCount">0곳</b></div>
       <div><small>미수잔액 합계</small><b id="arSumBalance">0원</b></div>
-      <div><small>입금으로 해소</small><b id="arSumResolved">0곳</b></div>
+      <div><small>미수해소</small><b id="arSumResolved">0곳</b></div>
     </div>
 
     <div class="arMiniCard">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.96',
+    appVersion:'v3.97',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.96'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.97'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -9477,7 +9477,7 @@ const AR_COLUMNS=[
   {key:'outstanding',label:'미수시작일',filter:'text'},
   {key:'streak',label:'연속등장',filter:'streak'},
   {key:'sample',label:'SAMPLE',filter:'sample'},
-  {key:'resolution',label:'입금해소',filter:'resolution'},
+  {key:'resolution',label:'미수해소',filter:'resolution'},
   {key:'shipStatus',label:'물건출고',filter:'ship',action:true},
   {key:'review',label:'별표',filter:'review',action:true},
   {key:'uncollectible',label:'못받음확정',filter:'uncollectible',action:true}
@@ -9699,7 +9699,7 @@ async function loadArData(){if(!user)return;try{await Promise.all([loadArHistory
 function setupArUI(){
   const bindFiles=(id,key,labelId,multiple=true)=>{$(id)?.addEventListener('change',e=>{let arr=[...e.target.files];const seen=new Set();arr=arr.filter(f=>{const k=`${f.name}|${f.size}|${f.lastModified}`;if(seen.has(k))return false;seen.add(k);return true});if(multiple)arSelectedFiles[key]=arr;else arSelectedFiles[key]=arr[0]||null;if($(labelId))$(labelId).textContent=multiple?arFileListText(arr):(arr[0]?.name||'선택된 파일 없음')})};
   bindFiles('arBalanceFile','balance','arBalanceFileNames',false);bindFiles('arSalesFiles','sales','arSalesFileNames',true);bindFiles('arPaymentFiles','payments','arPaymentFileNames',true);
-  if($('arSyncHistoryBtn'))$('arSyncHistoryBtn').onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments);refreshArWeekPayments();renderArAll();$('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 자동정리 결과의 마지막입금/입금해소 상태를 갱신했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
+  if($('arSyncHistoryBtn'))$('arSyncHistoryBtn').onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments);refreshArWeekPayments();renderArAll();$('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 자동정리 결과의 마지막입금/미수해소 상태를 갱신했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
   if($('arRunBtn'))$('arRunBtn').onclick=()=>runArMonday().catch(e=>alert(e.message||e));
   if($('arLoadWeekBtn'))$('arLoadWeekBtn').onclick=()=>loadArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));
   if($('arDeleteWeekBtn'))$('arDeleteWeekBtn').onclick=()=>deleteArWeek($('arWeekSelect').value).catch(e=>alert(e.message||e));
@@ -10471,6 +10471,91 @@ arUncollectibleManagerHtml=function(){
   const q=norm(arUncollectibleSearch).toLowerCase(),shown=q?entries.filter(x=>[x.code,x.name,x.reason].map(v=>norm(v).toLowerCase()).some(v=>v.includes(q))):entries,open=arBoxIsOpen('uncollectibleManager');
   const body=shown.length?`<table class="arManagerTable"><thead><tr><th>거래처코드</th><th>거래처명</th><th>못 받는 확정금액</th><th>사유</th><th>현재 상계후잔액</th><th>현재 제외상태</th><th>관리</th></tr></thead><tbody>${shown.map(x=>{const r=arWeekRowByCode(x.code),cur=r?arEffectiveBalance(r):null,match=r&&Math.round(cur)===Math.round(x.amount);return `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name||'')}</td><td>${arMoney(x.amount)}</td><td class="arManagerReason arManagerReasonEditable" title="더블클릭해서 사유 수정" ondblclick="arBeginUncollectibleReasonEdit(event,'${escAttr(x.code)}',this)">${esc(x.reason||'-')}</td><td>${cur==null?'-':arMoney(cur)}</td><td>${match?'<span class="arUncollectibleTag arUncollectibleMatch">금액 일치 · 자동정리 제외</span>':'금액 불일치'}</td><td><span class="arInlineCell"><button class="arTinyAction" type="button" onclick="arEditUncollectibleReasonFromButton(event,'${escAttr(x.code)}',this)">사유 수정</button><button class="arTinyAction danger" type="button" onclick="arClearUncollectible('${escAttr(x.code)}')">등록삭제</button></span></td></tr>`}).join('')}</tbody></table>`:'<div class="jobEmpty">'+(q?'검색 결과가 없습니다.':'등록된 못 받는 확정금액이 없습니다.')+'</div>';
   return `<details data-ar-box="uncollectibleManager" class="arResultBox arBoxManager" ${open?'open':''} ontoggle="arRememberBoxOpen('uncollectibleManager',this.open)"><summary><span>못 받는 금액 확정 관리</span><span class="arBoxMeta">${entries.length.toLocaleString()}곳${shown.length!==entries.length?` · 조회 ${shown.length}곳`:''}</span></summary><div class="arBoxHint">자동정리 행의 ‘못받음 등록’뿐 아니라 아래에서 거래처를 직접 수기로 등록할 수 있습니다. 이미 등록된 거래처의 <b>사유 칸을 더블클릭</b>하거나 ‘사유 수정’을 누르면 사유를 바로 수정할 수 있습니다.</div>${arManualUncollectibleFormHtml()}<div class="arBoxSearchWrap"><label>거래처 검색</label><input id="arUncollectibleSearch" class="arBoxSearchInput" type="search" value="${escAttr(arUncollectibleSearchDraft)}" placeholder="거래처코드 · 거래처명 · 사유" oninput="arSetUncollectibleSearchDraft(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitUncollectibleSearch(this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitUncollectibleSearch(document.getElementById('arUncollectibleSearch'))">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearUncollectibleSearch()">초기화</button><span class="arBoxSearchCount">${shown.length.toLocaleString()}곳</span></div><div class="arResultBody">${body}</div></details>`;
+};
+
+
+/* ===== v3.97 미수해소: 정리 기준일 이후 입금 + 반품 자동판정 ===== */
+function arResolutionProgress(code,cutoff,target,through='99999999'){
+  code=norm(code);target=Math.max(0,Math.round(Number(target||0)));
+  const events=[];
+  for(const x of arState.payments||[]){
+    if(norm(x.code)!==code||!x.date||x.date<=cutoff||x.date>through)continue;
+    const amount=Math.max(0,Math.round(Number(x.amount||0)));if(!amount)continue;
+    events.push({date:x.date,key:String(x.key||''),kind:'payment',amount});
+  }
+  for(const x of arState.sales||[]){
+    if(norm(x.code)!==code||!x.date||x.date<=cutoff||x.date>through)continue;
+    const raw=Math.round(Number(x.amount||0));if(raw>=0)continue;
+    events.push({date:x.date,key:String(x.key||''),kind:'return',amount:Math.abs(raw)});
+  }
+  events.sort((a,b)=>a.date.localeCompare(b.date)||String(a.key).localeCompare(String(b.key))||a.kind.localeCompare(b.kind));
+  let paymentTotal=0,returnTotal=0,total=0,completedDate='';
+  for(const e of events){
+    if(e.kind==='payment')paymentTotal+=e.amount;else returnTotal+=e.amount;
+    total+=e.amount;
+    if(!completedDate&&target>0&&total>=target)completedDate=e.date;
+  }
+  const cause=paymentTotal>0&&returnTotal>0?'입금+반품':paymentTotal>0?'입금':returnTotal>0?'반품':'';
+  return {paymentTotal:Math.round(paymentTotal),returnTotal:Math.round(returnTotal),total:Math.round(total),completedDate,cause,events};
+}
+function arResolutionCause(r){
+  const p=Math.max(0,Number(r?.runDatePaid||0)),ret=Math.max(0,Number(r?.runDateReturned||0));
+  return p>0&&ret>0?'입금+반품':p>0?'입금':ret>0?'반품':'';
+}
+refreshArWeekPayments=function(){
+  const latest=arLatestHistoryDate()||'99999999';
+  for(const r of arState.weekRows||[]){
+    const target=Math.max(0,Number(r.baseBalance||0));
+    const prog=arResolutionProgress(r.code,r.cutoff,target,latest);
+    r.runDatePaid=prog.paymentTotal;
+    r.runDateReturned=prog.returnTotal;
+    r.runDateRelief=prog.total;
+    r.runDateResolved=target>0&&prog.total>=target;
+    r.runDatePartial=!r.runDateResolved&&prog.total>0&&target>0;
+    r.paymentCompletedDate=prog.completedDate||''; // 구버전 호환
+    r.resolutionCompletedDate=prog.completedDate||'';
+    r.resolutionCause=prog.cause||'';
+    r.lastPayment=arLastPayment(r.code,latest)||r.lastPaymentAtCutoff||'';
+    if(!r.lastPaymentAtCutoff)r.lastPaymentAtCutoff=arLastPayment(r.code,r.cutoff);
+    r.action=arState.actions.get(norm(r.code))||{};
+    r.weekPaid=prog.paymentTotal;
+    r.weekReturned=prog.returnTotal;
+    r.remaining=Math.max(0,target-prog.total);
+    r.paidCandidate=arIsResolved(r);
+  }
+};
+arResolutionPlain=function(r){
+  const a=r?.action||{};
+  if(typeof a.manualResolved==='boolean')return a.manualResolved?'해소(수동)':'미해소(수동)';
+  const cause=arResolutionCause(r);
+  if(r?.runDateResolved)return `해소${cause?`(${cause})`:''}`;
+  if(r?.runDatePartial)return `부분해소${cause?`(${cause})`:''}`;
+  return '미해소';
+};
+arResolutionCell=function(r){
+  const a=r.action||{},manual=typeof a.manualResolved==='boolean',resolved=arIsResolved(r),partial=arIsPartial(r);
+  const paid=Math.max(0,Number(r.runDatePaid||0)),returned=Math.max(0,Number(r.runDateReturned||0)),cause=arResolutionCause(r);
+  const d=!manual&&(r.resolutionCompletedDate||r.paymentCompletedDate)?arShortDate(r.resolutionCompletedDate||r.paymentCompletedDate):'';
+  const label=resolved?'해소':partial?'부분해소':'미해소';
+  let autoMeta='';
+  if(!manual){
+    const bits=[];
+    if(cause)bits.push(cause);
+    if(partial||resolved){if(paid>0)bits.push(`입금 ${arMoney(paid)}`);if(returned>0)bits.push(`반품 ${arMoney(returned)}`);}
+    if(d&&resolved)bits.push(`${d} 완료`);
+    if(bits.length)autoMeta=`<span class="small">· ${esc(bits.join(' · '))}</span>`;
+  }
+  const extra=manual?'<span class="arManualBadge">수동</span><button class="arTinyAction" type="button" onclick="event.stopPropagation();arClearManualResolution(\''+escAttr(r.code)+'\')">자동</button>':autoMeta;
+  return `<span class="arInlineCell"><label class="arResolutionCheck"><input type="checkbox" ${resolved?'checked ':''}onchange="arSetManualResolution('${escAttr(r.code)}',this.checked)">${label}</label>${extra}</span>`;
+};
+const _arExportRowObject397=arExportRowObject;
+arExportRowObject=function(r){
+  const o=_arExportRowObject397(r),manual=arHasManualResolution(r),cause=arResolutionCause(r),paid=Math.max(0,Number(r.runDatePaid||0)),returned=Math.max(0,Number(r.runDateReturned||0));
+  if(manual)o.resolution=arResolutionPlain(r);
+  else if(r.runDateResolved)o.resolution=`해소${cause?` · ${cause}`:''}${paid>0?` · 입금 ${arMoney(paid)}`:''}${returned>0?` · 반품 ${arMoney(returned)}`:''}`;
+  else if(r.runDatePartial)o.resolution=`부분해소${cause?` · ${cause}`:''}${paid>0?` · 입금 ${arMoney(paid)}`:''}${returned>0?` · 반품 ${arMoney(returned)}`:''}`;
+  else o.resolution='미해소';
+  return o;
 };
 
 setupArUI();
