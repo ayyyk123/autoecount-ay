@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.01</title>
+<title>아도라블 매출 자동화 v4.02</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.01 · 미수시작일 FIFO 잔액추적 보정</div>
+      <div class="badge">v4.02 · 주간 기준미수 이력보정 + FIFO</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.01',
+    appVersion:'v4.02',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.01'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.02'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -9397,10 +9397,26 @@ function arSampleDateLabel(x){if(!x||!x.date)return '';const a=arShortDate(x.dat
 function arSampleOnly(r){return !!(r.sampleMatch&&Number(r.sampleMatch.generalAmount||0)<=0&&Number(r.sampleMatch.amount||0)>=Math.max(0,Number(r.baseBalance||0)-1))}
 function arSalesOn(code,date){return arState.sales.filter(x=>x.code===code&&x.date===date).reduce((s,x)=>s+x.amount,0)}
 function arLatestHistoryDate(){const d=[...arState.sales.map(x=>x.date),...arState.payments.map(x=>x.date)].filter(Boolean).sort();return d[d.length-1]||''}
+function arWeeklyCycleStart(cutoff){
+  const d=arDateObj(cutoff);if(!d)return '';
+  d.setDate(d.getDate()-7);
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function arReconcileWeeklyBase(b,cutoff){
+  const fileBalance=Math.round(Number(b?.balance||0));
+  if(b?.carryover==null||!cutoff)return {fileBalance,balance:fileBalance,adjustment:0,applied:false,start:''};
+  const start=arWeeklyCycleStart(cutoff);if(!start)return {fileBalance,balance:fileBalance,adjustment:0,applied:false,start:''};
+  const code=norm(b.code);
+  const sales=(arState.sales||[]).filter(x=>norm(x.code)===code&&x.date>=start&&x.date<=cutoff).reduce((s,x)=>s+Math.round(Number(x.amount||0)),0);
+  const paid=(arState.payments||[]).filter(x=>norm(x.code)===code&&x.date>=start&&x.date<=cutoff).reduce((s,x)=>s+Math.max(0,Math.round(Number(x.amount||0))),0);
+  const balance=Math.round(Number(b.carryover||0)+sales-paid);
+  const adjustment=Math.round(balance-fileBalance);
+  return {fileBalance,balance,adjustment,applied:adjustment!==0,start,sales:Math.round(sales),paid:Math.round(paid)};
+}
 function arClassifyRow(b,runDate,cutoff,mode='weekly'){
   const setting=arState.customerSettings.get(norm(b.code))||{},paymentDay=norm(b.paymentDay||setting.paymentDay),location=arLocationFrom(b),permanentExclude=!!setting.permanentExclude;
-  const currentMode=mode==='current',baseBalance=Math.round(b.balance||0),latest=arLatestHistoryDate()||runDate,weekPaid=currentMode?0:arPaymentsAfter(b.code,cutoff,latest),remaining=Math.max(0,baseBalance-weekPaid),lastPayment=arLastPayment(b.code,cutoff),est=arEstimateOutstandingStart(b.code,baseBalance,cutoff),sample=arFindSampleMatch(b.code,baseBalance,cutoff,est.date);
-  const fileDiff=(b.carryover==null||b.periodSales==null||b.periodReceipts==null)?null:Math.round((b.carryover+b.periodSales-b.periodReceipts)-baseBalance);
+  const currentMode=mode==='current',recon=currentMode?{fileBalance:Math.round(b.balance||0),balance:Math.round(b.balance||0),adjustment:0,applied:false,start:''}:arReconcileWeeklyBase(b,cutoff),baseBalance=Math.round(recon.balance),latest=arLatestHistoryDate()||runDate,weekPaid=currentMode?0:arPaymentsAfter(b.code,cutoff,latest),remaining=Math.max(0,baseBalance-weekPaid),lastPayment=arLastPayment(b.code,cutoff),est=arEstimateOutstandingStart(b.code,baseBalance,cutoff),sample=arFindSampleMatch(b.code,baseBalance,cutoff,est.date);
+  const fileDiff=(b.carryover==null||b.periodSales==null||b.periodReceipts==null)?null:Math.round((b.carryover+b.periodSales-b.periodReceipts)-Math.round(Number(b.balance||0)));
   let status='contact',reason=currentMode?'현재 기준 미수잔액 남음':'전주 미수잔액 남음';const samplePrefix=sample?`${arSampleLabel(sample)} · `:'';
   if(baseBalance<=0){status='excluded';reason='미수잔액 없음'}
   else if(Math.abs(baseBalance)<600){status='excluded';reason='600원 미만 별도표시'}
@@ -9417,7 +9433,7 @@ function arClassifyRow(b,runDate,cutoff,mode='weekly'){
     } else {status=remaining>0?'contact':'wait';reason=samplePrefix+(remaining>0?(currentMode?'현재 미수잔액 남음 · 입금요일 미지정':'전주 미수잔액 남음 · 입금요일 미지정'):(currentMode?'현재 미수 완결':'전주 미수 완결'))}
     if(!est.exact&&status!=='excluded')reason+=` · 미수 시작일 ${est.label}`;
   }
-  return {...b,weekKey:runDate,runDate,cutoff,mode,paymentDay,location,permanentExclude,baseBalance,weekPaid,remaining,lastPayment,lastPaymentAtCutoff:lastPayment,outstandingLabel:est.label,outstandingExact:est.exact,outstandingDate:est.date,outstandingDiff:est.diff,sampleMatch:sample,status,reason,fileDiff,action:{}};
+  return {...b,weekKey:runDate,runDate,cutoff,mode,paymentDay,location,permanentExclude,fileBaseBalance:recon.fileBalance,historyBalanceAdjustment:recon.adjustment,historyBalanceAdjusted:!!recon.applied,historyBalanceStart:recon.start||'',historyPeriodSales:recon.sales??null,historyPeriodReceipts:recon.paid??null,baseBalance,weekPaid,remaining,lastPayment,lastPaymentAtCutoff:lastPayment,outstandingLabel:est.label,outstandingExact:est.exact,outstandingDate:est.date,outstandingDiff:est.diff,sampleMatch:sample,status,reason,fileDiff,action:{}};
 }
 
 async function saveArWeekBase(runDate,cutoff,rows,periodText='',mode='weekly'){
@@ -10669,8 +10685,11 @@ arCellHtml=function(r,key,boxKey){
     if(r.carriedOnly)return _arCellHtml399(r,key,boxKey);
     const cur=arDisplayCurrentBalance(r),base=Math.round(Number(r.baseBalance||0)),paid=Math.max(0,Number(r.runDatePaid||0)),ret=Math.max(0,Number(r.runDateReturned||0));
     const bits=[];if(paid>0)bits.push(`추가입금 ${arMoney(paid)}`);if(ret>0)bits.push(`반품 ${arMoney(ret)}`);
-    const title=bits.length?`기준 미수 ${arMoney(base)} - ${bits.join(' - ')}`:'기준 잔액파일 미수';
-    return `<span class="arInlineCell" title="${escAttr(title)}"><b>${esc(arMoney(cur))}</b>${bits.length?`<span class="small">· 기준 ${esc(arMoney(base))}</span>`:''}</span>`;
+    const adj=Math.round(Number(r.historyBalanceAdjustment||0)),fileBase=Math.round(Number((r.fileBaseBalance ?? r.baseBalance ?? 0)));
+    const reconText=adj!==0?`잔액파일 ${arMoney(fileBase)} ${adj>0?'+':'-'} 정리기간 이력보정 ${arMoney(Math.abs(adj))} = 기준미수 ${arMoney(base)}`:`기준미수 ${arMoney(base)}`;
+    const title=bits.length?`${reconText} - ${bits.join(' - ')}`:reconText;
+    const meta=[];if(adj!==0)meta.push(`이력보정 ${adj>0?'+':''}${arMoney(adj)}`);if(bits.length)meta.push(`기준 ${arMoney(base)}`);
+    return `<span class="arInlineCell" title="${escAttr(title)}"><b>${esc(arMoney(cur))}</b>${meta.length?`<span class="small">· ${esc(meta.join(' · '))}</span>`:''}</span>`;
   }
   if(key==='memo'){
     const memo=arRowMemo(r);
@@ -10704,6 +10723,12 @@ arBoxHtml=function(def,rows){
   const draft=Object.prototype.hasOwnProperty.call(arState.boxSearchDrafts,def.key)?arState.boxSearchDrafts[def.key]:q;
   return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(draft)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearchDraft('${escAttr(def.key)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitBoxSearch('${escAttr(def.key)}',this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitBoxSearch('${escAttr(def.key)}',this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearBoxSearch('${escAttr(def.key)}')">초기화</button><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
 };
+
+/* ===== v4.02 미수관리: 월요일 기준미수 주간이력 보정 ===== */
+// 월요일 정리에서는 잔액파일의 이월잔액을 시작점으로 두고,
+// 직전 일요일까지 동기화된 실제 판매·반품·입금을 다시 합산해 기준미수를 보정한다.
+// 따라서 잔액파일을 뽑은 뒤 입력/수정된 일요일 매출도 누락되지 않는다.
+// 잔액파일 원래 금액은 fileBaseBalance에 보존하고 화면 툴팁으로 보정금액을 확인할 수 있다.
 
 /* ===== v4.01 미수관리: 미수해소 거래처는 각 박스 맨 아래 ===== */
 // 기존 필터/검색/사용자 정렬 결과의 순서는 그대로 유지하되,
