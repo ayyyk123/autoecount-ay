@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.99</title>
+<title>아도라블 매출 자동화 v4.00</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.99 · 미수 거래처 메모 · 추가입금/반품 현재잔액 반영</div>
+      <div class="badge">v4.00 · 미수해소 거래처 박스 하단 자동정렬</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.99',
+    appVersion:'v4.00',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.99'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.00'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -10662,6 +10662,20 @@ arBoxHtml=function(def,rows){
   if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
   const draft=Object.prototype.hasOwnProperty.call(arState.boxSearchDrafts,def.key)?arState.boxSearchDrafts[def.key]:q;
   return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(draft)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearchDraft('${escAttr(def.key)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitBoxSearch('${escAttr(def.key)}',this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitBoxSearch('${escAttr(def.key)}',this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearBoxSearch('${escAttr(def.key)}')">초기화</button><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
+};
+
+/* ===== v4.00 미수관리: 미수해소 거래처는 각 박스 맨 아래 ===== */
+// 기존 필터/검색/사용자 정렬 결과의 순서는 그대로 유지하되,
+// 해소된 거래처만 항상 해당 박스의 아래쪽으로 이동한다.
+// 같은 해소 상태끼리는 기존 순서를 보존한다(현대 브라우저의 stable sort 사용).
+const _arRowsForBox400=arRowsForBox;
+arRowsForBox=function(boxKey){
+  const rows=_arRowsForBox400(boxKey);
+  if(!Array.isArray(rows)||rows.length<2)return rows;
+  return rows.slice().sort((a,b)=>{
+    const ar=arIsResolved(a)?1:0,br=arIsResolved(b)?1:0;
+    return ar-br;
+  });
 };
 
 setupArUI();
