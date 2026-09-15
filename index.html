@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.95</title>
+<title>아도라블 매출 자동화 v3.96</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.95 · 홈택스 발급결과 엑셀 열 자동인식 강화 · 최근 자동저장 표시</div>
+      <div class="badge">v3.96 · 홈택스 중복금액 수동매칭 · 발급결과 자동대조 강화</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1023,6 +1023,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <label class="filePickLabel">홈택스 발급결과 엑셀 불러오기<input id="hometaxResultFile" type="file" accept=".xlsx,.xls"></label>
         <span id="hometaxImportStatus" class="small"></span>
       </div>
+      <div id="hometaxManualMatchPanel"></div>
       <div id="generalLedgerSummary"></div>
       <div id="generalLedgerTable"></div>
     </div>
@@ -1407,7 +1408,7 @@ let currentReceiptConfirmations={};
 let currentReceiptDraftDates={};
 let currentReceiptBulkDate='';
 let currentBizRegConditionalReviews={};
-let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907';
+let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907',hometaxPendingIssueMatches=[],hometaxLastImportStats=null;
 let activityLogs=[];
 let cashCloseState={purchase:null,collection:null,purchaseRows:[],collectionRows:[],purchaseTotal:0,collectionTotal:0,purchaseDates:[],comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
 let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false};
@@ -1956,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.95',
+    appVersion:'v3.96',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2191,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.95'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.96'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -4324,14 +4325,57 @@ function findPendingCancelForHometax(orig,amount,memoActionId){
   }
   return candidates[0]||null;
 }
+function requestedIssueCandidatesForHometax(amount,date){
+  const all=(generalActions||[]).filter(a=>a.type==='issue'&&a.status==='issue_requested'&&Math.abs(Number(a.amount||0)-Number(amount||0))<0.5);
+  const d=String(date||'');
+  if(!d)return all;
+  const exact=all.filter(a=>String(a.requestDate||'')===d);
+  if(exact.length)return exact;
+  const compatible=all.filter(a=>!a.requestDate||String(a.requestDate)===d);
+  return compatible.length?compatible:all;
+}
 function findRequestedIssueForHometax(amount,date,memoActionId){
   if(memoActionId){const a=(generalActions||[]).find(x=>x.id===memoActionId&&x.type==='issue'&&['pending','issue_requested'].includes(x.status));if(a)return a;}
-  const all=(generalActions||[]).filter(a=>a.type==='issue'&&a.status==='issue_requested'&&Math.abs(Number(a.amount||0)-Number(amount||0))<0.5);
-  if(all.length===1)return all[0];
-  const d=String(date||'');if(!d)return null;
-  const dated=all.filter(a=>!a.requestDate||String(a.requestDate)===d);
-  return dated.length===1?dated[0]:null;
+  const candidates=requestedIssueCandidatesForHometax(amount,date);
+  return candidates.length===1?candidates[0]:null;
 }
+function hometaxCandidateLabel(a){
+  const saleDate=a?.saleDate?formatDisplayDate(a.saleDate):'-',no=Number(a?.saleNo||0),cust=a?.cust||'-';
+  return `${cust} · 판매 ${saleDate}${no?` · No.${no}`:''} · ${Number(a?.amount||0).toLocaleString('ko-KR')}원`;
+}
+function renderHometaxManualMatchPanel(){
+  const host=$('hometaxManualMatchPanel');if(!host)return;
+  const rows=hometaxPendingIssueMatches||[];
+  if(!rows.length){host.innerHTML='';return;}
+  const dup=rows.filter(x=>x.kind==='duplicate'),outside=rows.filter(x=>x.kind==='unmatched');
+  const dupHtml=dup.map(x=>{
+    const live=(x.candidateIds||[]).map(id=>(generalActions||[]).find(a=>a.id===id)).filter(a=>a&&a.status==='issue_requested');
+    const opts=live.map(a=>`<option value="${esc(a.id)}">${esc(hometaxCandidateLabel(a))}</option>`).join('');
+    return `<tr><td>${esc(x.date?formatDisplayDate(x.date):'-')}</td><td><b>${Number(x.amount||0).toLocaleString('ko-KR')}원</b></td><td>${esc(x.approvalNo||'-')}</td><td><select id="hmMatch_${safeDomId(x.id)}" style="min-width:360px"><option value="">거래처 선택</option>${opts}</select></td><td><button class="btn light" type="button" onclick="confirmHometaxIssueMatch('${esc(x.id)}')" ${live.length?'':'disabled'}>매칭확정</button></td></tr>`;
+  }).join('');
+  const outsideHtml=outside.map(x=>`<tr><td>${esc(x.date?formatDisplayDate(x.date):'-')}</td><td><b>${Number(x.amount||0).toLocaleString('ko-KR')}원</b></td><td>${esc(x.approvalNo||'-')}</td><td colspan="2"><span class="small">현재 결과확인 대기 목록에서 같은 금액의 후보를 찾지 못했습니다. 이번 정산목록 외 결과일 수 있습니다.</span></td></tr>`).join('');
+  host.innerHTML=`<div class="moduleBox" style="margin-top:10px;border-color:#f3c766;background:#fffdf5"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">홈택스 결과 수동매칭 ${dup.length?`· 중복금액 ${dup.length}건`:''}${outside.length?` · 후보없음 ${outside.length}건`:''}</h4><span class="small">같은 날 같은 금액이 여러 거래처에 있으면 승인번호만으로 거래처를 알 수 없어 임의 매칭하지 않습니다.</span></div>${dup.length?`<div class="small" style="margin:7px 0">홈택스 승인번호별로 실제 거래처를 선택한 뒤 <b>매칭확정</b>을 눌러주세요. 이미 확정한 거래처는 다른 행의 후보에서 자동으로 빠집니다.</div><div class="tableWrap"><table><thead><tr><th>발급일</th><th>금액</th><th>홈택스 승인번호</th><th>정산목록 후보</th><th>처리</th></tr></thead><tbody>${dupHtml}</tbody></table></div>`:''}${outside.length?`<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">정산목록 후보가 없는 결과 ${outside.length}건</summary><div class="tableWrap" style="margin-top:6px"><table><thead><tr><th>발급일</th><th>금액</th><th>홈택스 승인번호</th><th colspan="2">상태</th></tr></thead><tbody>${outsideHtml}</tbody></table></div></details>`:''}</div>`;
+}
+function updateHometaxImportStatus(){
+  if(!hometaxLastImportStats)return;
+  const pending=(hometaxPendingIssueMatches||[]).filter(x=>x.kind==='duplicate').length,outside=(hometaxPendingIssueMatches||[]).filter(x=>x.kind==='unmatched').length;
+  $('hometaxImportStatus').textContent=`자동대조 ${hometaxLastImportStats.matched}건${hometaxLastImportStats.alreadyProcessed?` · 기존확정 ${hometaxLastImportStats.alreadyProcessed}건`:''} · 취소완료 ${hometaxLastImportStats.autoCancelled}건${pending?` · 중복확인 ${pending}건`:''}${outside?` · 후보없음 ${outside}건`:''}`;
+}
+window.confirmHometaxIssueMatch=async function(pendingId){
+  try{
+    const row=(hometaxPendingIssueMatches||[]).find(x=>x.id===pendingId);if(!row)throw new Error('매칭할 홈택스 결과를 찾지 못했습니다.');
+    const sel=$('hmMatch_'+safeDomId(pendingId)),actionId=sel?.value||'';if(!actionId)throw new Error('거래처 후보를 선택해 주세요.');
+    const action=(generalActions||[]).find(a=>a.id===actionId&&a.type==='issue'&&a.status==='issue_requested');if(!action)throw new Error('선택한 발급대기 건이 이미 처리되었거나 더 이상 존재하지 않습니다.');
+    if(Math.abs(Number(action.amount||0)-Number(row.amount||0))>=0.5)throw new Error('선택한 거래처와 홈택스 결과의 금액이 일치하지 않습니다.');
+    const info=issueInfoForAction(action),issueDate=row.date||dateInputToYmd(new Date().toISOString().slice(0,10));
+    await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate,approvalNo:row.approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,hometaxManualMatched:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=issueDate;action.approvalNo=row.approvalNo;
+    hometaxPendingIssueMatches=(hometaxPendingIssueMatches||[]).filter(x=>x.id!==pendingId);
+    if(hometaxLastImportStats)hometaxLastImportStats.matched=Number(hometaxLastImportStats.matched||0)+1;
+    await loadGeneralLedgerData();applyAllSalesMemos();finishRender();renderHometaxManualMatchPanel();updateHometaxImportStatus();
+    await safeLogActivity('현금영수증','홈택스 중복금액 수동매칭',`${action.cust||''} · ${Number(row.amount||0).toLocaleString('ko-KR')}원`,`승인 ${row.approvalNo||''} · 발급일 ${issueDate?ymdToInput(issueDate):''}`);
+  }catch(e){alert(e.message||e)}
+};
 async function importHometaxResult(file){
   try{
     const parsed=await genericExcelObjects(file),headers=parsed.headers,rows=parsed.rows,
@@ -4345,13 +4389,23 @@ async function importHometaxResult(file){
       const missing=[!approvalKey?'승인번호':'',!amountKey?'거래금액':''].filter(Boolean).join('/');
       throw new Error(`발급결과 파일에서 ${missing} 열을 찾지 못했습니다. 인식한 열: ${headers.join(', ')}`);
     }
-    let matched=0,unmatched=0,autoCancelled=0;
-    for(const r of rows){
-      const approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(!amount){continue;}
+    let matched=0,unmatched=0,autoCancelled=0,alreadyProcessed=0;hometaxPendingIssueMatches=[];
+    for(let ri=0;ri<rows.length;ri++){
+      const r=rows[ri],approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(!amount){continue;}
+      const approvalAlreadyUsed=approvalNo&&(generalActions||[]).some(a=>(a.type==='issue'&&a.status==='issued'&&norm(a.approvalNo)===approvalNo)||(a.type==='cancel'&&a.status==='cancelled'&&String(a.cancelApprovalNo||'').split(',').map(norm).includes(approvalNo)));
+      if(approvalAlreadyUsed){alreadyProcessed++;continue;}
       const mm=memo.match(/AUTO:([^\s]+)/),memoId=mm?mm[1]:'';
       let action=memoId?generalActions.find(a=>a.id===memoId):null;
       if(/취소/.test(type))action=findPendingCancelForHometax(orig,amount,memoId)||action;
-      else if(!action)action=findRequestedIssueForHometax(amount,date,memoId);
+      else if(!action){
+        const candidates=requestedIssueCandidatesForHometax(amount,date);
+        if(candidates.length===1)action=candidates[0];
+        else if(candidates.length>1){
+          hometaxPendingIssueMatches.push({id:`HM_${simpleHash([file.name,ri,approvalNo,date,amount].join('|'))}`,kind:'duplicate',approvalNo,date,amount,candidateIds:candidates.map(a=>a.id)});unmatched++;continue;
+        }else{
+          hometaxPendingIssueMatches.push({id:`HM_${simpleHash([file.name,ri,approvalNo,date,amount].join('|'))}`,kind:'unmatched',approvalNo,date,amount,candidateIds:[]});unmatched++;continue;
+        }
+      }
       if(!action){unmatched++;continue;}
       if(action.type==='issue'){
         const info=issueInfoForAction(action);await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=date;action.approvalNo=approvalNo;matched++;continue;
@@ -4366,9 +4420,11 @@ async function importHometaxResult(file){
       }
       unmatched++;
     }
-    await loadGeneralLedgerData();applyAllSalesMemos();finishRender();$('hometaxImportStatus').textContent=`자동대조 ${matched}건 · 취소완료 ${autoCancelled}건 · 미매칭 ${unmatched}건`;
-    await safeLogActivity('현금영수증','홈택스 발급결과 불러오기',`자동대조 ${matched}건 · 취소완료 ${autoCancelled}건 · 미매칭 ${unmatched}건`,file.name||'');
-  }catch(e){$('hometaxImportStatus').textContent='오류: '+(e.message||e)}
+    hometaxLastImportStats={matched,autoCancelled,alreadyProcessed,sourceFile:file.name||''};
+    await loadGeneralLedgerData();applyAllSalesMemos();finishRender();renderHometaxManualMatchPanel();updateHometaxImportStatus();
+    const dupCount=hometaxPendingIssueMatches.filter(x=>x.kind==='duplicate').length,outsideCount=hometaxPendingIssueMatches.filter(x=>x.kind==='unmatched').length;
+    await safeLogActivity('현금영수증','홈택스 발급결과 불러오기',`자동대조 ${matched}건${alreadyProcessed?` · 기존확정 ${alreadyProcessed}건`:''} · 취소완료 ${autoCancelled}건${dupCount?` · 중복확인 ${dupCount}건`:''}${outsideCount?` · 후보없음 ${outsideCount}건`:''}`,file.name||'');
+  }catch(e){$('hometaxImportStatus').textContent='오류: '+(e.message||e);hometaxPendingIssueMatches=[];renderHometaxManualMatchPanel();}
 }
 
 
