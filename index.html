@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.97</title>
+<title>아도라블 매출 자동화 v3.98</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.97 · 미수해소 입금+반품 자동판정 · 홈택스 수동매칭</div>
+      <div class="badge">v3.98 · 미수해소 입금+반품 자동판정 · 홈택스 수동매칭</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.97',
+    appVersion:'v3.98',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.97'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.98'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -9939,22 +9939,25 @@ arExportRowObject=function(r){
 async function arLoadWeekRowsRaw(meta){if(!meta?.weekKey)return [];const snap=await userCol('arWeekChunks').where('weekKey','==',meta.weekKey).get(),version=String(meta.version||'');const docs=snap.docs.map(d=>d.data()).filter(x=>!version||String(x.version||'')===version).sort((a,b)=>Number(a.index||0)-Number(b.index||0));const out=[];for(const d of docs)out.push(...(d.rows||[]));return out;}
 async function arLoadWeekActionsRaw(weekKey){const m=new Map();if(!weekKey)return m;const snap=await userCol('arWeekActions').where('weekKey','==',weekKey).get();for(const d of snap.docs){const x=d.data()||{};m.set(norm(x.code),x)}return m;}
 async function arPrepareWeeklyContext(runDate,rows){
-  const prior=(arState.weeks||[]).filter(w=>w.mode!=='current'&&String(w.runDate||'')<String(runDate)).sort((a,b)=>String(b.runDate||'').localeCompare(String(a.runDate||'')));
+  // 미완료 상태 이월은 가장 최근 정리기록을 기준으로 한다.
+  // 이전 기록이 월요일 주간정리인지 현재기준 정리인지와 관계없이 노란 ★/출고X가 끝나지 않았다면 다음 정리로 넘긴다.
+  const allPrior=(arState.weeks||[]).filter(w=>String(w.runDate||'')<String(runDate)).sort((a,b)=>String(b.runDate||'').localeCompare(String(a.runDate||'')));
+  const weeklyPrior=allPrior.filter(w=>w.mode!=='current');
   const currentMap=new Map(rows.map(r=>[norm(r.code),r])),carryPatches=[];
-  const prev=prior[0];
-  if(prev&&arDateDiffDays(prev.runDate,runDate)===7){
+  const prev=allPrior[0];
+  if(prev){
     const [prevRows,prevActions]=await Promise.all([arLoadWeekRowsRaw(prev),arLoadWeekActionsRaw(prev.weekKey)]),prevRowMap=new Map(prevRows.map(r=>[norm(r.code),r]));
     for(const [code,a] of prevActions){
       const need=a.reviewStatus==='need',block=a.shipStatus==='X';if(!need&&!block)continue;
       let r=currentMap.get(code);
-      if(!r&&need){const pr=prevRowMap.get(code);if(pr){r={...pr,weekKey:runDate,runDate,cutoff:runDate,mode:'weekly',baseBalance:0,carryover:null,periodSales:null,periodReceipts:null,carriedOnly:true,consecutiveWeeks:1,action:{}};rows.push(r);currentMap.set(code,r)}}
+      if(!r&&(need||block)){const pr=prevRowMap.get(code);if(pr){r={...pr,weekKey:runDate,runDate,cutoff:runDate,mode:'weekly',baseBalance:0,carryover:null,periodSales:null,periodReceipts:null,carriedOnly:true,consecutiveWeeks:1,action:{}};rows.push(r);currentMap.set(code,r)}}
       if(!r)continue;
       const patch={};if(need){patch.reviewStatus='need';patch.reviewedBalance=null;patch.reviewReturnToList=false;patch.reviewCompletedAtMs=null;patch.reviewAutoCarry=true;patch.reviewCarryFromWeek=prev.weekKey}if(block){patch.shipStatus='X';patch.shipAutoCarry=true;patch.shipCarryFromWeek=prev.weekKey}carryPatches.push({code,patch});
     }
   }
-  // 현재 포함 거래처별 연속 주차 계산. 저장된 월요일 기록이 정확히 7일 간격으로 이어질 때만 증가.
+  // 연속등장 주차는 월요일 주간정리끼리 정확히 7일 간격일 때만 증가한다.
   const counts=new Map(rows.map(r=>[norm(r.code),1])),active=new Set(counts.keys());let expected=runDate;
-  for(const meta of prior){if(!active.size)break;if(arDateDiffDays(meta.runDate,expected)!==7)break;const prevRows=await arLoadWeekRowsRaw(meta),set=new Set(prevRows.map(r=>norm(r.code)));for(const code of [...active]){if(set.has(code))counts.set(code,(counts.get(code)||1)+1);else active.delete(code)}expected=meta.runDate;}
+  for(const meta of weeklyPrior){if(!active.size)break;if(arDateDiffDays(meta.runDate,expected)!==7)break;const prevRows=await arLoadWeekRowsRaw(meta),set=new Set(prevRows.map(r=>norm(r.code)));for(const code of [...active]){if(set.has(code))counts.set(code,(counts.get(code)||1)+1);else active.delete(code)}expected=meta.runDate;}
   for(const r of rows)r.consecutiveWeeks=counts.get(norm(r.code))||1;
   return {rows,carryPatches};
 }
@@ -10474,7 +10477,7 @@ arUncollectibleManagerHtml=function(){
 };
 
 
-/* ===== v3.97 미수해소: 정리 기준일 이후 입금 + 반품 자동판정 ===== */
+/* ===== v3.98 미수해소: 정리 기준일 이후 입금 + 반품 자동판정 ===== */
 function arResolutionProgress(code,cutoff,target,through='99999999'){
   code=norm(code);target=Math.max(0,Math.round(Number(target||0)));
   const events=[];
