@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.05</title>
+<title>아도라블 매출 자동화 v4.06</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -271,6 +271,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   @media(max-width:700px){.taxNoteRow{grid-template-columns:24px minmax(0,1fr)}.taxNoteRow select,.taxNoteDeleteBtn{grid-column:2}}
 
   .miniList{max-height:260px;overflow:auto;border:1px solid #e2e8f0;border-radius:9px}.miniList table{margin:0}
+  .cashCloseCompact table{table-layout:fixed;width:100%}.cashCloseCompact th,.cashCloseCompact td{padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cashCloseCompact th:first-child,.cashCloseCompact td:first-child{width:160px;max-width:160px}.cashCloseCompact.dateTable th:first-child,.cashCloseCompact.dateTable td:first-child{width:92px;max-width:92px}.cashCloseCompact th:not(:first-child),.cashCloseCompact td:not(:first-child){text-align:right}.cashCloseKpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}.cashCloseKpi{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#fff}.cashCloseKpi .label{font-size:12px;color:#64748b}.cashCloseKpi .value{font-size:17px;font-weight:900;margin-top:3px}.cashCloseAdjustGrid{display:grid;grid-template-columns:130px 120px minmax(140px,1fr) 130px minmax(160px,1fr) auto;gap:8px;align-items:end}.cashCloseMonthlyWrap{overflow:auto;max-height:360px;border:1px solid #e2e8f0;border-radius:9px}.cashCloseMonthlyWrap table{margin:0;min-width:720px}.cashCloseMonthAmtBtn{border:0;background:transparent;color:#4f46e5;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0}.cashCloseMonthAmtBtn:hover{color:#312e81}.cashCloseDetailBox{margin-top:8px;padding:9px;border-radius:9px;background:#f8fafc;border:1px solid #e2e8f0}.cashCloseTypeBadge{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.cashCloseTypeBadge.cash{background:#dcfce7;color:#166534}.cashCloseTypeBadge.bank{background:#dbeafe;color:#1d4ed8}.cashCloseTypeBadge.misc{background:#fef3c7;color:#92400e}
+  @media(max-width:1000px){.cashCloseKpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cashCloseAdjustGrid{grid-template-columns:1fr 1fr}.cashCloseAdjustGrid .wide{grid-column:1/-1}}
   .taxCheckStack{display:flex;flex-direction:column;gap:12px}
   .taxListBox{overflow:hidden}
   .taxResizableList{height:260px;min-height:120px;max-height:900px!important;overflow:auto}
@@ -673,7 +675,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.05 · 월마감 엑셀 자동인식 보강</div>
+      <div class="badge">v4.07 · 현금/계좌 사입비 분리 · 월누적 · 통장상계입력</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1050,9 +1052,32 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
         <button id="recalcCashCloseBtn" class="btn" type="button">월정산 계산</button>
       </div>
       <div id="cashCloseSummary"></div>
+      <div id="cashCloseKpis" class="cashCloseKpis"></div>
       <div class="moduleGrid">
-        <div class="moduleBox"><h4>사입비 거래처별 합계</h4><div id="purchaseByCustomer" class="miniList"></div></div>
-        <div class="moduleBox"><h4>사입비 날짜별 합계</h4><div id="purchaseByDate" class="miniList"></div></div>
+        <div class="moduleBox"><h4>현금지출 사입비 · 거래처별</h4><div id="purchaseByCustomer" class="miniList cashCloseCompact"></div></div>
+        <div class="moduleBox"><h4>현금지출 · 일자별</h4><div id="purchaseByDate" class="miniList cashCloseCompact dateTable"></div></div>
+        <div class="moduleBox"><h4>계좌이체 사입비 · 거래처별</h4><div id="purchaseBankByCustomer" class="miniList cashCloseCompact"></div></div>
+        <div class="moduleBox"><h4>현금지출 사입비외 · 항목별</h4><div id="purchaseMiscByCategory" class="miniList cashCloseCompact"></div></div>
+      </div>
+      <div class="moduleBox" style="margin-top:12px">
+        <h4>통장 입출금 상계 입력</h4>
+        <div class="small" style="margin-bottom:8px">현금차액을 맞추기 위한 통장거래를 직접 기록합니다. <b>통장출금은 +, 통장입금은 −</b>로 순조정액에 반영됩니다.</div>
+        <div class="cashCloseAdjustGrid">
+          <label>일자<input id="cashAdjustDate" type="date"></label>
+          <label>구분<select id="cashAdjustType"><option value="out">통장출금</option><option value="in">통장입금</option></select></label>
+          <label>거래처<input id="cashAdjustCustomer" type="text" placeholder="거래처명"></label>
+          <label>금액<input id="cashAdjustAmount" type="number" min="0" step="1" placeholder="0"></label>
+          <label>메모<input id="cashAdjustMemo" type="text" placeholder="선택"></label>
+          <button id="addCashAdjustBtn" class="btn" type="button">추가</button>
+        </div>
+        <div id="cashAdjustSummary" class="small" style="margin-top:8px"></div>
+        <div id="cashAdjustList" class="miniList cashCloseCompact" style="margin-top:8px"></div>
+      </div>
+      <div class="moduleBox" style="margin-top:12px">
+        <h4>거래처별 월 누적</h4>
+        <div class="small" style="margin-bottom:8px">월별 금액을 누르면 해당 거래처의 일자별 금액이 펼쳐집니다.</div>
+        <div id="cashCloseMonthlyVendor" class="cashCloseMonthlyWrap"></div>
+        <div id="cashCloseMonthlyDetail"></div>
       </div>
       <div class="moduleBox" style="margin-top:12px">
         <h4>금액 조합 계산기</h4>
@@ -1414,7 +1439,7 @@ let currentReceiptBulkDate='';
 let currentBizRegConditionalReviews={};
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907',hometaxPendingIssueMatches=[],hometaxLastImportStats=null;
 let activityLogs=[];
-let cashCloseState={purchase:null,collection:null,purchaseRows:[],collectionRows:[],purchaseTotal:0,collectionTotal:0,purchaseDates:[],comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
+let cashCloseState={purchase:null,collection:null,purchaseRows:[],purchaseBankRows:[],purchaseMiscRows:[],collectionRows:[],purchaseTotal:0,cashPurchaseTotal:0,miscCashTotal:0,bankPurchaseTotal:0,collectionTotal:0,purchaseDates:[],bankAdjustments:[],history:[],historyLoaded:false,comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
 let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false};
 let monthlyCompareHistory=[];
 let shinsangDepositAliases=new Map();
@@ -1700,6 +1725,8 @@ async function deleteItemAliasRule(alias){
 function normalizeMemo(v){const s=norm(v); return s==='샘플'?'SAMPLE':s}
 function aoaFromSheet(wb,sheetName){return XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true,blankrows:false})}
 async function readWb(file){const buf=await file.arrayBuffer(); return XLSX.read(buf,{type:'array',cellDates:false,cellText:false})}
+async function readWbStyled(file){const buf=await file.arrayBuffer();return XLSX.read(buf,{type:'array',cellDates:false,cellText:false,cellStyles:true})}
+function xlsxCellIsYellow(cell){try{const s=cell?.s||{},fill=s.fill||s,fg=fill?.fgColor||fill?.foregroundColor||{},rgb=String(fg.rgb||fg.argb||'').replace(/^FF/i,'').toUpperCase(),theme=Number(fg.theme);if(theme===7)return true;if(['FFC000','FFF2CC','FFF4CC','FFFF00','FFE699','FFD966'].includes(rgb))return true;return false}catch(e){return false}}
 function findHeader(rows,need){for(let i=0;i<Math.min(rows.length,30);i++){const h=rows[i].map(norm); if(need.every(x=>h.includes(x)))return i} return -1}
 function objectsFromRows(rows,headerIdx){const h=rows[headerIdx].map(norm); return rows.slice(headerIdx+1).map(r=>{const o={}; h.forEach((k,i)=>{if(k)o[k]=r[i]}); return o})}
 function mapAdd(map,k,v){k=norm(k);v=norm(v); if(!k||!v)return; if(!map.has(k))map.set(k,new Set()); map.get(k).add(v)}
@@ -1961,7 +1988,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.05',
+    appVersion:'v4.06',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2196,7 +2223,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.05'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.06'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -2460,6 +2487,7 @@ async function loadCloudData(){
   await loadActivityLogs();
   await loadTaxPurchaseMasters();
   await loadArData();
+  await loadCashCloseHistory();
   await loadMonthlySalesCompareHistory();
   await loadShinsangDepositAliases();
   await loadShinsangCompareHistory();
@@ -4454,7 +4482,7 @@ function purchaseDayToYmd(v,ym){
   if(d<1||d>31)return'';return ym?`${ym.y}${pad2(ym.m)}${pad2(d)}`:String(d);
 }
 async function parsePurchaseExpenseFile(file){
-  const wb=await readWb(file);let best=null;
+  const wb=await readWbStyled(file);let best=null;
   for(const sh of wb.SheetNames){
     const a=aoaFromSheet(wb,sh);if(!a?.length)continue;
     for(let i=0;i<Math.min(25,a.length);i++){
@@ -4465,18 +4493,25 @@ async function parsePurchaseExpenseFile(file){
       const score=vendorCount+dayCount*5;if(!best||score>best.score)best={sh,a,dateRow:i,headerRow:hi,score};
     }
   }
-  if(!best){const p=await genericExcelObjects(file);return {rows:extractRows(p,'purchase'),mode:'행형'};}
-  const headers=best.a[best.headerRow]||[],ym=purchaseYearMonth(best.sh,file.name),rows=[];
+  if(!best){const p=await genericExcelObjects(file);const cashRows=extractRows(p,'purchase');return {rows:cashRows,cashRows,bankRows:[],miscRows:[],mode:'행형',yearMonth:null};}
+  const headers=best.a[best.headerRow]||[],ym=purchaseYearMonth(best.sh,file.name),cashRows=[],bankRows=[],miscRows=[],ws=wb.Sheets[best.sh];
+  const summaryNames=headers.map(x=>norm(x).replace(/\s+/g,''));
+  let sumCol=summaryNames.findIndex(x=>x==='사입비합');if(sumCol<0)sumCol=headers.length;
+  let evidenceCol=summaryNames.findIndex(x=>x==='증빙없음');if(evidenceCol<0)evidenceCol=headers.length;
   for(let ri=best.dateRow+1;ri<best.a.length;ri++){
     const r=best.a[ri]||[],date=purchaseDayToYmd(r[0],ym);if(!date)continue;
-    const max=Math.max(headers.length,r.length);
-    for(let c=1;c<max;c++){
+    for(let c=1;c<Math.min(sumCol,Math.max(headers.length,r.length));c++){
       const name=norm(headers[c]);if(!name)continue;const raw=r[c];if(raw==null||raw==='')continue;const amount=num(raw);if(!Number.isFinite(amount)||amount===0)continue;
-      rows.push({date,name,code:'',amount,loc:''});
+      const cell=ws?.[XLSX.utils.encode_cell({r:ri,c})],base={date,name,code:'',amount,loc:'',category:'사입비'};
+      if(xlsxCellIsYellow(cell))bankRows.push({...base,payType:'bank'});else cashRows.push({...base,payType:'cash'});
+    }
+    for(let c=sumCol+1;c<Math.min(evidenceCol,Math.max(headers.length,r.length));c++){
+      const category=norm(headers[c]);if(!category)continue;const raw=r[c];if(raw==null||raw==='')continue;const amount=num(raw);if(!Number.isFinite(amount)||amount===0)continue;
+      miscRows.push({date,name:category,code:'',amount,loc:'',category,payType:'cash_misc'});
     }
   }
-  if(!rows.length)throw new Error('사입비 파일의 날짜/거래처 구조는 찾았지만 금액 데이터를 읽지 못했습니다.');
-  return {rows,mode:'날짜×거래처 표형'};
+  if(!cashRows.length&&!bankRows.length&&!miscRows.length)throw new Error('사입비 파일의 날짜/거래처 구조는 찾았지만 금액 데이터를 읽지 못했습니다.');
+  return {rows:cashRows,cashRows,bankRows,miscRows,mode:'날짜×거래처 표형',yearMonth:ym?`${ym.y}-${pad2(ym.m)}`:null};
 }
 async function parseCashCollectionFile(file){
   const p=await genericExcelObjects(file),h=p.headers;
@@ -4492,9 +4527,33 @@ function sumRows(rows,keyFn){const m=new Map();for(const r of rows){const k=keyF
 function tableFromMap(m,head1,head2){return `<table><thead><tr><th>${head1}</th><th>${head2}</th></tr></thead><tbody>${[...m.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${Number(v).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
 
 // ===== 월 현금수금/사입비 =====
-async function loadPurchaseExpense(file){try{const parsed=await parsePurchaseExpenseFile(file),rows=parsed.rows;cashCloseState.purchase={name:file.name};cashCloseState.purchaseRows=rows;$('purchaseFileStatus').textContent=`${file.name} · ${parsed.mode} · ${rows.length}건 · 합계 ${rows.reduce((s,r)=>s+r.amount,0).toLocaleString()}원`;recalcCashClose()}catch(e){$('purchaseFileStatus').textContent='오류: '+(e.message||e)}}
+function cashCloseRowsTotal(rows){return (rows||[]).reduce((s,r)=>s+Number(r.amount||0),0)}
+function cashCloseMonthDocId(month){return safeId(String(month||'').replace(/[^0-9-]/g,''))}
+function cashCloseHistoryUpsert(doc){const month=doc?.month;if(!month)return;const arr=cashCloseState.history||[],i=arr.findIndex(x=>x.month===month);if(i>=0)arr[i]={...arr[i],...doc};else arr.push(doc);cashCloseState.history=arr.sort((a,b)=>String(a.month).localeCompare(String(b.month)))}
+async function saveCashCloseMonth(patch={}){if(!user)return;const month=$('cashCloseMonth')?.value||'';if(!/^\d{4}-\d{2}$/.test(month))return;const payload={month,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAtMs:Date.now()};await userCol('cashCloseMonths').doc(cashCloseMonthDocId(month)).set(payload,{merge:true});cashCloseHistoryUpsert({...payload,updatedAt:null});if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();renderCashCloseMonthlyVendor()}
+async function loadCashCloseHistory(){if(!user)return;try{const snap=await userCol('cashCloseMonths').get();cashCloseState.history=snap.docs.map(d=>({id:d.id,...(d.data()||{})})).sort((a,b)=>String(a.month||'').localeCompare(String(b.month||'')));cashCloseState.historyLoaded=true;await loadCashCloseMonthState($('cashCloseMonth')?.value||'',{restoreRows:false});renderCashCloseMonthlyVendor()}catch(e){console.warn('월 현금마감 이력 불러오기 실패',e)}}
+async function loadCashCloseMonthState(month,{restoreRows=true}={}){const doc=(cashCloseState.history||[]).find(x=>x.month===month);cashCloseState.bankAdjustments=Array.isArray(doc?.bankAdjustments)?doc.bankAdjustments:[];if(restoreRows&&doc){cashCloseState.purchaseRows=Array.isArray(doc.cashPurchaseRows)?doc.cashPurchaseRows:[];cashCloseState.purchaseBankRows=Array.isArray(doc.bankPurchaseRows)?doc.bankPurchaseRows:[];cashCloseState.purchaseMiscRows=Array.isArray(doc.miscCashRows)?doc.miscCashRows:[];if($('bankDepositTotal')&&Number.isFinite(Number(doc.bankDepositTotal)))$('bankDepositTotal').value=Number(doc.bankDepositTotal||0)}renderCashAdjustments();if(restoreRows)recalcCashClose();}
+async function loadPurchaseExpense(file){try{const parsed=await parsePurchaseExpenseFile(file);cashCloseState.purchase={name:file.name};cashCloseState.purchaseRows=parsed.cashRows||parsed.rows||[];cashCloseState.purchaseBankRows=parsed.bankRows||[];cashCloseState.purchaseMiscRows=parsed.miscRows||[];if(parsed.yearMonth&&$('cashCloseMonth')){$('cashCloseMonth').value=parsed.yearMonth;await loadCashCloseMonthState(parsed.yearMonth,{restoreRows:false});}const c=cashCloseRowsTotal(cashCloseState.purchaseRows),b=cashCloseRowsTotal(cashCloseState.purchaseBankRows),m=cashCloseRowsTotal(cashCloseState.purchaseMiscRows);$('purchaseFileStatus').textContent=`${file.name} · ${parsed.mode} · 현금사입 ${c.toLocaleString()}원 · 현금사입외 ${m.toLocaleString()}원 · 계좌이체 ${b.toLocaleString()}원`;await saveCashCloseMonth({cashPurchaseRows:cashCloseState.purchaseRows,bankPurchaseRows:cashCloseState.purchaseBankRows,miscCashRows:cashCloseState.purchaseMiscRows,purchaseFileName:file.name});recalcCashClose()}catch(e){$('purchaseFileStatus').textContent='오류: '+(e.message||e)}}
 async function loadCashCollection(file){try{const parsed=await parseCashCollectionFile(file),rows=parsed.rows;cashCloseState.collection={name:file.name};cashCloseState.collectionRows=rows;cashCloseState.collectionTotalOverride=parsed.totalOverride;$('cashCollectionFileStatus').textContent=`${file.name}${parsed.totalOverride!=null?` · 합계 ${Number(parsed.totalOverride).toLocaleString()}원`:` · ${rows.length}행`}`;recalcCashClose()}catch(e){cashCloseState.collectionTotalOverride=null;$('cashCollectionFileStatus').textContent='오류: '+(e.message||e)}}
-function recalcCashClose(){const purchaseTotal=cashCloseState.purchaseRows.reduce((s,r)=>s+r.amount,0),collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)?cashCloseState.collectionTotalOverride:cashCloseState.collectionRows.reduce((s,r)=>s+r.amount,0),bank=num($('bankDepositTotal')?.value);cashCloseState.purchaseTotal=purchaseTotal;cashCloseState.collectionTotal=collectionTotal;cashCloseState.purchaseDates=[...new Set(cashCloseState.purchaseRows.filter(r=>r.amount!==0).map(r=>r.date).filter(Boolean))].sort();const calc=bank+purchaseTotal,diff=collectionTotal-calc,summary=$('cashCloseSummary');if(summary){summary.innerHTML=`<div class="cashCloseEquation ${diff===0&&collectionTotal!==0?'ok':diff!==0?'bad':''}">통장입금 ${bank.toLocaleString()} + 사입비 ${purchaseTotal.toLocaleString()} = ${(bank+purchaseTotal).toLocaleString()}원 / 월 현금수금 ${collectionTotal.toLocaleString()}원<br>${diff===0&&collectionTotal!==0?'✓ 정산 일치':`차액 ${diff.toLocaleString()}원`}</div>`;}$('purchaseByCustomer').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.name||r.code),'거래처','사입비 합계');$('purchaseByDate').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.date),'날짜','사입비 합계');renderCombo()}
+function cashCloseAdjustNet(){return (cashCloseState.bankAdjustments||[]).reduce((s,x)=>s+(x.type==='out'?1:-1)*Number(x.amount||0),0)}
+function cashCloseDateDisplay(v){const s=String(v||'').replace(/-/g,'');return s.length===8?`${s.slice(4,6)}/${s.slice(6,8)}`:String(v||'')}
+function cashCloseTable(rows,heads,widthClass=''){return `<table class="${widthClass}"><thead><tr>${heads.map(h=>`<th>${esc(h.label)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${heads.map(h=>`<td>${h.render?h.render(r):esc(r[h.key]??'')}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${heads.length}" class="small">자료 없음</td></tr>`}</tbody></table>`}
+function renderCashAdjustments(){const rows=cashCloseState.bankAdjustments||[],out=rows.filter(x=>x.type==='out').reduce((s,x)=>s+Number(x.amount||0),0),inn=rows.filter(x=>x.type==='in').reduce((s,x)=>s+Number(x.amount||0),0),net=out-inn;if($('cashAdjustSummary'))$('cashAdjustSummary').innerHTML=`통장출금 ${out.toLocaleString()}원 · 통장입금 ${inn.toLocaleString()}원 · <b>순조정 ${net.toLocaleString()}원</b>`;if($('cashAdjustList'))$('cashAdjustList').innerHTML=cashCloseTable(rows,[{label:'일자',render:r=>esc(cashCloseDateDisplay(r.date))},{label:'구분',render:r=>esc(r.type==='out'?'통장출금':'통장입금')},{label:'거래처',key:'customer'},{label:'금액',render:r=>Number(r.amount||0).toLocaleString()},{label:'메모',key:'memo'},{label:'',render:r=>`<button class="btn light" type="button" onclick="deleteCashAdjustment('${escAttr(r.id)}')">삭제</button>`}]);}
+window.deleteCashAdjustment=async function(id){cashCloseState.bankAdjustments=(cashCloseState.bankAdjustments||[]).filter(x=>x.id!==id);await saveCashCloseMonth({bankAdjustments:cashCloseState.bankAdjustments});renderCashAdjustments();recalcCashClose()}
+async function addCashAdjustment(){const date=($('cashAdjustDate')?.value||'').replace(/-/g,''),type=$('cashAdjustType')?.value||'out',customer=norm($('cashAdjustCustomer')?.value),amount=Math.abs(num($('cashAdjustAmount')?.value)),memo=norm($('cashAdjustMemo')?.value);if(!date||!customer||amount<=0)throw new Error('일자, 거래처, 금액을 입력해 주세요.');cashCloseState.bankAdjustments.push({id:'adj_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,type,customer,amount,memo});await saveCashCloseMonth({bankAdjustments:cashCloseState.bankAdjustments});$('cashAdjustCustomer').value='';$('cashAdjustAmount').value='';$('cashAdjustMemo').value='';renderCashAdjustments();recalcCashClose()}
+function recalcCashClose(){const cashPurchaseTotal=cashCloseRowsTotal(cashCloseState.purchaseRows),miscCashTotal=cashCloseRowsTotal(cashCloseState.purchaseMiscRows),bankPurchaseTotal=cashCloseRowsTotal(cashCloseState.purchaseBankRows),purchaseTotal=cashPurchaseTotal+miscCashTotal,collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)?cashCloseState.collectionTotalOverride:cashCloseState.collectionRows.reduce((s,r)=>s+r.amount,0),bank=num($('bankDepositTotal')?.value),adj=cashCloseAdjustNet();cashCloseState.cashPurchaseTotal=cashPurchaseTotal;cashCloseState.miscCashTotal=miscCashTotal;cashCloseState.bankPurchaseTotal=bankPurchaseTotal;cashCloseState.purchaseTotal=purchaseTotal;cashCloseState.collectionTotal=collectionTotal;const cashRows=[...(cashCloseState.purchaseRows||[]),...(cashCloseState.purchaseMiscRows||[])];cashCloseState.purchaseDates=[...new Set(cashRows.filter(r=>r.amount!==0).map(r=>r.date).filter(Boolean))].sort();const calc=bank+purchaseTotal+adj,diff=collectionTotal-calc,summary=$('cashCloseSummary');if(summary){summary.innerHTML=`<div class="cashCloseEquation ${diff===0&&collectionTotal!==0?'ok':diff!==0?'bad':''}">통장입금 ${bank.toLocaleString()} + 현금지출 ${(purchaseTotal).toLocaleString()}${adj?` + 통장상계조정 ${adj.toLocaleString()}`:''} = ${calc.toLocaleString()}원 / 월 현금수금 ${collectionTotal.toLocaleString()}원<br>${diff===0&&collectionTotal!==0?'✓ 정산 일치':`차액 ${diff.toLocaleString()}원`}</div>`;}if($('cashCloseKpis'))$('cashCloseKpis').innerHTML=`<div class="cashCloseKpi"><div class="label">현금지출 사입비</div><div class="value">${cashPurchaseTotal.toLocaleString()}원</div></div><div class="cashCloseKpi"><div class="label">현금지출 사입비외</div><div class="value">${miscCashTotal.toLocaleString()}원</div></div><div class="cashCloseKpi"><div class="label">현금지출 합계</div><div class="value">${purchaseTotal.toLocaleString()}원</div></div><div class="cashCloseKpi"><div class="label">계좌이체 사입비</div><div class="value">${bankPurchaseTotal.toLocaleString()}원</div></div>`;
+  const cashByCust=[...sumRows(cashCloseState.purchaseRows,r=>r.name||r.code).entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([name,amount])=>({name,amount}));
+  const bankByCust=[...sumRows(cashCloseState.purchaseBankRows,r=>r.name||r.code).entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([name,amount])=>({name,amount}));
+  const miscByCat=[...sumRows(cashCloseState.purchaseMiscRows,r=>r.category||r.name).entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([name,amount])=>({name,amount}));
+  const dayKeys=[...new Set(cashRows.map(r=>r.date).filter(Boolean))].sort(),dayRows=dayKeys.map(date=>{const cp=(cashCloseState.purchaseRows||[]).filter(r=>r.date===date).reduce((s,r)=>s+Number(r.amount||0),0),mm=(cashCloseState.purchaseMiscRows||[]).filter(r=>r.date===date).reduce((s,r)=>s+Number(r.amount||0),0);return {date,cashPurchase:cp,misc:mm,total:cp+mm}});
+  if($('purchaseByCustomer'))$('purchaseByCustomer').innerHTML=cashCloseTable(cashByCust,[{label:'거래처',key:'name'},{label:'현금사입',render:r=>Number(r.amount).toLocaleString()}]);
+  if($('purchaseBankByCustomer'))$('purchaseBankByCustomer').innerHTML=cashCloseTable(bankByCust,[{label:'거래처',key:'name'},{label:'계좌이체',render:r=>Number(r.amount).toLocaleString()}]);
+  if($('purchaseMiscByCategory'))$('purchaseMiscByCategory').innerHTML=cashCloseTable(miscByCat,[{label:'항목',key:'name'},{label:'현금지출',render:r=>Number(r.amount).toLocaleString()}]);
+  if($('purchaseByDate'))$('purchaseByDate').innerHTML=cashCloseTable(dayRows,[{label:'날짜',render:r=>esc(cashCloseDateDisplay(r.date))},{label:'사입비',render:r=>Number(r.cashPurchase).toLocaleString()},{label:'사입비외',render:r=>Number(r.misc).toLocaleString()},{label:'합계',render:r=>Number(r.total).toLocaleString()}]);renderCashAdjustments();renderCashCloseMonthlyVendor();renderCombo()}
+function cashCloseHistoryRows(doc,type){if(type==='cash')return doc.cashPurchaseRows||[];if(type==='bank')return doc.bankPurchaseRows||[];return doc.miscCashRows||[]}
+function cashCloseTypeText(type){return type==='cash'?'현금사입':type==='bank'?'계좌이체':'사입비외'}
+function renderCashCloseMonthlyVendor(){const host=$('cashCloseMonthlyVendor');if(!host)return;const hist=(cashCloseState.history||[]).filter(x=>/^\d{4}-\d{2}$/.test(x.month||''));if(!hist.length){host.innerHTML='<div class="small" style="padding:10px">저장된 월별 자료가 없습니다.</div>';return}const months=[...new Set(hist.map(x=>x.month))].sort(),map=new Map();for(const d of hist){for(const type of ['cash','bank','misc'])for(const r of cashCloseHistoryRows(d,type)){const name=norm(type==='misc'?(r.category||r.name):(r.name||r.code));if(!name)continue;const k=type+'|'+name;if(!map.has(k))map.set(k,{type,name,months:{}});const row=map.get(k);row.months[d.month]=(row.months[d.month]||0)+Number(r.amount||0)}}const rows=[...map.values()].sort((a,b)=>cashCloseTypeText(a.type).localeCompare(cashCloseTypeText(b.type))||a.name.localeCompare(b.name));host.innerHTML=`<table><thead><tr><th>구분</th><th>거래처/항목</th>${months.map(m=>`<th>${esc(m.replace('-','/'))}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td><span class="cashCloseTypeBadge ${r.type}">${cashCloseTypeText(r.type)}</span></td><td>${esc(r.name)}</td>${months.map(m=>{const v=r.months[m]||0;return `<td>${v?`<button type="button" class="cashCloseMonthAmtBtn" onclick="cashCloseShowVendorMonth('${escAttr(r.type)}','${escAttr(r.name)}','${escAttr(m)}')">${Number(v).toLocaleString()}</button>`:'-'}</td>`}).join('')}</tr>`).join('')}</tbody></table>`}
+window.cashCloseShowVendorMonth=function(type,name,month){const doc=(cashCloseState.history||[]).find(x=>x.month===month);if(!doc)return;const src=cashCloseHistoryRows(doc,type).filter(r=>norm(type==='misc'?(r.category||r.name):(r.name||r.code))===norm(name)),m=sumRows(src,r=>r.date),rows=[...m.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([date,amount])=>({date,amount}));$('cashCloseMonthlyDetail').innerHTML=`<div class="cashCloseDetailBox"><b>${esc(month.replace('-','/'))} · ${esc(cashCloseTypeText(type))} · ${esc(name)}</b><button type="button" class="btn light" style="float:right" onclick="document.getElementById('cashCloseMonthlyDetail').innerHTML=''">닫기</button><div class="miniList cashCloseCompact dateTable" style="margin-top:8px">${cashCloseTable(rows,[{label:'날짜',render:r=>esc(cashCloseDateDisplay(r.date))},{label:'금액',render:r=>Number(r.amount).toLocaleString()}])}</div></div>`}
 function renderCombo(){const box=$('comboUnits');if(!box)return;box.innerHTML=cashCloseState.comboUnits.map((u,i)=>`<div class="comboLine"><input value="${escAttr(u.label)}" onchange="cashCloseState.comboUnits[${i}].label=this.value;renderCombo()"><input type="number" value="${u.amount}" onchange="cashCloseState.comboUnits[${i}].amount=num(this.value);renderCombo()"><input type="number" min="0" value="${u.qty}" onchange="cashCloseState.comboUnits[${i}].qty=Math.max(0,Math.floor(num(this.value)));renderCombo()"><button type="button" class="btn light" onclick="cashCloseState.comboUnits[${i}].qty++;renderCombo()">+</button><button type="button" class="btn light" onclick="cashCloseState.comboUnits[${i}].qty=Math.max(0,cashCloseState.comboUnits[${i}].qty-1);renderCombo()">−</button></div>`).join('');const target=num($('comboTarget')?.value),sumv=cashCloseState.comboUnits.reduce((s,u)=>s+u.amount*u.qty,0),diff=target-sumv;$('comboSummary').innerHTML=`<p><b>현재합계 ${sumv.toLocaleString()}원</b> · ${diff>=0?'남은금액':'초과금액'} ${Math.abs(diff).toLocaleString()}원</p>`;const dates=cashCloseState.purchaseDates||[],items=[];let idx=0;for(const u of cashCloseState.comboUnits)for(let q=0;q<u.qty;q++){if(dates.length)items.push({date:dates[idx++%dates.length],amount:u.amount,label:u.label})}$('comboDateSuggestions').innerHTML=items.length?items.map(x=>`<span class="dateChip">${esc(x.date)} · ${Number(x.amount).toLocaleString()}원</span>`).join(''):'<span class="small">조합 수량을 정하면 실제 사입비 지출일 안에서 날짜를 분산 추천합니다.</span>'}
 function autoCombo(){const target=Math.abs(num($('comboTarget').value)),units=cashCloseState.comboUnits.filter(u=>u.amount>0);if(!target||!units.length)return;let best={diff:Infinity,qtys:[]};const max0=Math.min(300,Math.ceil(target/units[0].amount)+10);function dfs(i,left,qtys,total){if(i===units.length-1){const q=Math.max(0,Math.round(left/units[i].amount));const sum=total+q*units[i].amount,d=Math.abs(target-sum);if(d<best.diff){best={diff:d,qtys:[...qtys,q]}}return}const max=Math.min(200,Math.ceil(Math.max(0,left)/units[i].amount)+5);for(let q=0;q<=max;q++)dfs(i+1,left-q*units[i].amount,[...qtys,q],total+q*units[i].amount)}dfs(0,target,[],0);let j=0;for(const u of cashCloseState.comboUnits){if(u.amount>0)u.qty=best.qtys[j++]||0;}renderCombo()}
 
@@ -9854,7 +9913,7 @@ $('downloadGeneralMemoBtn').onclick=downloadGeneralMemoChecklist;
 $('hometaxResultFile').addEventListener('change',()=>{const f=$('hometaxResultFile').files[0];if(f)importHometaxResult(f)});
 $('purchaseExpenseFile').addEventListener('change',()=>{const f=$('purchaseExpenseFile').files[0];if(f)loadPurchaseExpense(f)});
 $('cashCollectionFile').addEventListener('change',()=>{const f=$('cashCollectionFile').files[0];if(f)loadCashCollection(f)});
-$('bankDepositTotal').addEventListener('input',recalcCashClose);$('recalcCashCloseBtn').onclick=recalcCashClose;
+$('bankDepositTotal').addEventListener('input',recalcCashClose);$('recalcCashCloseBtn').onclick=()=>{recalcCashClose();saveCashCloseMonth({bankDepositTotal:num($('bankDepositTotal')?.value),bankAdjustments:cashCloseState.bankAdjustments}).catch(e=>alert(e.message||e))};if($('addCashAdjustBtn'))$('addCashAdjustBtn').onclick=()=>addCashAdjustment().catch(e=>alert(e.message||e));if($('cashCloseMonth'))$('cashCloseMonth').addEventListener('change',()=>{const m=$('cashCloseMonth').value;loadCashCloseMonthState(m,{restoreRows:true}).catch(e=>console.warn(e));if($('cashAdjustDate'))$('cashAdjustDate').value=m?m+'-01':''});
 $('usePurchaseTotalBtn').onclick=()=>{$('comboTarget').value=Math.round(cashCloseState.purchaseTotal||0);renderCombo()};
 $('addComboUnitBtn').onclick=()=>{cashCloseState.comboUnits.push({label:'단위 '+String.fromCharCode(65+cashCloseState.comboUnits.length),amount:0,qty:0});renderCombo()};
 $('autoComboBtn').onclick=autoCombo;$('comboTarget').addEventListener('input',renderCombo);
@@ -9869,7 +9928,7 @@ $('taxCheckMonth').addEventListener('change',()=>{
   try{localStorage.setItem(TAX_LAST_MONTH_KEY,month)}catch(e){}
   loadTaxMonth(month).catch(e=>alert('월별 자료를 불러오지 못했습니다.\n'+(e.message||e)));
 });$('scanTaxCustomersBtn').onclick=()=>scanTaxCustomers().catch(e=>alert(e.message||e));$('addManualBizRegBtn').onclick=()=>addManualBizRegTarget().catch(e=>alert(e.message||e));$('addManualClosedBizRegBtn').onclick=()=>addManualClosedBizRegTarget().catch(e=>alert(e.message||e));$('downloadTaxCheckBtn').onclick=downloadTaxCheckExcel;$('taxCheckImportFile').addEventListener('change',()=>{const f=$('taxCheckImportFile').files[0];if(f)importTaxCheckExcel(f).catch(e=>alert(e.message||e));$('taxCheckImportFile').value=''});$('addBizRegExcludeBtn').onclick=()=>addBizRegExclusion().catch(e=>alert(e.message||e));$('taxCustomerSearch').addEventListener('input',renderTaxCheck);$('taxCustomerTypeFilter').addEventListener('change',renderTaxCheck);$('taxCustomerProcessFilter').addEventListener('change',renderTaxCheck);$('bizRegExcludeSearch').addEventListener('input',renderBizRegExclusionList);$('addTaxNoteBtn').onclick=addTaxNote;$('loadTaxPurchasesFromMonthBtn').onclick=()=>importTaxPurchasesFromMonth().catch(e=>alert(e.message||e));$('addTaxPurchaseBtn').onclick=()=>addTaxPurchaseRow().catch(e=>alert(e.message||e));$('taxPurchaseSearch').value=taxPurchaseSearch;$('taxPurchaseSearch').addEventListener('input',e=>{taxPurchaseSearch=e.target.value||'';localStorage.setItem('autoecount-ay-tax-purchase-search-v1',taxPurchaseSearch);renderTaxPurchaseList()});document.querySelectorAll('[data-tax-purchase-filter]').forEach(btn=>btn.addEventListener('click',()=>{taxPurchaseFilter=btn.dataset.taxPurchaseFilter||'all';localStorage.setItem('autoecount-ay-tax-purchase-filter-v1',taxPurchaseFilter);renderTaxPurchaseList()}));$('downloadTaxPurchaseListBtn').onclick=downloadFilteredTaxPurchaseExcel;$('taxSalesInvoiceAmount').onchange=()=>saveTaxSalesField('salesTax',$('taxSalesInvoiceAmount').value);$('taxSalesCashAmount').onchange=()=>saveTaxSalesField('salesCash',$('taxSalesCashAmount').value);$('taxPrevSalesInvoiceAmount').onchange=()=>savePreviousTaxSalesField('salesTax',$('taxPrevSalesInvoiceAmount').value).catch(e=>alert(e.message||e));$('taxPrevSalesCashAmount').onchange=()=>savePreviousTaxSalesField('salesCash',$('taxPrevSalesCashAmount').value).catch(e=>alert(e.message||e));$('taxPrevPurchaseFinalAmount').onchange=()=>savePreviousPurchaseFinal($('taxPrevPurchaseFinalAmount').value).catch(e=>alert(e.message||e));
-(function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);if($('monthlyCompareMonth')){const prev=new Date(d.getFullYear(),d.getMonth()-1,1);let cm=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;try{const saved=localStorage.getItem(MONTHLY_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))cm=saved}catch(e){}$('monthlyCompareMonth').value=cm;}if($('arRunDate')){const md=new Date(d);const dow=md.getDay();const back=dow===0?6:dow-1;md.setDate(md.getDate()-back);$('arRunDate').value=`${md.getFullYear()}-${String(md.getMonth()+1).padStart(2,'0')}-${String(md.getDate()).padStart(2,'0')}`;}let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}if($('shinsangCompareMonth')){let sm=month;try{const saved=localStorage.getItem(SHINSANG_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))sm=saved}catch(e){}$('shinsangCompareMonth').value=sm;}$('generalCutoffDate').value=today;if($('openingBasisDate'))$('openingBasisDate').value=today;if($('manualGeneralSaleDate'))$('manualGeneralSaleDate').value=today;if($('manualGeneralIssueDate'))$('manualGeneralIssueDate').value=today;if($('receiptProfilePhone'))$('receiptProfilePhone').disabled=true;$('cashCloseMonth').value=month;$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
+(function initNewModuleDates(){const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,month=today.slice(0,7);if($('monthlyCompareMonth')){const prev=new Date(d.getFullYear(),d.getMonth()-1,1);let cm=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;try{const saved=localStorage.getItem(MONTHLY_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))cm=saved}catch(e){}$('monthlyCompareMonth').value=cm;}if($('arRunDate')){const md=new Date(d);const dow=md.getDay();const back=dow===0?6:dow-1;md.setDate(md.getDate()-back);$('arRunDate').value=`${md.getFullYear()}-${String(md.getMonth()+1).padStart(2,'0')}-${String(md.getDate()).padStart(2,'0')}`;}let taxMonth=month;try{const saved=localStorage.getItem(TAX_LAST_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))taxMonth=saved}catch(e){}if($('shinsangCompareMonth')){let sm=month;try{const saved=localStorage.getItem(SHINSANG_COMPARE_MONTH_KEY);if(/^\d{4}-\d{2}$/.test(saved||''))sm=saved}catch(e){}$('shinsangCompareMonth').value=sm;}$('generalCutoffDate').value=today;if($('openingBasisDate'))$('openingBasisDate').value=today;if($('manualGeneralSaleDate'))$('manualGeneralSaleDate').value=today;if($('manualGeneralIssueDate'))$('manualGeneralIssueDate').value=today;if($('receiptProfilePhone'))$('receiptProfilePhone').disabled=true;$('cashCloseMonth').value=month;if($('cashAdjustDate'))$('cashAdjustDate').value=month+'-01';$('taxCheckMonth').value=taxMonth;$('generalStartDate').value='2026-09-07';renderCombo();})();
 setupDropZone('jangki','jangkiFiles','jangkiDrop'); setupDropZone('customer','customerFile','customerDrop'); setupDropZone('item','itemFile','itemDrop');
 setupGenericFileInputs();
 
@@ -10855,7 +10914,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.05 월마감: 사입비 매트릭스/현금리스트 차변 자동인식 ===== */
+/* ===== v4.07 월마감: 현금/계좌 사입비 분리 · 기타현금지출 · 월누적 · 통장상계입력 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
 // 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
