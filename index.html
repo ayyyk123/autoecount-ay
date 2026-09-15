@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.03</title>
+<title>아도라블 매출 자동화 v4.05</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -673,7 +673,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.03 · SAMPLE 수동분류 + 주간 기준미수 이력보정</div>
+      <div class="badge">v4.05 · 월마감 엑셀 자동인식 보강</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1961,7 +1961,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.03',
+    appVersion:'v4.05',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2196,7 +2196,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.03'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.05'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -4437,14 +4437,64 @@ function excelValueToYmd(v){if(v==null||v==='')return'';if(typeof v==='number'&&
 function pad2(n){return String(n).padStart(2,'0')}
 function findHeaderAlias(headers,aliases){const hs=headers.map(norm);for(const a of aliases){const exact=hs.findIndex(h=>h===a);if(exact>=0)return headers[exact]}for(const a of aliases){const idx=hs.findIndex(h=>h.includes(a));if(idx>=0)return headers[idx]}return ''}
 async function genericExcelObjects(file){const wb=await readWb(file);let best=null;const known=['일자','날짜','거래처','거래처명','판매처','금액','잔액','매출액','현금액','수금액','사입비','거래처코드','코드','승인번호','매출일시','거래일시','발행구분','거래구분','총금액','비고'];for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh);for(let i=0;i<Math.min(30,a.length);i++){const hs=(a[i]||[]).map(norm),score=hs.filter(h=>known.some(k=>h.includes(k))).length;if(!best||score>best.score)best={a,hi:i,score};}}if(!best||best.score<1)throw new Error(`${file.name}: 헤더 행을 자동인식하지 못했습니다.`);const headers=best.a[best.hi].map((x,i)=>norm(x)||`열${i+1}`),rows=best.a.slice(best.hi+1).filter(r=>r.some(v=>v!==null&&v!=='')).map(r=>{const o={};headers.forEach((h,i)=>o[h]=r[i]);return o});return {headers,rows}}
-function extractRows(parsed,kind,loc=''){const h=parsed.headers,dateKey=findHeaderAlias(h,['일자','날짜','거래일자','거래일']),nameKey=findHeaderAlias(h,['거래처명','거래처','판매처','상호','장끼거래처명']),codeKey=findHeaderAlias(h,['거래처코드','거래처 코드','코드']);let amountAliases=kind==='purchase'?['사입비','지출액','현금지출','지급액','금액','합계']:kind==='collection'?['현금수금액','수금액','현금액','금액','합계']:kind==='balance'?['잔액','현재잔액','미수잔액','잔액금액','금액']:['월매출액','매출액','판매액','공급가액','합계','금액'];const amountKey=findHeaderAlias(h,amountAliases);if(!nameKey&&!codeKey)throw new Error('거래처명 또는 거래처코드 열을 찾지 못했습니다.');if(!amountKey)throw new Error('금액 열을 찾지 못했습니다.');if(kind==='purchase'&&!dateKey)throw new Error('사입비 파일에서 날짜 열을 찾지 못했습니다.');return parsed.rows.map(o=>({date:dateKey?(ymd(o[dateKey])||norm(o[dateKey])):'',name:nameKey?norm(o[nameKey]):'',code:codeKey?norm(o[codeKey]):'',amount:num(o[amountKey]),loc})).filter(r=>(r.name||r.code)&&Number.isFinite(r.amount))}
+function extractRows(parsed,kind,loc=''){const h=parsed.headers,dateKey=findHeaderAlias(h,['일자','날짜','거래일자','거래일']),nameKey=findHeaderAlias(h,['거래처명','거래처','판매처','상호','장끼거래처명']),codeKey=findHeaderAlias(h,['거래처코드','거래처 코드','코드']);let amountAliases=kind==='purchase'?['사입비','지출액','현금지출','지급액','금액','합계']:kind==='collection'?['현금수금액','수금액','현금액','차변금액','차변 금액','차변','금액','합계']:kind==='balance'?['잔액','현재잔액','미수잔액','잔액금액','금액']:['월매출액','매출액','판매액','공급가액','합계','금액'];const amountKey=findHeaderAlias(h,amountAliases);if(!nameKey&&!codeKey)throw new Error(`거래처명 또는 거래처코드 열을 찾지 못했습니다. 인식한 열: ${h.join(', ')}`);if(!amountKey)throw new Error(`금액 열을 찾지 못했습니다. 인식한 열: ${h.join(', ')}`);if(kind==='purchase'&&!dateKey)throw new Error(`사입비 파일에서 날짜 열을 찾지 못했습니다. 인식한 열: ${h.join(', ')}`);return parsed.rows.map(o=>({date:dateKey?(ymd(o[dateKey])||norm(o[dateKey])):'',name:nameKey?norm(o[nameKey]):'',code:codeKey?norm(o[codeKey]):'',amount:num(o[amountKey]),loc})).filter(r=>(r.name||r.code)&&Number.isFinite(r.amount))}
+
+function purchaseYearMonth(sheetName,fileName=''){
+  const s=`${sheetName||''} ${fileName||''}`;
+  let m=s.match(/(20\d{2})\s*년\s*(1[0-2]|0?[1-9])\s*월/);
+  if(!m)m=s.match(/(20\d{2})[-_. ]?(1[0-2]|0[1-9])(?:[-_. ]|월|$)/);
+  if(m)return {y:Number(m[1]),m:Number(m[2])};
+  m=s.match(/(?:^|\D)(1[0-2]|0?[1-9])\s*월/);
+  return m?{y:new Date().getFullYear(),m:Number(m[1])}:null;
+}
+function purchaseDayToYmd(v,ym){
+  const full=excelValueToYmd(v);if(full&&String(full).length===8)return full;
+  const s=norm(v);let d=Number(s);
+  if(!Number.isInteger(d)){const m=s.match(/(?:^|\D)(1[0-2]|0?[1-9])[\/.\-](3[01]|[12]\d|0?[1-9])(?:\D|$)/);if(m&&ym)return `${ym.y}${pad2(Number(m[1]))}${pad2(Number(m[2]))}`;return ''}
+  if(d<1||d>31)return'';return ym?`${ym.y}${pad2(ym.m)}${pad2(d)}`:String(d);
+}
+async function parsePurchaseExpenseFile(file){
+  const wb=await readWb(file);let best=null;
+  for(const sh of wb.SheetNames){
+    const a=aoaFromSheet(wb,sh);if(!a?.length)continue;
+    for(let i=0;i<Math.min(25,a.length);i++){
+      const first=norm((a[i]||[])[0]);if(!['날짜','일자'].includes(first))continue;
+      let hi=i-1;for(let j=i-1;j>=Math.max(0,i-5);j--){if(/^(거래처|거래처명)$/.test(norm((a[j]||[])[0]))){hi=j;break}}
+      if(hi<0)continue;const headers=a[hi]||[];const vendorCount=headers.slice(1).filter(x=>norm(x)).length;
+      const dayCount=a.slice(i+1,i+40).filter(r=>{const n=Number(norm(r?.[0]));return Number.isInteger(n)&&n>=1&&n<=31}).length;
+      const score=vendorCount+dayCount*5;if(!best||score>best.score)best={sh,a,dateRow:i,headerRow:hi,score};
+    }
+  }
+  if(!best){const p=await genericExcelObjects(file);return {rows:extractRows(p,'purchase'),mode:'행형'};}
+  const headers=best.a[best.headerRow]||[],ym=purchaseYearMonth(best.sh,file.name),rows=[];
+  for(let ri=best.dateRow+1;ri<best.a.length;ri++){
+    const r=best.a[ri]||[],date=purchaseDayToYmd(r[0],ym);if(!date)continue;
+    const max=Math.max(headers.length,r.length);
+    for(let c=1;c<max;c++){
+      const name=norm(headers[c]);if(!name)continue;const raw=r[c];if(raw==null||raw==='')continue;const amount=num(raw);if(!Number.isFinite(amount)||amount===0)continue;
+      rows.push({date,name,code:'',amount,loc:''});
+    }
+  }
+  if(!rows.length)throw new Error('사입비 파일의 날짜/거래처 구조는 찾았지만 금액 데이터를 읽지 못했습니다.');
+  return {rows,mode:'날짜×거래처 표형'};
+}
+async function parseCashCollectionFile(file){
+  const p=await genericExcelObjects(file),h=p.headers;
+  const nameKey=findHeaderAlias(h,['거래처명','거래처','판매처','상호','장끼거래처명']),codeKey=findHeaderAlias(h,['거래처코드','거래처 코드','코드']),amountKey=findHeaderAlias(h,['현금수금액','수금액','현금액','차변금액','차변 금액','차변','금액','합계']);
+  if(!nameKey&&!codeKey)throw new Error(`거래처명 또는 거래처코드 열을 찾지 못했습니다. 인식한 열: ${h.join(', ')}`);
+  if(!amountKey)throw new Error(`금액 열을 찾지 못했습니다. 인식한 열: ${h.join(', ')}`);
+  let totalOverride=null;const rows=[];
+  for(const o of p.rows){const name=nameKey?norm(o[nameKey]):'',code=codeKey?norm(o[codeKey]):'',amount=num(o[amountKey]);if(!Number.isFinite(amount))continue;const label=name||code;if(/^(합계|총계|전체합계)$/.test(label)){totalOverride=amount;continue}if(label)rows.push({date:'',name,code,amount,loc:''});}
+  if(totalOverride==null&&!rows.length)throw new Error('현금리스트에서 금액 데이터를 읽지 못했습니다.');
+  return {rows,totalOverride};
+}
 function sumRows(rows,keyFn){const m=new Map();for(const r of rows){const k=keyFn(r);if(!k)continue;m.set(k,(m.get(k)||0)+Number(r.amount||0));}return m}
 function tableFromMap(m,head1,head2){return `<table><thead><tr><th>${head1}</th><th>${head2}</th></tr></thead><tbody>${[...m.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${Number(v).toLocaleString()}</td></tr>`).join('')}</tbody></table>`}
 
 // ===== 월 현금수금/사입비 =====
-async function loadPurchaseExpense(file){try{const p=await genericExcelObjects(file),rows=extractRows(p,'purchase');cashCloseState.purchase={name:file.name};cashCloseState.purchaseRows=rows;$('purchaseFileStatus').textContent=`${file.name} · ${rows.length}행`;recalcCashClose()}catch(e){$('purchaseFileStatus').textContent='오류: '+(e.message||e)}}
-async function loadCashCollection(file){try{const p=await genericExcelObjects(file),rows=extractRows(p,'collection');cashCloseState.collection={name:file.name};cashCloseState.collectionRows=rows;$('cashCollectionFileStatus').textContent=`${file.name} · ${rows.length}행`;recalcCashClose()}catch(e){$('cashCollectionFileStatus').textContent='오류: '+(e.message||e)}}
-function recalcCashClose(){const purchaseTotal=cashCloseState.purchaseRows.reduce((s,r)=>s+r.amount,0),collectionTotal=cashCloseState.collectionRows.reduce((s,r)=>s+r.amount,0),bank=num($('bankDepositTotal')?.value);cashCloseState.purchaseTotal=purchaseTotal;cashCloseState.collectionTotal=collectionTotal;cashCloseState.purchaseDates=[...new Set(cashCloseState.purchaseRows.filter(r=>r.amount!==0).map(r=>r.date).filter(Boolean))].sort();const calc=bank+purchaseTotal,diff=collectionTotal-calc,summary=$('cashCloseSummary');if(summary){summary.innerHTML=`<div class="cashCloseEquation ${diff===0&&collectionTotal!==0?'ok':diff!==0?'bad':''}">통장입금 ${bank.toLocaleString()} + 사입비 ${purchaseTotal.toLocaleString()} = ${(bank+purchaseTotal).toLocaleString()}원 / 월 현금수금 ${collectionTotal.toLocaleString()}원<br>${diff===0&&collectionTotal!==0?'✓ 정산 일치':`차액 ${diff.toLocaleString()}원`}</div>`;}$('purchaseByCustomer').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.name||r.code),'거래처','사입비 합계');$('purchaseByDate').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.date),'날짜','사입비 합계');renderCombo()}
+async function loadPurchaseExpense(file){try{const parsed=await parsePurchaseExpenseFile(file),rows=parsed.rows;cashCloseState.purchase={name:file.name};cashCloseState.purchaseRows=rows;$('purchaseFileStatus').textContent=`${file.name} · ${parsed.mode} · ${rows.length}건 · 합계 ${rows.reduce((s,r)=>s+r.amount,0).toLocaleString()}원`;recalcCashClose()}catch(e){$('purchaseFileStatus').textContent='오류: '+(e.message||e)}}
+async function loadCashCollection(file){try{const parsed=await parseCashCollectionFile(file),rows=parsed.rows;cashCloseState.collection={name:file.name};cashCloseState.collectionRows=rows;cashCloseState.collectionTotalOverride=parsed.totalOverride;$('cashCollectionFileStatus').textContent=`${file.name}${parsed.totalOverride!=null?` · 합계 ${Number(parsed.totalOverride).toLocaleString()}원`:` · ${rows.length}행`}`;recalcCashClose()}catch(e){cashCloseState.collectionTotalOverride=null;$('cashCollectionFileStatus').textContent='오류: '+(e.message||e)}}
+function recalcCashClose(){const purchaseTotal=cashCloseState.purchaseRows.reduce((s,r)=>s+r.amount,0),collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)?cashCloseState.collectionTotalOverride:cashCloseState.collectionRows.reduce((s,r)=>s+r.amount,0),bank=num($('bankDepositTotal')?.value);cashCloseState.purchaseTotal=purchaseTotal;cashCloseState.collectionTotal=collectionTotal;cashCloseState.purchaseDates=[...new Set(cashCloseState.purchaseRows.filter(r=>r.amount!==0).map(r=>r.date).filter(Boolean))].sort();const calc=bank+purchaseTotal,diff=collectionTotal-calc,summary=$('cashCloseSummary');if(summary){summary.innerHTML=`<div class="cashCloseEquation ${diff===0&&collectionTotal!==0?'ok':diff!==0?'bad':''}">통장입금 ${bank.toLocaleString()} + 사입비 ${purchaseTotal.toLocaleString()} = ${(bank+purchaseTotal).toLocaleString()}원 / 월 현금수금 ${collectionTotal.toLocaleString()}원<br>${diff===0&&collectionTotal!==0?'✓ 정산 일치':`차액 ${diff.toLocaleString()}원`}</div>`;}$('purchaseByCustomer').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.name||r.code),'거래처','사입비 합계');$('purchaseByDate').innerHTML=tableFromMap(sumRows(cashCloseState.purchaseRows,r=>r.date),'날짜','사입비 합계');renderCombo()}
 function renderCombo(){const box=$('comboUnits');if(!box)return;box.innerHTML=cashCloseState.comboUnits.map((u,i)=>`<div class="comboLine"><input value="${escAttr(u.label)}" onchange="cashCloseState.comboUnits[${i}].label=this.value;renderCombo()"><input type="number" value="${u.amount}" onchange="cashCloseState.comboUnits[${i}].amount=num(this.value);renderCombo()"><input type="number" min="0" value="${u.qty}" onchange="cashCloseState.comboUnits[${i}].qty=Math.max(0,Math.floor(num(this.value)));renderCombo()"><button type="button" class="btn light" onclick="cashCloseState.comboUnits[${i}].qty++;renderCombo()">+</button><button type="button" class="btn light" onclick="cashCloseState.comboUnits[${i}].qty=Math.max(0,cashCloseState.comboUnits[${i}].qty-1);renderCombo()">−</button></div>`).join('');const target=num($('comboTarget')?.value),sumv=cashCloseState.comboUnits.reduce((s,u)=>s+u.amount*u.qty,0),diff=target-sumv;$('comboSummary').innerHTML=`<p><b>현재합계 ${sumv.toLocaleString()}원</b> · ${diff>=0?'남은금액':'초과금액'} ${Math.abs(diff).toLocaleString()}원</p>`;const dates=cashCloseState.purchaseDates||[],items=[];let idx=0;for(const u of cashCloseState.comboUnits)for(let q=0;q<u.qty;q++){if(dates.length)items.push({date:dates[idx++%dates.length],amount:u.amount,label:u.label})}$('comboDateSuggestions').innerHTML=items.length?items.map(x=>`<span class="dateChip">${esc(x.date)} · ${Number(x.amount).toLocaleString()}원</span>`).join(''):'<span class="small">조합 수량을 정하면 실제 사입비 지출일 안에서 날짜를 분산 추천합니다.</span>'}
 function autoCombo(){const target=Math.abs(num($('comboTarget').value)),units=cashCloseState.comboUnits.filter(u=>u.amount>0);if(!target||!units.length)return;let best={diff:Infinity,qtys:[]};const max0=Math.min(300,Math.ceil(target/units[0].amount)+10);function dfs(i,left,qtys,total){if(i===units.length-1){const q=Math.max(0,Math.round(left/units[i].amount));const sum=total+q*units[i].amount,d=Math.abs(target-sum);if(d<best.diff){best={diff:d,qtys:[...qtys,q]}}return}const max=Math.min(200,Math.ceil(Math.max(0,left)/units[i].amount)+5);for(let q=0;q<=max;q++)dfs(i+1,left-q*units[i].amount,[...qtys,q],total+q*units[i].amount)}dfs(0,target,[],0);let j=0;for(const u of cashCloseState.comboUnits){if(u.amount>0)u.qty=best.qtys[j++]||0;}renderCombo()}
 
@@ -10802,6 +10852,76 @@ arCellHtml=function(r,key,boxKey){
     return `<span class="arSampleManualWrap">${base}<button class="arTinyAction arSampleClassBtn" type="button" title="이 거래처를 해당 담당구분의 SAMPLE 잔액만 박스로 이동합니다." onclick="event.stopPropagation();arSetManualSampleOnly('${escAttr(r.code)}',true)">SAMPLE박스로</button>${manual?'<span class="arManualBadge">수동분류</span>':''}</span>`;
   }
   return base;
+};
+
+
+/* ===== v4.05 월마감: 사입비 매트릭스/현금리스트 차변 자동인식 ===== */
+/* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
+// 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
+// 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
+function arCompactExportKeys(boxKey){
+  const keys=['shipStatus','memo'];
+  if(boxKey==='scheduled')keys.push('paymentDay');
+  keys.push('name','carryover','periodSales','periodReceipts','baseBalance','lastPayment','outstanding');
+  if(boxKey==='warehouseSample'||boxKey==='nampyeonghwaSample')keys.push('sample');
+  if(boxKey==='review')keys.push('review');
+  return keys;
+}
+function arCompactExportTitle(def){
+  if(def?.key==='warehouse')return '*창고거래처*';
+  if(def?.key==='nampyeonghwa')return '*매장 거래처*';
+  if(def?.key==='scheduled')return '입금요일 지정거래처';
+  return def?.title||'미수정리';
+}
+function arCompactColWidth(key){
+  return ({shipStatus:9,memo:28,paymentDay:9,name:25,carryover:11,periodSales:11,periodReceipts:11,baseBalance:12,lastPayment:13,outstanding:13,sample:22,review:22})[key]||14;
+}
+function arCompactCellValue(r,key){
+  const o=arExportRowObject(r);
+  return o[key]??'';
+}
+function arCompactSheetFromRows(rows,def){
+  const keys=arCompactExportKeys(def?.key||''),headers=keys.map(k=>arColumnDef(k)?.label||k),title=arCompactExportTitle(def);
+  const data=rows.map(r=>keys.map(k=>arCompactCellValue(r,k)));
+  const aoa=[[title,...Array(Math.max(0,headers.length-1)).fill('')],headers,...data];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=keys.map(k=>({wch:arCompactColWidth(k)}));
+  ws['!rows']=[{hpt:27},{hpt:23}];
+  const endCol=XLSX.utils.encode_col(Math.max(0,headers.length-1));
+  ws['!autofilter']={ref:`A2:${endCol}${Math.max(2,aoa.length)}`};
+  ws['!freeze']={xSplit:0,ySplit:2,topLeftCell:'A3',activePane:'bottomLeft',state:'frozen'};
+  // 제목
+  if(ws['A1'])ws['A1'].s={font:{bold:true,sz:13},alignment:{vertical:'center'}};
+  // 헤더
+  for(let c=0;c<headers.length;c++){
+    const addr=XLSX.utils.encode_cell({r:1,c});if(!ws[addr])continue;
+    ws[addr].s={font:{bold:true},fill:{patternType:'solid',fgColor:{rgb:'FFEFEFEF'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFD9D9D9'}},bottom:{style:'thin',color:{rgb:'FFD9D9D9'}},left:{style:'thin',color:{rgb:'FFD9D9D9'}},right:{style:'thin',color:{rgb:'FFD9D9D9'}}}};
+  }
+  const moneyKeys=new Set(['carryover','periodSales','periodReceipts','baseBalance']);
+  rows.forEach((r,i)=>{
+    const rr=i+2,blocked=(r.action?.shipStatus==='X'),resolved=arIsResolved(r);
+    for(let c=0;c<keys.length;c++){
+      const addr=XLSX.utils.encode_cell({r:rr,c}),cell=ws[addr];if(!cell)continue;
+      const key=keys[c],style={...(cell.s||{}),alignment:{vertical:'center',horizontal:moneyKeys.has(key)?'right':(key==='shipStatus'||key==='paymentDay'?'center':'left')}};
+      if(moneyKeys.has(key))cell.z='#,##0;[Red]-#,##0';
+      if(blocked)style.font={...(style.font||{}),color:{rgb:'FFFF0000'}};
+      if(resolved&&!blocked)style.fill={patternType:'solid',fgColor:{rgb:'FFEAF6FF'}};
+      cell.s=style;
+    }
+  });
+  return ws;
+}
+window.arExportBoxExcel=function(boxKey){try{
+  const def=AR_BOX_DEFS.find(x=>x.key===boxKey);if(!def)throw new Error('저장할 박스를 찾지 못했습니다.');
+  const rows=arFilteredBoxRows(boxKey),wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value)||'미수정리';
+  XLSX.utils.book_append_sheet(wb,arCompactSheetFromRows(rows,def),def.title.slice(0,31));
+  XLSX.writeFile(wb,`미수정리_${def.title.replace(/[\\/:*?\[\]]/g,'_')}_${date}.xlsx`,{cellStyles:true});
+}catch(e){alert(e.message||e)}};
+exportArAllExcel=function(){
+  if(!(arState.weekRows||[]).length){alert('저장할 미수 자동정리 결과가 없습니다.');return}
+  const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value)||'미수정리';
+  for(const def of AR_BOX_DEFS){const rows=arFilteredBoxRows(def.key);XLSX.utils.book_append_sheet(wb,arCompactSheetFromRows(rows,def),def.title.slice(0,31));}
+  XLSX.writeFile(wb,`미수정리_전체_${date}.xlsx`,{cellStyles:true});
 };
 
 setupArUI();
