@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.02</title>
+<title>아도라블 매출 자동화 v4.03</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -614,6 +614,10 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arOutstandingWrap{display:inline-flex;align-items:center;gap:3px;max-width:100%}.arOutstandingWrap .arEditableValue{min-width:0;flex:1 1 auto}
   .arOutstandingHistoryBtn{flex:0 0 auto;width:18px;height:18px;padding:0;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#64748b;font-size:9px;line-height:16px;cursor:pointer}.arOutstandingHistoryBtn:hover,.arOutstandingHistoryBtn.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
   .arOutstandingHistoryPopup{position:fixed;z-index:100002;min-width:190px;max-width:320px;max-height:280px;overflow:auto;padding:7px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.2);font-size:10px}.arOutstandingHistoryTitle{font-weight:900;color:#334155;padding:2px 4px 6px}.arOutstandingHistoryItem{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;background:#fff;padding:6px 7px;border-radius:6px;text-align:left;cursor:pointer;color:#334155}.arOutstandingHistoryItem:hover{background:#eef2ff}.arOutstandingHistoryItem b{font-size:11px}.arOutstandingHistoryItem small{color:#94a3b8;white-space:nowrap}.arOutstandingHistoryAuto{border-top:1px solid #eef2f7;margin-top:4px;padding-top:5px}
+
+.arSampleManualWrap{display:inline-flex;align-items:center;gap:5px;max-width:100%;white-space:nowrap}
+.arSampleClassBtn{padding:2px 6px;font-size:11px;line-height:1.25;flex:0 0 auto}
+
 </style>
 
 <style>
@@ -669,7 +673,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.02 · 주간 기준미수 이력보정 + FIFO</div>
+      <div class="badge">v4.03 · SAMPLE 수동분류 + 주간 기준미수 이력보정</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1961,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.02',
+    appVersion:'v4.03',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2196,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.02'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.03'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -10742,6 +10746,62 @@ arRowsForBox=function(boxKey){
     const ar=arIsResolved(a)?1:0,br=arIsResolved(b)?1:0;
     return ar-br;
   });
+};
+
+
+/* ===== v4.03 미수관리: SAMPLE 잔액만 박스 수동분류 ===== */
+// 자동판정과 별개로, 사용자가 해당 주차에서 직접 "SAMPLE 잔액만"으로 분류할 수 있다.
+// 수동분류값은 arWeekActions에 저장되어 새로고침/재접속 후에도 유지되며,
+// "자동분류로"를 누르면 수동값만 해제하고 기존 자동분류 로직으로 돌아간다.
+function arManualSampleOnly(r){return (r?.action||{}).manualSampleOnly===true}
+window.arSetManualSampleOnly=async function(code,on){
+  try{
+    code=norm(code);if(!code)return;
+    const view=typeof arCaptureViewPosition==='function'?arCaptureViewPosition():null;
+    await saveArAction(code,{manualSampleOnly:on?true:null,manualSampleOnlyAtMs:on?Date.now():null});
+    if(view&&typeof arRestoreViewPosition==='function')arRestoreViewPosition(view);
+  }catch(e){alert(e.message||e)}
+};
+
+// 기존 자동 그룹분류를 먼저 수행한 뒤, 수동 SAMPLE 분류 거래처만
+// 창고/남평화의 SAMPLE 전용 박스로 옮긴다.
+// 별표 확인필요/못받음 제외/소액·마이너스 전용박스 등 우선 관리대상은 기존 분류를 유지한다.
+const _arGroupRows403=arGroupRows;
+arGroupRows=function(){
+  const groups=_arGroupRows403();
+  const movable=['warehouse','nampyeonghwa','scheduled'];
+  for(const key of movable){
+    const keep=[];
+    for(const r of (groups[key]||[])){
+      if(arManualSampleOnly(r)){
+        const dest=r.location==='nampyeonghwa'?'nampyeonghwaSample':'warehouseSample';
+        (groups[dest]||(groups[dest]=[])).push(r);
+      }else keep.push(r);
+    }
+    groups[key]=keep;
+  }
+  for(const key of ['warehouseSample','nampyeonghwaSample']){
+    if(Array.isArray(groups[key]))groups[key].sort((a,b)=>Math.abs(Number(arEffectiveBalance(b)))-Math.abs(Number(arEffectiveBalance(a)))||String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  }
+  return groups;
+};
+
+// SAMPLE 셀 안에서 바로 박스 이동/자동분류 복귀를 할 수 있게 한다.
+const _arCellHtml403=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  const base=_arCellHtml403(r,key,boxKey);
+  if(key!=='sample')return base;
+  const manual=arManualSampleOnly(r);
+  const normalBox=['warehouse','nampyeonghwa','scheduled'].includes(boxKey);
+  const sampleBox=['warehouseSample','nampyeonghwaSample'].includes(boxKey);
+  if(!manual&&!normalBox)return base;
+  if(manual&&sampleBox){
+    return `<span class="arSampleManualWrap">${base}<button class="arTinyAction arSampleClassBtn" type="button" title="수동 SAMPLE 분류를 해제하고 자동분류로 돌아갑니다." onclick="event.stopPropagation();arSetManualSampleOnly('${escAttr(r.code)}',false)">자동분류로</button><span class="arManualBadge">수동분류</span></span>`;
+  }
+  if(normalBox){
+    return `<span class="arSampleManualWrap">${base}<button class="arTinyAction arSampleClassBtn" type="button" title="이 거래처를 해당 담당구분의 SAMPLE 잔액만 박스로 이동합니다." onclick="event.stopPropagation();arSetManualSampleOnly('${escAttr(r.code)}',true)">SAMPLE박스로</button>${manual?'<span class="arManualBadge">수동분류</span>':''}</span>`;
+  }
+  return base;
 };
 
 setupArUI();
