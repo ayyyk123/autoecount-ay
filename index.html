@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v3.98</title>
+<title>아도라블 매출 자동화 v3.99</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v3.98 · 미수해소 입금+반품 자동판정 · 홈택스 수동매칭</div>
+      <div class="badge">v3.99 · 미수 거래처 메모 · 추가입금/반품 현재잔액 반영</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v3.98',
+    appVersion:'v3.99',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.98'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v3.99'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -10559,6 +10559,109 @@ arExportRowObject=function(r){
   else if(r.runDatePartial)o.resolution=`부분해소${cause?` · ${cause}`:''}${paid>0?` · 입금 ${arMoney(paid)}`:''}${returned>0?` · 반품 ${arMoney(returned)}`:''}`;
   else o.resolution='미해소';
   return o;
+};
+
+
+/* ===== v3.99 미수관리: 거래처별 메모 + 후속 입금/반품 금액 표시 ===== */
+// 자동정리 이후 동기화된 입금은 기존 잔액파일의 입금액에 더하고,
+// 입금/반품으로 줄어든 금액은 현재 표시용 미수잔액에 즉시 반영한다.
+function arDisplayReceipts(r){
+  const base=Number(r?.periodReceipts||0),extra=Math.max(0,Number(r?.runDatePaid||0));
+  return Math.round(base+extra);
+}
+function arDisplayCurrentBalance(r){
+  if(r?.carriedOnly)return Number(r?.baseBalance||0);
+  const base=Number(r?.baseBalance||0),paid=Math.max(0,Number(r?.runDatePaid||0)),returned=Math.max(0,Number(r?.runDateReturned||0));
+  return Math.round(base-paid-returned);
+}
+function arRowMemo(r){return String((r?.action||{}).rowMemo||'')}
+
+// 메모 열은 모든 박스에서 공통으로 사용하며 필터/정렬/숨김/프리셋/엑셀에도 포함한다.
+if(!AR_COLUMNS.some(x=>x.key==='memo')){
+  const memoDef={key:'memo',label:'메모',filter:'text'};
+  const idx=AR_COLUMNS.findIndex(x=>x.key==='resolution');
+  if(idx>=0)AR_COLUMNS.splice(idx+1,0,memoDef);else AR_COLUMNS.push(memoDef);
+}
+if(!AR_DEFAULT_COLUMN_ORDER.includes('memo')){
+  const idx=AR_DEFAULT_COLUMN_ORDER.indexOf('resolution');
+  if(idx>=0)AR_DEFAULT_COLUMN_ORDER.splice(idx+1,0,'memo');else AR_DEFAULT_COLUMN_ORDER.push('memo');
+}
+AR_DEFAULT_WIDTHS.memo=190;
+if(Array.isArray(arState.columnOrder)&&arState.columnOrder.length&&!arState.columnOrder.includes('memo')){
+  const idx=arState.columnOrder.indexOf('resolution');
+  if(idx>=0)arState.columnOrder.splice(idx+1,0,'memo');else arState.columnOrder.push('memo');
+  arSaveColumnOrder();
+}
+
+window.arBeginMemoEdit=function(ev,code){
+  ev?.preventDefault?.();ev?.stopPropagation?.();
+  const host=ev?.currentTarget;if(!host||host.dataset.editing==='1')return;
+  const r=arWeekRowByCode(code);if(!r)return;
+  host.dataset.editing='1';const before=host.innerHTML,view=arCaptureViewPosition();
+  const input=document.createElement('input');input.type='text';input.className='arInlineEditInput';input.value=arRowMemo(r);input.placeholder='거래처 메모 입력';input.autocomplete='off';
+  host.innerHTML='';host.appendChild(input);input.focus();input.select();
+  let finished=false,cancelled=false;
+  const cancel=()=>{if(finished)return;finished=true;cancelled=true;host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view)};
+  const commit=async()=>{if(finished)return;finished=true;try{await saveArAction(code,{rowMemo:input.value.trim(),rowMemoAtMs:Date.now()})}catch(e){host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view);alert(e.message||e)}};
+  input.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();input.blur()}else if(e.key==='Escape'){e.preventDefault();cancel()}});
+  input.addEventListener('mousedown',e=>e.stopPropagation());input.addEventListener('dblclick',e=>e.stopPropagation());
+  input.addEventListener('blur',()=>{if(!cancelled)commit()},{once:true});
+};
+
+const _arPlainValue399=arPlainValue;
+arPlainValue=function(r,key){
+  if(key==='periodReceipts')return String(arDisplayReceipts(r));
+  if(key==='baseBalance')return String(arDisplayCurrentBalance(r));
+  if(key==='memo')return arRowMemo(r);
+  return _arPlainValue399(r,key);
+};
+
+const _arCellHtml399=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  if(key==='periodReceipts'){
+    if(r.periodReceipts==null&&!(Number(r.runDatePaid||0)>0))return '-';
+    const total=arDisplayReceipts(r),extra=Math.max(0,Number(r.runDatePaid||0));
+    const title=extra>0?`잔액파일 입금액 ${arMoney(Number(r.periodReceipts||0))} + 정리 후 추가입금 ${arMoney(extra)}`:'잔액파일 입금액';
+    return `<span title="${escAttr(title)}"><b>${esc(arMoney(total))}</b></span>`;
+  }
+  if(key==='baseBalance'){
+    if(r.carriedOnly)return _arCellHtml399(r,key,boxKey);
+    const cur=arDisplayCurrentBalance(r),base=Math.round(Number(r.baseBalance||0)),paid=Math.max(0,Number(r.runDatePaid||0)),ret=Math.max(0,Number(r.runDateReturned||0));
+    const bits=[];if(paid>0)bits.push(`추가입금 ${arMoney(paid)}`);if(ret>0)bits.push(`반품 ${arMoney(ret)}`);
+    const title=bits.length?`기준 미수 ${arMoney(base)} - ${bits.join(' - ')}`:'기준 잔액파일 미수';
+    return `<span class="arInlineCell" title="${escAttr(title)}"><b>${esc(arMoney(cur))}</b>${bits.length?`<span class="small">· 기준 ${esc(arMoney(base))}</span>`:''}</span>`;
+  }
+  if(key==='memo'){
+    const memo=arRowMemo(r);
+    return `<span class="arEditableValue" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" title="${escAttr(memo?memo+' · 더블클릭해서 수정':'더블클릭해서 메모 입력')}" ondblclick="arBeginMemoEdit(event,'${escAttr(r.code)}')">${esc(memo||'-')}</span>`;
+  }
+  return _arCellHtml399(r,key,boxKey);
+};
+
+const _arExportRowObject399=arExportRowObject;
+arExportRowObject=function(r){
+  const o=_arExportRowObject399(r);
+  o.periodReceipts=arDisplayReceipts(r);
+  o.baseBalance=arDisplayCurrentBalance(r);
+  o.memo=arRowMemo(r);
+  return o;
+};
+
+// 상단 합계도 화면에 보이는 현재 미수잔액 기준으로 맞춘다.
+renderArSummary=function(){
+  const groups=arGroupRows(),rows=['warehouse','warehouseSample','scheduled','nampyeonghwa','nampyeonghwaSample','shinsang','low','review'].flatMap(k=>groups[k]);
+  const resolved=rows.filter(r=>arIsResolved(r)).length;
+  if($('arSumCount'))$('arSumCount').textContent=`${rows.length.toLocaleString()}곳`;
+  if($('arSumBalance'))$('arSumBalance').textContent=arMoney(rows.reduce((s,x)=>s+Math.max(0,arDisplayCurrentBalance(x)),0));
+  if($('arSumResolved'))$('arSumResolved').textContent=`${resolved.toLocaleString()}곳`;
+};
+
+// 박스 헤더 금액도 현재 미수잔액 합계로 표시한다.
+arBoxHtml=function(def,rows){
+  const total=rows.reduce((s,r)=>s+Math.max(0,arDisplayCurrentBalance(r)),0),open=arBoxIsOpen(def.key),filtered=arRowsForBox(def.key),q=arState.boxSearches?.[def.key]||'';
+  if(!arState.boxSearchDrafts)arState.boxSearchDrafts={};
+  const draft=Object.prototype.hasOwnProperty.call(arState.boxSearchDrafts,def.key)?arState.boxSearchDrafts[def.key]:q;
+  return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(draft)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearchDraft('${escAttr(def.key)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitBoxSearch('${escAttr(def.key)}',this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitBoxSearch('${escAttr(def.key)}',this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearBoxSearch('${escAttr(def.key)}')">초기화</button><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
 };
 
 setupArUI();
