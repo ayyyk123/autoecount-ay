@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.00</title>
+<title>아도라블 매출 자동화 v4.01</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -669,7 +669,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.00 · 미수해소 거래처 박스 하단 자동정렬</div>
+      <div class="badge">v4.01 · 미수시작일 FIFO 잔액추적 보정</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1957,7 +1957,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.00',
+    appVersion:'v4.01',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2192,7 +2192,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.00'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.01'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -9315,26 +9315,67 @@ function arSampleLabel(x){if(!x)return '';const base=x.full&&!x.uncertain?`SAMPL
 function arTransactionsFor(code,cutoff){const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff),payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff);return {sales,payments}}
 function arLastPayment(code,through){const p=arState.payments.filter(x=>x.code===code&&x.date<=through).sort((a,b)=>b.date.localeCompare(a.date));return p[0]?.date||''}
 function arEstimateOutstandingStart(code,target,cutoff){
+  target=Math.round(Number(target||0));
   if(target<=0)return {label:'',exact:true,date:'',diff:0};
-  const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff).map(x=>({date:x.date,amount:Number(x.amount||0),kind:'sale',key:x.key||''}));
-  const payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff).map(x=>({date:x.date,amount:-Math.abs(Number(x.amount||0)),kind:'payment',key:x.key||''}));
-  const tx=[...sales,...payments].filter(x=>x.date&&x.amount).sort((a,b)=>b.date.localeCompare(a.date)||String(b.key).localeCompare(String(a.key)));
-  let need=Math.round(target),oldest='';
-  const contributingDates=[];
-  for(const x of tx){
-    oldest=x.date;
-    if(x.amount<0){need+=Math.abs(Math.round(x.amount));continue}
-    const a=Math.max(0,Math.round(x.amount));if(!a)continue;
-    if(need>0)contributingDates.push(x.date);
-    if(a>=need){
-      const distinct=[...new Set(contributingDates)];
-      const oneDay=distinct.length<=1;
-      return {label:oneDay?arShortDate(x.date):`${arShortDate(x.date)}~`,exact:true,date:x.date,diff:0,needed:need,saleAmount:a,oneDay};
+
+  // v4.01: 현재 미수잔액을 최근 매출에서 단순 역산하지 않고,
+  // 거래를 시간순으로 재구성하여 입금/반품이 가장 오래된 미수부터
+  // 소진되는(FIFO) 방식으로 실제 남은 매출일을 찾는다.
+  const sales=arState.sales
+    .filter(x=>x.code===code&&x.date<=cutoff&&Number(x.amount||0)!==0)
+    .map(x=>({date:x.date,amount:Math.round(Number(x.amount||0)),kind:'sale',key:String(x.key||'')}));
+  const payments=arState.payments
+    .filter(x=>x.code===code&&x.date<=cutoff&&Number(x.amount||0)>0)
+    .map(x=>({date:x.date,amount:Math.round(Math.abs(Number(x.amount||0))),kind:'payment',key:String(x.key||'')}));
+  const all=[...sales,...payments].filter(x=>x.date);
+  if(!all.length)return {label:'거래이력 부족(추)',exact:false,date:'',diff:target};
+
+  // 같은 날짜에는 판매/반품을 먼저 놓고 입금을 뒤에 놓는다.
+  // ECOUNT 원장상 그날 판매 후 전일분/기존잔액을 입금하는 형태를 반영한다.
+  all.sort((a,b)=>a.date.localeCompare(b.date)||((a.kind==='sale'?0:1)-(b.kind==='sale'?0:1))||a.key.localeCompare(b.key));
+  const firstDate=all[0].date;
+  const netSales=sales.reduce((s,x)=>s+x.amount,0);
+  const paid=payments.reduce((s,x)=>s+x.amount,0);
+  // 잔액파일의 기준미수를 정답으로 두고, 업로드 이력 시작 이전의 기초잔액/선입금을 역산한다.
+  const opening=Math.round(target-(netSales-paid));
+  const q=[]; // 오래된 미수부터 {date,amount,opening}
+  let credit=0;
+  if(opening>0)q.push({date:'',amount:opening,opening:true});
+  else if(opening<0)credit=-opening;
+
+  const reduceOldest=(amt)=>{
+    let left=Math.max(0,Math.round(amt||0));
+    while(left>0&&q.length){
+      const use=Math.min(left,q[0].amount);
+      q[0].amount-=use;left-=use;
+      if(q[0].amount<=0)q.shift();
     }
-    need-=a;
+    if(left>0)credit+=left;
+  };
+  const addSale=(date,amt)=>{
+    let left=Math.max(0,Math.round(amt||0));
+    if(credit>0){const use=Math.min(credit,left);credit-=use;left-=use;}
+    if(left>0)q.push({date,amount:left,opening:false});
+  };
+
+  for(const x of all){
+    if(x.kind==='payment')reduceOldest(x.amount);
+    else if(x.amount<0)reduceOldest(-x.amount); // 반품도 오래된 미수부터 차감
+    else addSale(x.date,x.amount);
   }
-  if(oldest)return {label:`${arShortDate(oldest)} 이전(추)`,exact:false,date:oldest,diff:Math.max(0,need)};
-  return {label:'거래이력 부족(추)',exact:false,date:'',diff:target};
+
+  const openingRemain=q.find(x=>x.opening&&x.amount>0);
+  if(openingRemain){
+    return {label:`${arShortDate(firstDate)} 이전(추)`,exact:false,date:firstDate,diff:Math.round(openingRemain.amount)};
+  }
+  const remaining=q.filter(x=>!x.opening&&x.amount>0&&x.date);
+  if(!remaining.length){
+    // 잔액파일과 이력의 미세 불일치가 있으면 과거 방식처럼 임의의 최근일을 찍지 않고 추정으로 명시한다.
+    return {label:`${arShortDate(firstDate)} 이전(추)`,exact:false,date:firstDate,diff:target};
+  }
+  const dates=[...new Set(remaining.map(x=>x.date))].sort();
+  const start=dates[0],oneDay=dates.length===1;
+  return {label:oneDay?arShortDate(start):`${arShortDate(start)}~`,exact:true,date:start,diff:0,oneDay,remainingAmount:remaining.reduce((s,x)=>s+x.amount,0)};
 }
 function arFindSampleMatch(code,target,cutoff,startDate=''){
   if(target<=0)return null;const from=startDate||'00000000';
@@ -10664,7 +10705,7 @@ arBoxHtml=function(def,rows){
   return `<details data-ar-box="${escAttr(def.key)}" class="arResultBox ${def.cls||''}" ${open?'open':''} ontoggle="arRememberBoxOpen('${escAttr(def.key)}',this.open)"><summary><span>${esc(def.title)}</span><span class="arBoxMeta">${rows.length.toLocaleString()}곳 · ${arMoney(total)}${filtered.length!==rows.length?` · 조회 ${filtered.length}곳`:''}</span><span class="arBoxActions"><button class="btn light" type="button" onclick="event.preventDefault();event.stopPropagation();arExportBoxExcel('${escAttr(def.key)}')">이 박스 엑셀</button></span></summary><div class="arBoxHint">${esc(def.hint||'')}</div><div class="arBoxSearchWrap"><label>거래처 검색</label><input class="arBoxSearchInput" data-box-key="${escAttr(def.key)}" type="search" value="${escAttr(draft)}" placeholder="거래처코드 · 거래처명 · 장끼거래처명" oninput="arSetBoxSearchDraft('${escAttr(def.key)}',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();arCommitBoxSearch('${escAttr(def.key)}',this)}"><button type="button" class="arBoxSearchBtn" onclick="arCommitBoxSearch('${escAttr(def.key)}',this.previousElementSibling)">검색</button><button type="button" class="arBoxSearchBtn arBoxSearchClear" onclick="arClearBoxSearch('${escAttr(def.key)}')">초기화</button><span class="arBoxSearchCount">${filtered.length.toLocaleString()}곳</span></div><div class="arResultBody">${arRowsTable(rows,def.key)}</div></details>`;
 };
 
-/* ===== v4.00 미수관리: 미수해소 거래처는 각 박스 맨 아래 ===== */
+/* ===== v4.01 미수관리: 미수해소 거래처는 각 박스 맨 아래 ===== */
 // 기존 필터/검색/사용자 정렬 결과의 순서는 그대로 유지하되,
 // 해소된 거래처만 항상 해당 박스의 아래쪽으로 이동한다.
 // 같은 해소 상태끼리는 기존 순서를 보존한다(현대 브라우저의 stable sort 사용).
