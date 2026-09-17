@@ -675,7 +675,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.10 · 월누적/통장상계/금액조합 엑셀저장</div>
+      <div class="badge">v4.11 · 첫 반품 반품잔액 이월 처리</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1989,7 +1989,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.10',
+    appVersion:'v4.11',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2224,7 +2224,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.10'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.11'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3724,11 +3724,19 @@ async function saveGeneralOpening(){
   await safeLogActivity('이월잔액','이월잔액 저장',`${cust} · ${Number(amount).toLocaleString()}원`,`기준일 ${ymdToInput(basisDate)}${shouldRebuild?' · 발급/취소 대기 자동 재계산':''}`,`opening:${safeId(cust)}:${now}`)
 }
 async function deleteGeneralOpening(id){
-  if(!confirm('이월잔액을 삭제할까요? 변경이력도 함께 삭제됩니다.'))return;
-  const shouldRebuild=hasRebuildableGeneralDrafts(),old=(generalOpenings||[]).find(x=>x.id===id);
-  await userCol('generalOpeningBalances').doc(id).delete();
-  await refreshGeneralSettlementsAfterOpeningChange(shouldRebuild);
-  await safeLogActivity('이월잔액','이월잔액 삭제',old?.cust||id,old?`${Number(old.amount||0).toLocaleString()}원 · 기준일 ${ymdToInput(old.basisDate||'')}`:'')
+  const old=(generalOpenings||[]).find(x=>x.id===id),carryActs=(generalActions||[]).filter(a=>a.type==='returnCarry'&&a.carryOpeningId===id);
+  const msg=carryActs.length
+    ?`이 이월잔액에는 과거 발행건이 없어 반품잔액으로 전환한 ${carryActs.length}건이 연결되어 있습니다.\n삭제하면 해당 반품은 다시 ‘반품 현금영수증 취소 확인’ 대상으로 돌아갑니다.\n그래도 삭제할까요?`
+    :'이월잔액을 삭제할까요? 변경이력도 함께 삭제됩니다.';
+  if(!confirm(msg))return;
+  const shouldRebuild=hasRebuildableGeneralDrafts()||carryActs.length>0;
+  const batch=db.batch();
+  batch.delete(userCol('generalOpeningBalances').doc(id));
+  carryActs.forEach(a=>batch.delete(userCol('generalReceiptActions').doc(a.id)));
+  await batch.commit();
+  await loadGeneralLedgerData();
+  if(shouldRebuild)await createGeneralSettlements({silent:true,reason:'opening-delete'});
+  await safeLogActivity('이월잔액','이월잔액 삭제',old?.cust||id,old?`${Number(old.amount||0).toLocaleString()}원 · 기준일 ${ymdToInput(old.basisDate||'')}${carryActs.length?` · 반품잔액 전환 ${carryActs.length}건 원복`:''}`:'')
 }
 window.deleteGeneralOpening=deleteGeneralOpening;
 async function saveManualGeneralSale(){
@@ -3936,6 +3944,8 @@ function generalSettlementEngineSelfTest(){
     {id:'s4',cust:'일반-테스트',custCode:'C1',date:'20260907',no:2,amount:-20000}
   ],null);
   if(q.issues.length!==1||Math.round(q.issues[0].amount)!==30000||q.cancels.length!==0)throw new Error('기간 부분상계 자체검사 실패');
+  const rb=generalReturnCarryRebase(null,21500,'20260914');
+  if(Math.round(rb.amount)!==-21500||Math.round(rb.target)!==-21500||rb.basisDate!=='20260914')throw new Error('첫 반품 이월 자체검사 실패');
   return true;
 }
 function assertGeneralSettlementEngine(){
@@ -4126,6 +4136,40 @@ window.requestGeneralCancel=async function(id){
     await safeLogActivity('현금영수증','취소요청 완료',`${a.cust||''} · ${Number(a.amount||0).toLocaleString()}원`,`요청일 ${ymdToInput(requestDate)} · 익일 홈택스 결과 확인 대기`);
   }catch(e){alert(e.message||e)}
 }
+function generalReturnCarryRebase(existing,carryAmount,basisDate){
+  const carry=Math.abs(Number(carryAmount||0));
+  const current=existing?openingCurrentBalance(existing):0;
+  const applied=existing?openingAppliedActions(existing).reduce((sum,a)=>sum+Number(a.openingDeltaApplied||0),0):0;
+  const target=current-carry;
+  const amount=target-applied;
+  const oldBasis=String(existing?.basisDate||'');
+  const nextBasis=oldBasis&&basisDate?(oldBasis<=basisDate?oldBasis:basisDate):(oldBasis||basisDate||generalStartDate);
+  return {carry,current,target,applied,amount,basisDate:nextBasis};
+}
+window.carryGeneralReturn=async function(id){
+  try{
+    const a=(generalActions||[]).find(x=>x.id===id);
+    if(!a||a.type!=='cancel'||a.status!=='pending')throw new Error('반품잔액으로 전환할 취소대상을 찾지 못했습니다.');
+    if((a.targets||[]).length)throw new Error('과거 발행건이 연결된 반품은 반품잔액 이월로 전환할 수 없습니다. 연결된 과거 발행건을 취소해 주세요.');
+    const amount=Math.abs(Number(a.amount||0));if(!(amount>0))throw new Error('반품금액을 확인해 주세요.');
+    const entry=generalActionEntries(a)[0]||{},basisDate=String(entry.date||a.saleDate||a.cutoffDate||generalStartDate),cust=a.cust||entry.cust||'',custCode=a.custCode||entry.custCode||'';
+    if(!confirm(`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 과거 현금영수증 발행이 없는 반품잔액으로 이월할까요?\n\n이 반품은 취소대상에서 빠지고, 다음 판매가 생기면 자동으로 먼저 상계됩니다.`))return;
+    const key=generalCustomerKey(cust,custCode),existing=(generalOpenings||[]).find(x=>generalCustomerKey(x)===key),rebased=generalReturnCarryRebase(existing,amount,basisDate),now=Date.now();
+    const openingId=existing?.id||safeId(custCode?`CODE_${custCode}`:cust),history=[...(existing?.history||[]),{basisDate:rebased.basisDate,amount:rebased.amount,changedAtMs:now,reason:'return-carry',returnDate:basisDate,returnAmount:-amount}].slice(-30);
+    const batch=db.batch();
+    batch.set(userCol('generalOpeningBalances').doc(openingId),{
+      cust,custCode,custCodeSource:a.custCodeSource||entry.custCodeSource||existing?.custCodeSource||'resolved',amount:rebased.amount,basisDate:rebased.basisDate,history,version:now,processedAmount:0,processedAtMs:0,returnCarryUpdatedAtMs:now,updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    batch.set(userCol('generalReceiptActions').doc(id),{
+      type:'returnCarry',status:'carried',targets:[],shortfall:0,carryOpeningId:openingId,carryDate:basisDate,carryAmount:amount,carryBalanceBefore:rebased.current,carryBalanceAfter:rebased.target,carriedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    await batch.commit();
+    await loadGeneralLedgerData();
+    await createGeneralSettlements({silent:true,reason:'return-carry'});
+    await safeLogActivity('현금영수증','반품잔액 이월',`${cust} · -${amount.toLocaleString('ko-KR')}원`,`반품일 ${ymdToInput(basisDate)} · 과거 발행건 없음 · 이월잔액 ${rebased.current.toLocaleString('ko-KR')}원 → ${rebased.target.toLocaleString('ko-KR')}원`);
+    alert(`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 반품잔액으로 이월했습니다.\n현재 이월잔액: ${rebased.target.toLocaleString('ko-KR')}원\n다음 판매와 자동으로 상계됩니다.`);
+  }catch(e){alert(e.message||e)}
+}
 window.revertGeneralRequest=async function(id){
   try{
     const a=generalActions.find(x=>x.id===id);if(!a)return;
@@ -4195,7 +4239,7 @@ function downloadGeneralIssueListExcel(){
       return String(ar.date||a.saleDate||'').localeCompare(String(br.date||b.saleDate||''))||Number(ar.no||a.saleNo||0)-Number(br.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0);
     });
     const issueActs=acts.filter(a=>a.type==='issue');
-    const offsetActs=acts.filter(a=>a.type==='offset'||a.type==='saleOffset');
+    const offsetActs=acts.filter(a=>a.type==='offset'||a.type==='saleOffset'||a.type==='returnCarry');
     const cancelActs=acts.filter(a=>a.type==='cancel');
     if(!issueActs.length&&!offsetActs.length&&!cancelActs.length)throw new Error('현재 다운로드할 현금영수증 정산 목록이 없습니다.');
 
@@ -4230,6 +4274,11 @@ function downloadGeneralIssueListExcel(){
         const nos=[pos?.no?`판매 No.${Number(pos.no)}`:'',neg?.no?`반품 No.${Number(neg.no)}`:''].filter(Boolean).join(' / ');
         const detail=`${pos?.date?formatDisplayDate(pos.date)+' ':''}판매 +${amt.toLocaleString('ko-KR')}원 / ${neg?.date?formatDisplayDate(neg.date)+' ':''}반품 -${amt.toLocaleString('ko-KR')}원 → 기간 내 서로 상계, 발급·취소 없음`;
         return ['상계처리','상계완료',date?formatDisplayDate(date):'',cust,code,nos,amt,0,'판매·반품 상계','',detail,'','',''];
+      }
+      if(a.type==='returnCarry'){
+        const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
+        const detail=`과거 발행건 없음 → 반품잔액으로 이월 · ${before.toLocaleString('ko-KR')}원 → ${after.toLocaleString('ko-KR')}원 · 다음 판매와 자동 상계`;
+        return ['반품잔액 이월','이월완료',(e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'',a.cust||e.cust||'',a.custCode||e.custCode||'',e.no?Number(e.no):'',-amt,-amt,'반품잔액 이월','',detail,'','',''];
       }
       const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
       const detail=`${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · ${before.toLocaleString('ko-KR')}원 → ${after.toLocaleString('ko-KR')}원`;
@@ -4304,7 +4353,7 @@ function renderGeneralLedger(){
   }
   const acts=[...(generalActions||[])].sort((a,b)=>{const ar=generalActionEntries(a)[0]||{},br=generalActionEntries(b)[0]||{};return String(ar.date||a.saleDate||'').localeCompare(String(br.date||b.saleDate||''))||Number(ar.no||a.saleNo||0)-Number(br.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0)});
   const issueActs=acts.filter(a=>a.type==='issue');
-  const offsetActs=acts.filter(a=>a.type==='offset'||a.type==='saleOffset');
+  const offsetActs=acts.filter(a=>a.type==='offset'||a.type==='saleOffset'||a.type==='returnCarry');
   const cancelActs=acts.filter(a=>a.type==='cancel');
   const legacyActs=acts.filter(a=>a.type==='legacyIssue');
 
@@ -4323,6 +4372,10 @@ function renderGeneralLedger(){
       const pair=`<div class="offsetPair">${pos?.date?formatDisplayDate(pos.date)+' · ':''}판매 ${pos?.no?`No.${Number(pos.no)}`:'-'} +${amt.toLocaleString()}원<br>${neg?.date?formatDisplayDate(neg.date)+' · ':''}반품 ${neg?.no?`No.${Number(neg.no)}`:'-'} -${amt.toLocaleString()}원</div>`;
       return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${pair}</td><td class="amount">0원</td><td><b>서로 상계</b><br><span class="small">현금영수증 발급·취소 없음</span></td></tr>`;
     }
+    if(a.type==='returnCarry'){
+      const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
+      return `<tr><td><span class="statusPill ok">반품잔액 이월</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||e.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">-${amt.toLocaleString()}원</td><td><b>과거 발행건 없음 → 다음 판매와 자동 상계</b><br><span class="small">이월잔액 ${before.toLocaleString()} → ${after.toLocaleString()}원</span></td></tr>`;
+    }
     const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
     return `<tr><td><span class="statusPill ok">이월상계</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">${signed.toLocaleString()}원</td><td>${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · <b>${before.toLocaleString()} → ${after.toLocaleString()}원</b></td></tr>`;
   }).join(''):'<tr><td colspan="6" class="small">현재 상계처리 내역 없음</td></tr>';
@@ -4330,9 +4383,10 @@ function renderGeneralLedger(){
   const cancelRows=cancelActs.length?cancelActs.slice(0,500).map(a=>{
     const entry=generalActionEntries(a)[0]||{},saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),targets=a.targets||[],shortfall=Number(a.shortfall||0),memo=generalActionMemoText(a);
     const targetHtml=targets.length?targets.map(t=>`<div>${esc(t.issueDate?formatDisplayDate(t.issueDate):'-')} 발행 · 승인 ${esc(t.approvalNo||'-')} · <b>${Number(t.amount||0).toLocaleString()}원 취소</b></div>`).join(''):'';
-    const missing=!targets.length?`<span class="cancelMissing">과거 발행건 없음</span><div class="small" style="margin-top:4px">이카운트/홈택스에서 과거 발행건을 직접 찾아 취소한 뒤 아래 수기완료 버튼을 눌러주세요.</div>`:shortfall>0?`${targetHtml}<div class="cancelMissing" style="margin-top:4px">추가 과거 발행건 ${shortfall.toLocaleString()}원 부족</div>`:targetHtml;
+    const missing=!targets.length?`<span class="cancelMissing">과거 발행건 없음</span><div class="small" style="margin-top:4px">실제로 과거 현금영수증 발행이 있었으면 홈택스에서 찾아 취소하세요. <b>이 거래처의 첫 거래가 반품이라 취소할 과거 발행건 자체가 없다면 ‘반품잔액 이월’을 눌러 다음 판매와 상계</b>하면 됩니다.</div>`:shortfall>0?`${targetHtml}<div class="cancelMissing" style="margin-top:4px">추가 과거 발행건 ${shortfall.toLocaleString()}원 부족</div>`:targetHtml;
     const st=a.status==='cancelled'?'<span class="statusPill ok">취소완료</span>':a.status==='cancel_requested'?'<span class="statusPill warn">취소결과 대기</span>':'<span class="statusPill bad">취소 확인</span>';
-    const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:a.status==='cancel_requested'?`${missing}<div class="small" style="margin-top:6px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 홈택스 취소요청 완료</b><br>익일 결과 엑셀 자동대조 대기</div><div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기 결과확정</button><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:`${missing}<div class="ledgerAction" style="margin-top:6px"><button class="btn light" onclick="requestGeneralCancel('${a.id}')">오늘 취소요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div><div class="small" style="margin-top:4px">홈택스에서 실제 취소한 뒤 눌러주세요. 익일 결과확정 후 적요가 준비됩니다.</div>`;
+    const carryBtn=!targets.length?`<button class="btn light" onclick="carryGeneralReturn('${a.id}')">반품잔액 이월</button>`:'';
+    const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:a.status==='cancel_requested'?`${missing}<div class="small" style="margin-top:6px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 홈택스 취소요청 완료</b><br>익일 결과 엑셀 자동대조 대기</div><div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기 결과확정</button><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:`${missing}<div class="ledgerAction" style="margin-top:6px">${carryBtn}<button class="btn light" onclick="requestGeneralCancel('${a.id}')">오늘 취소요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div><div class="small" style="margin-top:4px">과거 발행이 있으면 홈택스 취소 후 ‘오늘 취소요청 완료’, 과거 발행 자체가 없는 첫 반품이면 ‘반품잔액 이월’을 사용하세요.</div>`;
     return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>-${Number(a.amount||0).toLocaleString()}원</b></td><td>${a.status==='cancelled'?(targets.length?targetHtml:'수기 확인 완료'):missing}</td><td>${action}</td></tr>`;
   }).join(''):'<tr><td colspan="7" class="small">현재 취소 확인이 필요한 반품 없음</td></tr>';
 
@@ -4341,7 +4395,7 @@ function renderGeneralLedger(){
   box.innerHTML=`<div class="generalActionPanels">
     <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 표시합니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다. 홈택스 업로드 양식이 아니라 발급·상계·반품취소를 모두 한 파일로 내려받습니다. 첫 시트에서 구분 필터로 한 번에 걸러볼 수 있습니다.</div><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${issueRows}</tbody></table></div>
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">이번 발행대상 기간 안에서 날짜가 달라도 같은 거래처의 판매·반품을 서로 상계한 내역과 이월잔액 상계를 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
-    <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내하고, 없으면 ‘과거 발행건 없음’으로 표시합니다. 홈택스에서 취소한 날에는 ‘오늘 취소요청 완료’로 표시하고, 익일 발급결과 엑셀에서 취소건이 매칭되면 자동으로 취소완료·적요 준비됩니다.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
+    <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>첫 거래가 반품이라 과거 현금영수증 발행건 자체가 없는 경우에는 ‘반품잔액 이월’을 눌러 취소대상에서 제외하고 다음 판매와 자동 상계할 수 있습니다.</b> 과거 발행이 실제로 있었던 반품은 기존처럼 홈택스 취소 후 결과를 확정하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
 }
 window.editGeneralOpening=function(id){const o=(generalOpenings||[]).find(x=>x.id===id);if(!o)return;$('openingCustomer').value=o.cust||'';$('openingBasisDate').value=ymdToInput(o.basisDate||generalStartDate);$('openingAmount').value=Number(o.amount||0);$('openingCustomer').focus()}
@@ -11026,7 +11080,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.10 월마감: 월누적 · 통장상계 · 금액조합 엑셀저장 ===== */
+/* ===== v4.11 월마감 유지 + 첫 반품 반품잔액 이월 처리 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
 // 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
