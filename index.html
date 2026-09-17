@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.06</title>
+<title>아도라블 매출 자동화 v4.12</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -675,7 +675,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.11 · 첫 반품 반품잔액 이월 처리</div>
+      <div class="badge">v4.12 · 상계 원금액 표시 · 버전 통일</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1989,7 +1989,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.11',
+    appVersion:'v4.12',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2224,7 +2224,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.11'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.12'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -4195,6 +4195,22 @@ function generalActionEntries(a){
   const ids=new Set(a?.entryIds||[]);
   return collectGeneralRows().filter(r=>ids.has(r.id)).sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||Number(x.no||0)-Number(y.no||0));
 }
+function generalSaleOffsetStats(a,actions=generalActions){
+  const es=generalActionEntries(a);
+  const pos=es.find(r=>Number(r.amount||0)>0)||null;
+  const neg=es.find(r=>Number(r.amount||0)<0)||null;
+  const thisOffset=Math.abs(Number(a?.amount||0));
+  const posOriginal=Math.abs(Number(pos?.amount||0));
+  const negOriginal=Math.abs(Number(neg?.amount||0));
+  const posId=a?.positiveEntryId||pos?.id||'';
+  const totalSaleOffset=(actions||[]).filter(x=>{
+    if(x?.type!=='saleOffset'||!posId)return false;
+    if(x.positiveEntryId)return x.positiveEntryId===posId;
+    return (x.entryIds||[]).includes(posId);
+  }).reduce((sum,x)=>sum+Math.abs(Number(x.amount||0)),0);
+  const saleRemain=Math.max(0,posOriginal-totalSaleOffset);
+  return {pos,neg,thisOffset,posOriginal,negOriginal,totalSaleOffset,saleRemain};
+}
 function generalActionDateText(a){
   const rows=generalActionEntries(a).filter(r=>!r.opening),dates=[...new Set(rows.map(r=>String(r.date||'')).filter(Boolean))].sort();
   if(!dates.length)return (a?.cutoffDate?formatDisplayDate(a.cutoffDate):'-');
@@ -4270,10 +4286,10 @@ function downloadGeneralIssueListExcel(){
     const offsetRows=offsetActs.map(a=>{
       const es=generalActionEntries(a),date=(es[0]?.date||a.saleDate||''),cust=a.cust||es[0]?.cust||'',code=a.custCode||es[0]?.custCode||'';
       if(a.type==='saleOffset'){
-        const pos=es.find(r=>Number(r.amount||0)>0),neg=es.find(r=>Number(r.amount||0)<0),amt=Math.abs(Number(a.amount||0));
+        const st=generalSaleOffsetStats(a,offsetActs),pos=st.pos,neg=st.neg,amt=st.thisOffset;
         const nos=[pos?.no?`판매 No.${Number(pos.no)}`:'',neg?.no?`반품 No.${Number(neg.no)}`:''].filter(Boolean).join(' / ');
-        const detail=`${pos?.date?formatDisplayDate(pos.date)+' ':''}판매 +${amt.toLocaleString('ko-KR')}원 / ${neg?.date?formatDisplayDate(neg.date)+' ':''}반품 -${amt.toLocaleString('ko-KR')}원 → 기간 내 서로 상계, 발급·취소 없음`;
-        return ['상계처리','상계완료',date?formatDisplayDate(date):'',cust,code,nos,amt,0,'판매·반품 상계','',detail,'','',''];
+        const detail=`${pos?.date?formatDisplayDate(pos.date)+' ':''}판매 원금액 +${st.posOriginal.toLocaleString('ko-KR')}원 중 이번 ${amt.toLocaleString('ko-KR')}원 상계 / ${neg?.date?formatDisplayDate(neg.date)+' ':''}반품 원금액 -${st.negOriginal.toLocaleString('ko-KR')}원 중 ${amt.toLocaleString('ko-KR')}원 상계 → 판매 총상계 ${st.totalSaleOffset.toLocaleString('ko-KR')}원 · 판매 잔여 ${st.saleRemain.toLocaleString('ko-KR')}원`;
+        return ['상계처리','상계완료',date?formatDisplayDate(date):'',cust,code,nos,st.posOriginal,amt,'판매·반품 상계','',detail,'','',''];
       }
       if(a.type==='returnCarry'){
         const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
@@ -4368,9 +4384,10 @@ function renderGeneralLedger(){
   const offsetRows=offsetActs.length?offsetActs.slice(0,500).map(a=>{
     const es=generalActionEntries(a),date=(es[0]?.date||a.saleDate||''),cust=a.cust||es[0]?.cust||'';
     if(a.type==='saleOffset'){
-      const pos=es.find(r=>Number(r.amount||0)>0),neg=es.find(r=>Number(r.amount||0)<0),amt=Math.abs(Number(a.amount||0));
-      const pair=`<div class="offsetPair">${pos?.date?formatDisplayDate(pos.date)+' · ':''}판매 ${pos?.no?`No.${Number(pos.no)}`:'-'} +${amt.toLocaleString()}원<br>${neg?.date?formatDisplayDate(neg.date)+' · ':''}반품 ${neg?.no?`No.${Number(neg.no)}`:'-'} -${amt.toLocaleString()}원</div>`;
-      return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${pair}</td><td class="amount">0원</td><td><b>서로 상계</b><br><span class="small">현금영수증 발급·취소 없음</span></td></tr>`;
+      const st=generalSaleOffsetStats(a,offsetActs),pos=st.pos,neg=st.neg,amt=st.thisOffset;
+      const pair=`<div class="offsetPair">${pos?.date?formatDisplayDate(pos.date)+' · ':''}판매 ${pos?.no?`No.${Number(pos.no)}`:'-'} · 원금액 <b>+${st.posOriginal.toLocaleString()}원</b> · 이번 상계 ${amt.toLocaleString()}원<br>${neg?.date?formatDisplayDate(neg.date)+' · ':''}반품 ${neg?.no?`No.${Number(neg.no)}`:'-'} · 원금액 <b>-${st.negOriginal.toLocaleString()}원</b> · 이번 상계 ${amt.toLocaleString()}원</div>`;
+      const result=st.posOriginal?`원판매 ${st.posOriginal.toLocaleString()}원 중 총 ${st.totalSaleOffset.toLocaleString()}원 상계 · 잔여 ${st.saleRemain.toLocaleString()}원`: `이번 ${amt.toLocaleString()}원 상계`;
+      return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${pair}</td><td class="amount">0원</td><td><b>${result}</b><br><span class="small">현금영수증 발급·취소 없음${st.saleRemain>0?' · 잔여 판매금액은 발급대상 계산에 반영':''}</span></td></tr>`;
     }
     if(a.type==='returnCarry'){
       const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
@@ -11080,7 +11097,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.11 월마감 유지 + 첫 반품 반품잔액 이월 처리 ===== */
+/* ===== v4.12 상계 원금액 표시 + 버전 통일 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
 // 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
