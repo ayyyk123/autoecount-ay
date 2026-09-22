@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.12</title>
+<title>아도라블 매출 자동화 v4.13</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -675,7 +675,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.12 · 상계 원금액 표시 · 버전 통일</div>
+      <div class="badge">v4.13 · 현금영수증 금액 교차검증 · 할인/부가세 수정</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1433,7 +1433,7 @@ async function loadBizRegDynamicExclusions(){
 
 let app=null,auth=null,db=null,user=null;
 let cloud={ready:false,customers:[],customerMasterMeta:null,items:[],aliases:new Map(),customerAliases:new Map(),runtimeCustomers:[],vatRules:new Map(),customerMaps:{jangki:new Map(),ecount:new Map()},itemMap:new Map(),itemByCode:new Map(),itemNameToCodes:new Map()};
-let state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null};
+let state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],receiptValidation:null,settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null};
 let currentReceiptConfirmations={};
 let currentReceiptDraftDates={};
 let currentReceiptBulkDate='';
@@ -1989,7 +1989,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.12',
+    appVersion:'v4.13',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2224,7 +2224,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.12'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.13'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -2648,7 +2648,7 @@ function calcReceiptTax(total){
 
 function analyzeSettlements(settlements,issues){
   const summaries=[],receiptRows=[],receiptWarnings=[];
-  const byDate=new Map(),generalMap=new Map();
+  const byDate=new Map(),generalMap=new Map(),receiptExpectedMap=new Map();
 
   for(const f of settlements){
     const date=dateFromFilename(f.file.name);
@@ -2679,6 +2679,14 @@ function analyzeSettlements(settlements,issues){
         const ident=generalCustomerIdentity(cust),gid=keyTicket(f.loc,date,o['No.'],cust),amount=s-r;
         if(!generalMap.has(gid))generalMap.set(gid,{id:gid,ticketKey:gid,date,no:Number(o['No.'])||0,loc:f.loc,cust:ident.cust||cust,custCode:ident.code||'',custCodeSource:ident.code?'resolved':'',sourceCustomerName:cust,amount:0});
         generalMap.get(gid).amount+=amount;
+      }
+
+      // 일반거래처(정확히 '일반거래처') 현금영수증 금액은 일별정산의 판매액-반품액과 독립적으로 교차검증한다.
+      // 판매내역 장끼 계산식이 잘못되더라도 동일 계산식끼리 비교하는 오류를 피하기 위한 별도 기준값이다.
+      if(f.loc==='store' && cust==='일반거래처'){
+        const rid=keyTicket(f.loc,date,o['No.'],cust),amount=s-r;
+        if(!receiptExpectedMap.has(rid))receiptExpectedMap.set(rid,{key:rid,date,no:Number(o['No.'])||0,loc:f.loc,cust,amount:0,fileName:f.file.name});
+        receiptExpectedMap.get(rid).amount+=amount;
       }
 
       // 일반거래처 현금영수증은 수금/입금이 아니라 판매내역의 일반거래처 판매 장끼를 기준으로 생성한다.
@@ -2714,7 +2722,7 @@ function analyzeSettlements(settlements,issues){
   const dayTotals=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
   receiptRows.sort((a,b)=>a.date.localeCompare(b.date)||a.no-b.no);
 
-  return {summaries,dayTotals,receiptRows,receiptWarnings,generalRows:[...generalMap.values()]};
+  return {summaries,dayTotals,receiptRows,receiptWarnings,generalRows:[...generalMap.values()],receiptExpectedRows:[...receiptExpectedMap.values()]};
 }
 
 function ymdDayDiff(a,b){
@@ -2727,9 +2735,13 @@ function ymdDayDiff(a,b){
 function receiptTicketGross(t){
   let total=0;
   for(const o of t.rows||[]){
-    if(norm(o['상품명'])==='부가세')continue;
-    const kind=norm(o['구분']),amt=Math.abs(num(o['금액']));
-    if(kind==='판매')total+=amt;else if(kind==='반품')total-=amt;
+    const kind=norm(o['구분']);
+    if(!['판매','반품'].includes(kind))continue;
+    // 금액의 원래 부호를 보존한다. 예: 할인 -500원은 -500원 그대로 반영.
+    // '부가세' 행도 실제 결제 총액의 일부이므로 현금영수증 총거래금액에 포함한다.
+    const amt=num(o['금액']);
+    if(kind==='판매')total+=amt;
+    else if(kind==='반품')total-=amt;
   }
   return Math.round(total);
 }
@@ -2770,6 +2782,74 @@ function buildReceiptRowsFromSales(tickets,memoMap){
   }
   const total=rows.reduce((sum,x)=>sum+Number(x.total||0),0);
   return {rows,warnings,meta:{receiptBasis:'sales',receiptSalesCount:rows.length,receiptSalesTotal:total}};
+}
+
+function validateCashReceiptAmounts(tickets,expectedRows,receiptRows){
+  const detailMap=new Map(),expectedMap=new Map(),receiptMap=new Map();
+  for(const t of (tickets?.values?.()||[])){
+    if(t.loc!=='store'||norm(t.cust)!=='일반거래처')continue;
+    detailMap.set(t.key,{key:t.key,date:t.date,no:Number(t.no)||0,amount:receiptTicketGross(t)});
+  }
+  for(const r of expectedRows||[]){
+    const key=r.key||keyTicket(r.loc||'store',r.date,r.no,r.cust||'일반거래처');
+    expectedMap.set(key,{...r,key,amount:Math.round(Number(r.amount||0))});
+  }
+  for(const r of receiptRows||[]){
+    const key=r.ticketKey||r.key;
+    if(!key)continue;
+    receiptMap.set(key,{...r,amount:Math.round(Number(r.total||0))});
+  }
+
+  const keys=new Set([...detailMap.keys(),...expectedMap.keys(),...receiptMap.keys()]),mismatches=[];
+  let expectedPositiveCount=0,expectedPositiveTotal=0,receiptTotal=0;
+  for(const e of expectedMap.values()){
+    if(Number(e.amount)>0){expectedPositiveCount++;expectedPositiveTotal+=Number(e.amount||0)}
+  }
+  for(const r of receiptMap.values())receiptTotal+=Number(r.amount||0);
+
+  for(const key of keys){
+    const d=detailMap.get(key),e=expectedMap.get(key),r=receiptMap.get(key);
+    const detailAmount=d?Math.round(Number(d.amount||0)):null;
+    const expectedAmount=e?Math.round(Number(e.amount||0)):null;
+    const receiptAmount=r?Math.round(Number(r.amount||0)):0;
+    const reasons=[];
+    if(!d)reasons.push('판매내역 장끼 없음');
+    if(!e)reasons.push('일별정산 장끼 없음');
+    if(d&&e&&detailAmount!==expectedAmount)reasons.push('판매내역 장끼합계 ≠ 일별정산 판매금액');
+    if(e&&expectedAmount>0&&receiptAmount!==expectedAmount)reasons.push('현금영수증 생성금액 ≠ 일별정산 판매금액');
+    if(e&&expectedAmount<=0&&receiptAmount!==0)reasons.push('0원/반품 장끼가 발급대상에 포함됨');
+    if(!e&&d&&detailAmount>0&&receiptAmount!==detailAmount)reasons.push('현금영수증 생성금액 ≠ 판매내역 장끼합계');
+    if(reasons.length){
+      const base=e||d||r||{};
+      mismatches.push({
+        key,date:base.date||'',no:Number(base.no)||0,
+        expectedAmount,detailAmount,receiptAmount,
+        diff:(expectedAmount==null?null:receiptAmount-expectedAmount),
+        reason:reasons.join(' · ')
+      });
+    }
+  }
+  mismatches.sort((a,b)=>String(a.date).localeCompare(String(b.date))||Number(a.no)-Number(b.no));
+  return {
+    ok:mismatches.length===0,
+    mismatches,
+    expectedCount:expectedPositiveCount,
+    expectedTotal:Math.round(expectedPositiveTotal),
+    receiptCount:receiptMap.size,
+    receiptTotal:Math.round(receiptTotal)
+  };
+}
+function assertCashReceiptValidation(){
+  const rows=state.cashReceiptRows||[];
+  if(!rows.length)return;
+  const v=state.receiptValidation;
+  if(v&&v.ok===true)return;
+  const details=(v?.mismatches||[]).slice(0,8).map(x=>{
+    const src=x.expectedAmount==null?'-':Number(x.expectedAmount).toLocaleString('ko-KR')+'원';
+    const gen=Number(x.receiptAmount||0).toLocaleString('ko-KR')+'원';
+    return `${formatDisplayDate(x.date)} No.${x.no} · 원판매 ${src} · 생성 ${gen} · ${x.reason}`;
+  });
+  throw new Error(`현금영수증 금액 교차검증에 실패해 일괄발급 파일 다운로드를 중단했습니다.${details.length?'\n\n'+details.join('\n'):''}`);
 }
 
 function formatDisplayDate(ymdStr){
@@ -2929,13 +3009,26 @@ async function applyBulkReceiptDate(){
 }
 window.applyBulkReceiptDate=applyBulkReceiptDate;
 function renderReceiptSummary(rows,warnings){
-  const sec=$('receiptSection'),box=$('receiptSummary');
-  if(!rows.length && !warnings.length){sec.classList.add('hidden');box.innerHTML='';return;}
+  const sec=$('receiptSection'),box=$('receiptSummary'),rv=state.receiptValidation;
+  if(!rows.length && !warnings.length && !(rv?.mismatches?.length)){sec.classList.add('hidden');box.innerHTML='';return;}
   sec.classList.remove('hidden');
   const m=v=>Number(v||0).toLocaleString('ko-KR'),pending=rows.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed).length,total=rows.reduce((s,r)=>s+r.total,0),rm=state.meta||{};
   let h=`<p><b>발급대상 ${rows.length.toLocaleString()}건 · 총 ${m(total)}원</b> · ${pending?`<span class="statusPill warn">발급확인 ${pending}건 남음</span>`:'<span class="statusPill ok">전건 발급확인 완료</span>'}</p>`;
   if(rm.receiptBasis==='sales'){
     h+=`<div class="receiptReconcile"><span class="ok">✓ 기준: 거래처명 ‘일반거래처’ 판매장끼</span><span class="ok">판매 ${Number(rm.receiptSalesCount||rows.length).toLocaleString()}건 · ${m(rm.receiptSalesTotal||total)}원</span><span>입금·수금·이월잔액은 발급금액 계산에서 제외</span></div>`;
+  }
+  if(rv&&((rows.length)||(rv.mismatches?.length))){
+    if(rv.ok){
+      h+=`<div class="receiptReconcile"><span class="ok">✓ 금액 교차검증 통과</span><span class="ok">일별정산 ${Number(rv.expectedCount||0).toLocaleString()}건 · ${m(rv.expectedTotal||0)}원</span><span class="ok">발급파일 ${Number(rv.receiptCount||0).toLocaleString()}건 · ${m(rv.receiptTotal||0)}원</span></div>`;
+    }else{
+      h+=`<div class="cashCloseEquation bad" style="margin:8px 0"><b>현금영수증 금액 교차검증 실패 ${Number(rv.mismatches?.length||0).toLocaleString()}건</b><br><span class="small">일별정산의 원 판매금액과 판매내역 장끼합계·현금영수증 생성금액을 비교했습니다. 불일치가 있으면 일괄발급 파일 다운로드가 차단됩니다.</span></div>`;
+      h+='<table><thead><tr><th>판매일</th><th>No.</th><th>일별정산 원금액</th><th>판매내역 장끼합계</th><th>현금영수증 생성금액</th><th>차이</th><th>원인</th></tr></thead><tbody>';
+      for(const x of rv.mismatches||[]){
+        const ev=x.expectedAmount==null?'-':m(x.expectedAmount),dv=x.detailAmount==null?'-':m(x.detailAmount),diff=x.diff==null?'-':m(x.diff);
+        h+=`<tr><td>${esc(formatDisplayDate(x.date))}</td><td>${Number(x.no)||''}</td><td>${ev}</td><td>${dv}</td><td>${m(x.receiptAmount||0)}</td><td class="bad"><b>${diff}</b></td><td>${esc(x.reason||'')}</td></tr>`;
+      }
+      h+='</tbody></table>';
+    }
   }
   if(rows.length){
     h+=`<div class="receiptConfirmTop"><label>발급일 일괄선택 <input id="receiptBulkDate" type="date" value="${escAttr(currentReceiptBulkDate||'')}" onchange="onReceiptBulkDateChange(this.value)"></label><button type="button" class="btn light" onclick="applyBulkReceiptDate()">미확인 건 날짜 일괄적용</button><button type="button" class="btn light" onclick="downloadReceiptAuditList()">발급대상 목록 엑셀</button>${pending===0?'<button type="button" class="btn light" onclick="downloadCashReceipt(activeJobId,true)">일괄발급 파일 다시받기</button>':''}<span class="small">판매일 기준 일반거래처 판매건입니다. 홈택스 실제 발급을 확인한 뒤 건별 체크하세요.</span></div>`;
@@ -2982,6 +3075,7 @@ function receiptRowsToWorkbook(rows,memoFn){
 }
 async function downloadCashReceipt(jobId=activeJobId,forceAll=false){
   try{
+    assertCashReceiptValidation();
     const all=state.cashReceiptRows||[],pending=all.filter(r=>!currentReceiptConfirmations[r.id]?.confirmed);
     const rows=(forceAll||!pending.length)?all:pending;
     if(!rows.length)throw new Error('현금영수증 발급대상이 없습니다.');
@@ -8308,10 +8402,10 @@ async function processAll(ticketOverrides={}){try{
   currentBizRegConditionalReviews=existing.exists?{...(existing.data().bizRegConditionalReviews||{})}:{};
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
-  const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,receiptLink=buildReceiptRowsFromSales(tickets,mc.memo),br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
+  const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets,receiptLink=buildReceiptRowsFromSales(tickets,mc.memo),receiptValidation=validateCashReceiptAmounts(tickets,settlementAnalysis.receiptExpectedRows||[],receiptLink.rows),br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
   const canonicalGeneralRows=attachGeneralCodesFromSalesTickets(settlementAnalysis.generalRows||[],tickets,runtimeCustomer.maps);
   const bizRegConditionalReview=await reviewConditionalExclusionsForSales(tickets,runtimeCustomer.maps);
-  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:canonicalGeneralRows,receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
+  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,receiptValidation,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:canonicalGeneralRows,receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleExcludedRows:gd.sampleExcludedRows,sampleExcludedTickets:gd.sampleExcludedTickets,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
   applyAllSalesMemos();finishRender();await persistCurrentJob();
   await safeLogActivity('매출변환','자동 변환·검수',deriveJobName(state),`판매 ${state.salesRows.length.toLocaleString()}행 · 현금 ${state.cashRows.length.toLocaleString()}행 · 일반- 거래 ${state.generalCustomerRows.length.toLocaleString()}건`);
 }catch(e){showError(e)}}
@@ -8320,8 +8414,9 @@ function finishRender(){
   const d=dedupeIssues(issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
   renderDailySalesTop(state.settlementDayTotals||[]);renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]);renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]);$('stats').classList.remove('hidden');$('sSales').textContent=salesRows.length;$('sCash').textContent=cashRows.length;$('sVat').textContent=vatPending.length;$('sCust').textContent=custN;$('sItem').textContent=itemN;renderVat(vatPending);renderAutoVat(state.autoVatApplied||[]);$('issueSection').classList.remove('hidden');renderIssues(issues,meta);renderGeneralLedger();
   const blocking=receiptPending>0||vatPending.length>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||unclassifiedFiles.length>0;
-  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length;$('receiptBtn').textContent=receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기';$('reviewBtn').disabled=false;
-  let msg=`<p><b>판매 ${salesRows.length.toLocaleString()}행</b>, 현금 ${cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(meta.customerFileName)}</b> · ${Number(meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length)msg+=`<p class="${receiptPending?'warn':'ok'}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료'}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
+  const receiptAmountBlocked=!!(state.receiptValidation&&state.receiptValidation.ok===false);
+  $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length||receiptAmountBlocked;$('receiptBtn').textContent=receiptAmountBlocked?'현금영수증 금액 불일치 확인 필요':(receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기');$('reviewBtn').disabled=false;
+  let msg=`<p><b>판매 ${salesRows.length.toLocaleString()}행</b>, 현금 ${cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(meta.customerFileName)}</b> · ${Number(meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length||receiptAmountBlocked)msg+=`<p class="${receiptAmountBlocked?'bad':(receiptPending?'warn':'ok')}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptAmountBlocked?`금액 교차검증 불일치 ${Number(state.receiptValidation?.mismatches?.length||0).toLocaleString()}건 · 다운로드 차단`:(receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료')}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
   if(meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(meta.sampleExcludedRows)msg+=`<p class="ok">✓ S/P·SP 샘플 ${Number(meta.sampleExcludedTickets||0).toLocaleString()}장끼 / ${Number(meta.sampleExcludedRows||0).toLocaleString()}품목은 판매입력에서 제외했습니다.</p>`;if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭 검수와 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
 }
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
@@ -8502,12 +8597,13 @@ function jobMetrics(st){
   const cashCust=cnt(x=>x.type.startsWith('현금 거래처')&&(x.type.includes('미매칭')||x.type.includes('중복')));
   const item=cnt(x=>x.type.startsWith('품목')&&(x.type.includes('미매칭')||x.type.includes('중복')));
   const receipt=cnt(x=>x.type==='현금영수증 확인');
+  const receiptAmountMismatch=Number(st.receiptValidation?.mismatches?.length||0);
   const fatal=cnt(x=>x.type==='파일'||x.type.includes('파일 날짜')||x.type.includes('매장/창고 구분'))+(st.meta?.unclassifiedFiles?.length||0);
   const vat=(st.vatPending||[]).length;
-  const receiptConfirmPending=Number(st.receiptConfirmPending!==undefined?st.receiptConfirmPending:receiptConfirmationPendingCount());return{salesCust,cashCust,item,receipt,receiptConfirmPending,fatal,vat,salesBlocking:vat+salesCust+item+fatal+receiptConfirmPending,cashBlocking:cashCust+fatal};
+  const receiptConfirmPending=Number(st.receiptConfirmPending!==undefined?st.receiptConfirmPending:receiptConfirmationPendingCount());return{salesCust,cashCust,item,receipt,receiptAmountMismatch,receiptConfirmPending,fatal,vat,salesBlocking:vat+salesCust+item+fatal+receiptConfirmPending,cashBlocking:cashCust+fatal};
 }
-function metricsForJob(job){const m={...(job.metrics||jobMetrics(job.state||{}))};if(job.receiptConfirmPending!==undefined)m.receiptConfirmPending=Number(job.receiptConfirmPending||0),m.salesBlocking=Number(m.vat||0)+Number(m.salesCust||0)+Number(m.item||0)+Number(m.fatal||0)+m.receiptConfirmPending;return m}
-function jobStatusInfo(job){const m=metricsForJob(job);if(m.fatal)return{cls:'red',title:`파일 오류 ${m.fatal}건`};if(m.salesBlocking||m.cashBlocking||m.receipt||m.receiptConfirmPending)return{cls:'yellow',title:'검수 또는 미매칭 항목이 남아 있음'};return{cls:'green',title:'검수 완료'}}
+function metricsForJob(job){const m={...(job.metrics||jobMetrics(job.state||{}))};if(m.receiptAmountMismatch===undefined)m.receiptAmountMismatch=Number(job.state?.receiptValidation?.mismatches?.length||0);if(job.receiptConfirmPending!==undefined)m.receiptConfirmPending=Number(job.receiptConfirmPending||0),m.salesBlocking=Number(m.vat||0)+Number(m.salesCust||0)+Number(m.item||0)+Number(m.fatal||0)+m.receiptConfirmPending;return m}
+function jobStatusInfo(job){const m=metricsForJob(job);if(m.fatal)return{cls:'red',title:`파일 오류 ${m.fatal}건`};if(m.salesBlocking||m.cashBlocking||m.receipt||m.receiptAmountMismatch||m.receiptConfirmPending)return{cls:'yellow',title:'검수 또는 미매칭 항목이 남아 있음'};return{cls:'green',title:'검수 완료'}}
 
 function aggregateJobSales(st){const m=new Map();for(const r of(st.settlementSummaries||[])){const k=`${r.date}|${r.loc}`;if(!m.has(k))m.set(k,{date:r.date,loc:r.loc,sales:0,returns:0,spSales:0,spReturns:0,shinsangMarketAmount:0,finalTotal:0});const x=m.get(k);x.sales+=Number(r.sales||0);x.returns+=Number(r.returns||0);x.spSales+=Number(r.spSales||0);x.spReturns+=Number(r.spReturns||0);if(r.shinsangMarketAmount!==undefined)x.shinsangMarketAmount+=Number(r.shinsangMarketAmount||0);else x.shinsangMarketAmount=undefined;x.finalTotal+=Number(r.finalTotal||0)}return[...m.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date))||((a.loc==='store'?0:1)-(b.loc==='store'?0:1)))}
 function salesForJob(job){return job.salesSummary||aggregateJobSales(job.state||{})}
@@ -8583,7 +8679,7 @@ window.deleteFirebaseJob=deleteFirebaseJob;
 
 function jobOutputCell(job,type){
   const m=metricsForJob(job),dl=job.downloads||{};let lines=[],can=false;
-  if(type==='receipt'){if(m.receipt)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">검수 ${m.receipt}건 남음</button>`);if(Number(job.cashReceiptCount||0)){const rp=job.receiptConfirmPending===undefined?Number(job.cashReceiptCount||0):Number(job.receiptConfirmPending||0);if(rp)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">발급확인 ${rp}건</button>`);else lines.push('<span class="jobComplete">발급확인 완료</span>');lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">목록보기</button>`);can=true;}else lines.push('<span class="jobComplete">대상없음</span>');}
+  if(type==='receipt'){if(m.receipt)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">검수 ${m.receipt}건 남음</button>`);if(Number(m.receiptAmountMismatch||0))lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','receipt')">금액불일치 ${Number(m.receiptAmountMismatch)}건</button>`);if(Number(job.cashReceiptCount||0)){const rp=job.receiptConfirmPending===undefined?Number(job.cashReceiptCount||0):Number(job.receiptConfirmPending||0);if(rp)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">발급확인 ${rp}건</button>`);else lines.push('<span class="jobComplete">발급확인 완료</span>');lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">목록보기</button>`);can=Number(m.receiptAmountMismatch||0)===0;}else if(Number(m.receiptAmountMismatch||0))lines.push('<span class="small bad">금액검증 실패 · 대상 재생성 필요</span>');else lines.push('<span class="jobComplete">대상없음</span>');}
   if(type==='cash'){if(m.cashCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.cashCust}건</button>`);else lines.push('<span class="jobComplete">완료</span>');can=m.cashBlocking===0}
   if(type==='sales'){if(m.vat)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','vatPending')">VAT 검수 ${m.vat}건</button>`);if(m.salesCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.salesCust}건</button>`);if(m.item)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">품목 미매칭 ${m.item}건</button>`);if(Number(m.receiptConfirmPending||0))lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">현금영수증 확인 ${Number(m.receiptConfirmPending)}건</button>`);if(!m.vat&&!m.salesCust&&!m.item&&!m.fatal&&!Number(m.receiptConfirmPending||0))lines.push('<span class="jobComplete">완료</span>');can=m.salesBlocking===0}
   const stamp=fmtJobDownloadTime(dl[type]),btnLabel=(type==='receipt'&&stamp)?'다시받기':'다운로드';lines.push(`<div><button class="jobDownloadBtn" ${can?'':'disabled'} onclick="downloadJobOutput('${job.id}','${type}')">${btnLabel}</button></div>`);if(stamp)lines.push(`<div class="jobDownloadTime">${stamp}</div>`);return lines.join('')
@@ -10079,7 +10175,7 @@ $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결�
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
 if($('vatRuleLookupBtn')){$('vatRuleLookupBtn').onclick=lookupVatRuleManager;$('vatRuleSaveBtn').onclick=saveVatRuleManager;$('vatRuleDeleteBtn').onclick=deleteVatRuleManager;$('vatRuleCustomerInput').addEventListener('change',lookupVatRuleManager)}
 if($('itemRuleRefreshBtn')){$('itemRuleRefreshBtn').onclick=renderItemRuleManager;$('itemRuleSearchInput').addEventListener('input',renderItemRuleManager);$('itemRuleManagerBox').addEventListener('toggle',()=>{if($('itemRuleManagerBox').open)renderItemRuleManager()})}
-$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptBulkDate=''; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
+$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],receiptValidation:null,settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptBulkDate=''; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 
 // 신규 월마감/원장 기능 이벤트
 $('saveGeneralStartBtn').onclick=()=>saveGeneralStartDate().catch(e=>alert(e.message||e));
@@ -11097,7 +11193,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.12 상계 원금액 표시 + 버전 통일 ===== */
+/* ===== v4.13 현금영수증 금액 교차검증 + 할인/부가세 수정 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
 // 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
