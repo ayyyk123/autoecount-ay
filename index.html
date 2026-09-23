@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.16</title>
+<title>아도라블 매출 자동화 v4.18</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -90,6 +90,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .jobSalesDetailGrid small{display:block;color:#64748b;margin-bottom:3px}.jobSalesDetailGrid b{font-size:15px}
   .jobCloseBtn{appearance:none;border:0;background:transparent;font-size:18px;cursor:pointer;color:#64748b}
   .jobListNote{font-size:12px;color:#64748b;margin-bottom:9px;line-height:1.5}
+  .jobListHeadRow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
   .headRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .firebaseSyncStatus{font-size:10px;color:#64748b;font-weight:750}
   .firebaseSyncStatus.loading{color:#b45309}
@@ -251,6 +252,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .generalActionPanel h4{margin:0 0 4px;font-size:14px}.generalActionPanel .panelHint{margin:0 0 9px;color:#64748b;font-size:12px}
   .generalActionPanel.cancelPanel{border-color:#fed7aa;background:#fffdf9}.generalActionPanel.offsetPanel{border-color:#c7d2fe;background:#fdfdff}
   .generalActionPanel table{width:100%;border-collapse:collapse}.generalActionPanel th,.generalActionPanel td{padding:7px 8px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top;white-space:nowrap}.generalActionPanel th{font-size:12px;color:#64748b;background:#f8fafc}.generalActionPanel td.amount{text-align:right;font-variant-numeric:tabular-nums}
+  .generalIssueGroupActions{display:flex;gap:5px;align-items:center}.generalIssueGroupActions .btn{padding:5px 8px;font-size:10px}
+  .generalIssueDay{border:1px solid #e2e8f0;border-radius:9px;background:#fff;margin:8px 0;overflow:hidden}.generalIssueDay>summary{cursor:pointer;padding:9px 11px;font-weight:850;background:#f8fafc;display:flex;align-items:center;justify-content:space-between;gap:10px}.generalIssueDay>summary::-webkit-details-marker{margin-right:5px}.generalIssueDayCount{font-size:10px;color:#64748b;font-weight:800}.generalIssueDay table{margin:0;border:0}.generalIssueEmpty{padding:9px 2px;color:#64748b;font-size:11px}
   .cancelMissing{display:inline-block;color:#991b1b;font-weight:800;background:#fee2e2;border-radius:7px;padding:3px 7px}.offsetPair{line-height:1.55}
   .ledgerAction{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .ledgerAction input{max-width:155px}
@@ -680,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.16 · 작업기록 날짜 접기 · 잘못된 작업 즉시삭제 · 원본 재다운로드 · 현금영수증 금액 교차검증</div>
+      <div class="badge">v4.18 · 작업일자 고정정렬 · 일반- 발급목록 날짜별 접기 · 기존 기능 유지</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -731,8 +734,6 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <label>구분<select id="activityCategoryFilter"><option value="all">전체</option><option value="매출변환">매출변환</option><option value="현금영수증">현금영수증</option><option value="이월잔액">이월잔액</option><option value="규칙">규칙</option><option value="데이터">데이터</option><option value="미수관리">미수관리</option><option value="기타">기타</option></select></label>
       <label style="flex:1;min-width:220px">검색<input id="activitySearch" style="width:100%" placeholder="거래처명 · 작업명 · 금액 · 승인번호 등"></label>
       <button id="activityClearFilterBtn" class="btn light" type="button">필터 초기화</button>
-      <button id="activityExpandAllBtn" class="btn light" type="button">전체 펼치기</button>
-      <button id="activityCollapseAllBtn" class="btn light" type="button">전체 접기</button>
     </div>
     <div id="activitySummary" class="activitySummary"></div>
     <div id="activityHistoryList"></div>
@@ -906,7 +907,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
   <div id="jobListSource">
     <h3>매출변환 작업 목록</h3>
-    <div class="jobListNote">작업 원본·진행상태는 Firebase에 저장되어 회사/집 등 다른 PC에서도 이어서 작업할 수 있습니다. 작업명을 누르면 저장된 원본을 불러와 현재 기준정보로 다시 계산한 뒤 검수를 이어갑니다.</div><div id="jobSyncStatus" class="small"></div>
+    <div class="jobListNote">작업 원본·진행상태는 Firebase에 저장되어 회사/집 등 다른 PC에서도 이어서 작업할 수 있습니다. 작업명을 누르면 저장된 원본을 불러와 현재 기준정보로 다시 계산한 뒤 검수를 이어갑니다.</div>
+    <div class="jobListHeadRow"><div id="jobSyncStatus" class="small"></div></div>
     <div id="jobListViewport" class="jobListViewport"><div id="jobListTable"></div></div>
     <div id="jobResizeHandle" class="jobResizeHandle" title="위아래로 드래그해서 목록 높이 조절"></div>
     <div id="jobSalesDetail" class="jobSalesDetail hidden"></div>
@@ -2005,7 +2007,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.16',
+    appVersion:'v4.18',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2240,7 +2242,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.16'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.18'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -2407,15 +2409,13 @@ function renderActivityHistory(){
   const dayMap=new Map();for(const x of rows){const d=x.activityDate||activityLocalYmd(x.createdAtMs);if(!dayMap.has(d))dayMap.set(d,[]);dayMap.get(d).push(x)}
   const cats=new Set(rows.map(x=>x.category));sum.innerHTML=`<div><small>표시 작업</small><b>${rows.length.toLocaleString()}건</b></div><div><small>작업 일수</small><b>${dayMap.size.toLocaleString()}일</b></div><div><small>작업 구분</small><b>${cats.size.toLocaleString()}종</b></div>`;
   if(!rows.length){list.innerHTML='<div class="activityEmpty">조건에 맞는 작업기록이 없습니다.</div>';return}
-  const days=[...dayMap.keys()].sort().reverse(),today=activityLocalYmd(Date.now());
-  list.innerHTML=days.map(d=>{const xs=dayMap.get(d)||[];return `<details class="activityDay" data-activity-day="${escAttr(d)}" ${d===today?'open':''}><summary>${esc(activityDateLabel(d))} · ${xs.length.toLocaleString()}건</summary><table><thead><tr><th>시간</th><th>구분</th><th>작업</th><th>내용</th><th>상세</th></tr></thead><tbody>${xs.map(x=>`<tr><td class="activityTime">${esc(activityTimeText(x.createdAtMs))}</td><td class="activityCategory"><span class="statusPill">${esc(x.category||'기타')}</span></td><td><b>${esc(x.action||'')}</b></td><td>${esc(x.summary||'')}</td><td class="activityDetail">${esc(x.detail||'')}${x.derived?'<br><span class="small">저장자료에서 복원</span>':''}</td></tr>`).join('')}</tbody></table></details>`}).join('');
+  const days=[...dayMap.keys()].sort().reverse();
+  list.innerHTML=days.map((d,di)=>{const xs=dayMap.get(d)||[];return `<details class="activityDay" ${di<3?'open':''}><summary>${esc(activityDateLabel(d))} · ${xs.length.toLocaleString()}건</summary><table><thead><tr><th>시간</th><th>구분</th><th>작업</th><th>내용</th><th>상세</th></tr></thead><tbody>${xs.map(x=>`<tr><td class="activityTime">${esc(activityTimeText(x.createdAtMs))}</td><td class="activityCategory"><span class="statusPill">${esc(x.category||'기타')}</span></td><td><b>${esc(x.action||'')}</b></td><td>${esc(x.summary||'')}</td><td class="activityDetail">${esc(x.detail||'')}${x.derived?'<br><span class="small">저장자료에서 복원</span>':''}</td></tr>`).join('')}</tbody></table></details>`}).join('');
 }
 function setupActivityHistoryUI(){
   $('activityRefreshBtn')?.addEventListener('click',()=>loadActivityLogs());
   ['activityStartDate','activityEndDate','activityCategoryFilter','activitySearch'].forEach(id=>$(id)?.addEventListener(id==='activitySearch'?'input':'change',renderActivityHistory));
   $('activityClearFilterBtn')?.addEventListener('click',()=>{if($('activityStartDate'))$('activityStartDate').value='';if($('activityEndDate'))$('activityEndDate').value='';if($('activityCategoryFilter'))$('activityCategoryFilter').value='all';if($('activitySearch'))$('activitySearch').value='';renderActivityHistory()});
-  $('activityExpandAllBtn')?.addEventListener('click',()=>document.querySelectorAll('#activityHistoryList details.activityDay').forEach(el=>{el.open=true}));
-  $('activityCollapseAllBtn')?.addEventListener('click',()=>document.querySelectorAll('#activityHistoryList details.activityDay').forEach(el=>{el.open=false}));
   renderActivityHistory();
 }
 
@@ -4485,13 +4485,20 @@ function renderGeneralLedger(){
   const cancelActs=acts.filter(a=>a.type==='cancel');
   const legacyActs=acts.filter(a=>a.type==='legacyIssue');
 
-  const issueRows=issueActs.length?issueActs.slice(0,500).map(a=>{
+  function generalIssueRowHtml(a){
     const entry=generalActionEntries(a)[0]||{},saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),grouped=(a.entryIds||[]).length!==1,info=issueInfoForAction(a),methodText=info.issueMethod==='mobile'?`휴대폰 ${esc(info.issueNumber)}`:'자진발급',memo=generalActionMemoText(a);
     const carryNote=Number(a.openingDeltaApplied||0)!==0?`<div class="small" style="margin-bottom:4px">이월잔액 ${Number(a.openingBalanceBefore||0).toLocaleString()}원 → ${Number(a.openingBalanceAfter||0).toLocaleString()}원 · ${Math.abs(Number(a.openingDeltaApplied||0)).toLocaleString()}원 상계${Number(a.grossAmount||0)>Number(a.amount||0)?` · 판매 ${Number(a.grossAmount||0).toLocaleString()}원 중 ${Number(a.amount||0).toLocaleString()}원만 발급`:''}</div>`:'';
     const st=a.status==='issued'?'<span class="statusPill ok">발급완료</span>':a.status==='issue_requested'?'<span class="statusPill warn">결과 확인 대기</span>':grouped?'<span class="statusPill bad">재생성필요</span>':'<span class="statusPill warn">발급 대기</span>';
     const action=a.status==='issued'?`${esc(a.issueDate||'')} / 승인 ${esc(a.approvalNo||'')}`:a.status==='issue_requested'?`<div class="small"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 홈택스 발급요청 완료</b><br>익일 발급결과 엑셀로 승인번호 확인 대기</div><div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:grouped?'<span class="small">판매건별 발급대상 생성을 다시 눌러주세요.</span>':`<div class="ledgerAction"><button class="btn light" onclick="requestGeneralIssue('${a.id}')">오늘 발급요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div><div class="small" style="margin-top:4px">홈택스에서 실제 발급한 뒤 눌러주세요. 적요는 익일 결과확정 후 준비됩니다.</div>`;
     return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b></td><td>${methodText}</td><td><b>${esc(memo)}</b></td><td>${carryNote}${action}</td></tr>`;
-  }).join(''):'<tr><td colspan="8" class="small">현재 발급대상 없음</td></tr>';
+  }
+  function generalIssueSaleDate(a){const entry=generalActionEntries(a)[0]||{};return String(entry.date||a.saleDate||'날짜미확인')}
+  window.setAllGeneralIssueDays=function(open){document.querySelectorAll('#generalLedgerTable details.generalIssueDay').forEach(el=>{el.open=!!open})};
+  const issueLimited=issueActs.slice(-500),issueGroups=new Map();
+  for(const a of issueLimited){const d=generalIssueSaleDate(a);if(!issueGroups.has(d))issueGroups.set(d,[]);issueGroups.get(d).push(a)}
+  const issueDays=[...issueGroups.keys()].sort((a,b)=>{if(a==='날짜미확인')return 1;if(b==='날짜미확인')return -1;return String(b).localeCompare(String(a))});
+  const todayIssueDay=activityLocalYmd(Date.now()),defaultIssueDay=issueGroups.has(todayIssueDay)?todayIssueDay:(issueDays[0]||'');
+  const issueGroupsHtml=issueDays.length?issueDays.map(d=>{const xs=issueGroups.get(d)||[];xs.sort((a,b)=>{const ae=generalActionEntries(a)[0]||{},be=generalActionEntries(b)[0]||{};return Number(ae.no||a.saleNo||0)-Number(be.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0)});const label=/^\d{8}$/.test(d)?activityDateLabel(d):d;return `<details class="generalIssueDay" ${d===defaultIssueDay?'open':''}><summary><span>${esc(label)}</span><span class="generalIssueDayCount">${xs.length.toLocaleString()}건</span></summary><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${xs.map(generalIssueRowHtml).join('')}</tbody></table></details>`}).join(''):'<div class="generalIssueEmpty">현재 발급대상 없음</div>';
 
   const offsetRows=offsetActs.length?offsetActs.slice(0,500).map(a=>{
     const es=generalActionEntries(a),date=(es[0]?.date||a.saleDate||''),cust=a.cust||es[0]?.cust||'';
@@ -4522,7 +4529,7 @@ function renderGeneralLedger(){
   const legacyRows=legacyActs.length?`<details style="margin-top:8px"><summary class="small">등록된 과거 승인건 ${legacyActs.length}건 보기</summary><div style="padding-top:6px">${legacyActs.map(a=>`<div class="small">${esc(a.cust||'')} · ${esc(a.issueDate?formatDisplayDate(a.issueDate):'-')} · 승인 ${esc(a.approvalNo||'')} · 남은 취소가능 ${remainingForApproval(a).toLocaleString()}원</div>`).join('')}</div></details>`:'';
 
   box.innerHTML=`<div class="generalActionPanels">
-    <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 표시합니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다. 홈택스 업로드 양식이 아니라 발급·상계·반품취소를 모두 한 파일로 내려받습니다. 첫 시트에서 구분 필터로 한 번에 걸러볼 수 있습니다.</div><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th><th>처리</th></tr></thead><tbody>${issueRows}</tbody></table></div>
+    <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><div class="generalIssueGroupActions"><button type="button" class="btn light" onclick="setAllGeneralIssueDays(true)">전체 펼치기</button><button type="button" class="btn light" onclick="setAllGeneralIssueDays(false)">전체 접기</button><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 날짜별로 묶어 표시합니다. 오늘 판매일이 있으면 오늘만 기본으로 펼치고, 오늘 내역이 없으면 가장 최근 판매일만 펼칩니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div>${issueGroupsHtml}</div>
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">이번 발행대상 기간 안에서 날짜가 달라도 같은 거래처의 판매·반품을 서로 상계한 내역과 이월잔액 상계를 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
     <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>첫 거래가 반품이라 과거 현금영수증 발행건 자체가 없는 경우에는 ‘반품잔액 이월’을 눌러 취소대상에서 제외하고 다음 판매와 자동 상계할 수 있습니다.</b> 과거 발행이 실제로 있었던 반품은 기존처럼 홈택스 취소 후 결과를 확정하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
@@ -8755,12 +8762,28 @@ function jobReferenceCell(job){
   if(!unique.length)return '<span class="small">없음</span>';
   return `<div class="jobRefList">${unique.map(r=>r.fileId?`<div class="jobRefName ${r.kind==='customer'?'customer':''}"><button type="button" class="jobRefDownload" title="원본파일 다시 다운로드" onclick="downloadJobReference('${escAttr(job.id)}','${escAttr(r.fileId)}')"><span class="downloadMark">↓</span><span>${esc(r.name)}</span></button></div>`:`<div class="jobRefName ${r.kind==='customer'?'customer':''}">${esc(r.name)}</div>`).join('')}</div>`;
 }
+function jobWorkDateRange(job){
+  const dates=salesForJob(job).map(r=>String(r.date||'')).filter(d=>/^\d{8}$/.test(d)).sort();
+  return {first:dates[0]||'',last:dates[dates.length-1]||''};
+}
+function jobFixedSort(a,b){
+  const ad=jobWorkDateRange(a),bd=jobWorkDateRange(b);
+  // 실제 매출 작업일자가 최신인 작업을 위에 고정한다. updatedAt/클릭/다운로드 시각은 정렬에 쓰지 않는다.
+  const lastCmp=String(bd.last||'').localeCompare(String(ad.last||''));
+  if(lastCmp)return lastCmp;
+  const firstCmp=String(bd.first||'').localeCompare(String(ad.first||''));
+  if(firstCmp)return firstCmp;
+  const nameCmp=String(a.name||'').localeCompare(String(b.name||''),'ko');
+  if(nameCmp)return nameCmp;
+  return String(a.id||'').localeCompare(String(b.id||''));
+}
 function renderJobList(){
   const box=$('jobListTable');if(!box)return;
   if(!user){box.innerHTML='<div class="jobEmpty">로그인하면 Firebase에 저장된 작업목록을 불러옵니다.</div>';return}
   if(!jobCache.length){box.innerHTML='<div class="jobEmpty">아직 Firebase에 저장된 매출변환 작업이 없습니다.</div>';return}
+  const jobs=[...jobCache].sort(jobFixedSort);
   let h='<table class="jobTable"><thead><tr><th>상태</th><th>작업</th><th>일자</th><th>구분</th><th>매출액</th><th>현금영수증변환</th><th>현금입력변환</th><th>판매입력변환</th><th title="파일명을 누르면 Firebase에 저장된 원본을 다시 다운로드합니다.">참고자료 ↓</th></tr></thead><tbody>';
-  for(const job of jobCache){
+  for(const job of jobs){
     const sales=salesForJob(job),rows=sales.length?sales:[{date:'',loc:'',finalTotal:0}],rs=rows.length,si=jobStatusInfo(job);
     rows.forEach((r,i)=>{
       h+='<tr>';
@@ -8780,7 +8803,8 @@ function renderJobList(){
       h+='</tr>';
     });
   }
-  box.innerHTML=h+'</tbody></table>';
+  h+='</tbody></table>';
+  box.innerHTML=h;
 }
 
 async function recordJobDownload(id,type){
@@ -11252,7 +11276,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.16 작업기록 날짜별 접기/펴기: 오늘만 기본 펼침 + 전체 펼치기/접기 ===== */
+/* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
