@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.14</title>
+<title>아도라블 매출 자동화 v4.16</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -680,7 +680,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.14 · 원본/참고자료 재다운로드 · 현금영수증 금액 교차검증</div>
+      <div class="badge">v4.16 · 작업기록 날짜 접기 · 잘못된 작업 즉시삭제 · 원본 재다운로드 · 현금영수증 금액 교차검증</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -731,6 +731,8 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       <label>구분<select id="activityCategoryFilter"><option value="all">전체</option><option value="매출변환">매출변환</option><option value="현금영수증">현금영수증</option><option value="이월잔액">이월잔액</option><option value="규칙">규칙</option><option value="데이터">데이터</option><option value="미수관리">미수관리</option><option value="기타">기타</option></select></label>
       <label style="flex:1;min-width:220px">검색<input id="activitySearch" style="width:100%" placeholder="거래처명 · 작업명 · 금액 · 승인번호 등"></label>
       <button id="activityClearFilterBtn" class="btn light" type="button">필터 초기화</button>
+      <button id="activityExpandAllBtn" class="btn light" type="button">전체 펼치기</button>
+      <button id="activityCollapseAllBtn" class="btn light" type="button">전체 접기</button>
     </div>
     <div id="activitySummary" class="activitySummary"></div>
     <div id="activityHistoryList"></div>
@@ -2003,7 +2005,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.14',
+    appVersion:'v4.16',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2238,7 +2240,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.14'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.16'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -2405,13 +2407,15 @@ function renderActivityHistory(){
   const dayMap=new Map();for(const x of rows){const d=x.activityDate||activityLocalYmd(x.createdAtMs);if(!dayMap.has(d))dayMap.set(d,[]);dayMap.get(d).push(x)}
   const cats=new Set(rows.map(x=>x.category));sum.innerHTML=`<div><small>표시 작업</small><b>${rows.length.toLocaleString()}건</b></div><div><small>작업 일수</small><b>${dayMap.size.toLocaleString()}일</b></div><div><small>작업 구분</small><b>${cats.size.toLocaleString()}종</b></div>`;
   if(!rows.length){list.innerHTML='<div class="activityEmpty">조건에 맞는 작업기록이 없습니다.</div>';return}
-  const days=[...dayMap.keys()].sort().reverse();
-  list.innerHTML=days.map((d,di)=>{const xs=dayMap.get(d)||[];return `<details class="activityDay" ${di<3?'open':''}><summary>${esc(activityDateLabel(d))} · ${xs.length.toLocaleString()}건</summary><table><thead><tr><th>시간</th><th>구분</th><th>작업</th><th>내용</th><th>상세</th></tr></thead><tbody>${xs.map(x=>`<tr><td class="activityTime">${esc(activityTimeText(x.createdAtMs))}</td><td class="activityCategory"><span class="statusPill">${esc(x.category||'기타')}</span></td><td><b>${esc(x.action||'')}</b></td><td>${esc(x.summary||'')}</td><td class="activityDetail">${esc(x.detail||'')}${x.derived?'<br><span class="small">저장자료에서 복원</span>':''}</td></tr>`).join('')}</tbody></table></details>`}).join('');
+  const days=[...dayMap.keys()].sort().reverse(),today=activityLocalYmd(Date.now());
+  list.innerHTML=days.map(d=>{const xs=dayMap.get(d)||[];return `<details class="activityDay" data-activity-day="${escAttr(d)}" ${d===today?'open':''}><summary>${esc(activityDateLabel(d))} · ${xs.length.toLocaleString()}건</summary><table><thead><tr><th>시간</th><th>구분</th><th>작업</th><th>내용</th><th>상세</th></tr></thead><tbody>${xs.map(x=>`<tr><td class="activityTime">${esc(activityTimeText(x.createdAtMs))}</td><td class="activityCategory"><span class="statusPill">${esc(x.category||'기타')}</span></td><td><b>${esc(x.action||'')}</b></td><td>${esc(x.summary||'')}</td><td class="activityDetail">${esc(x.detail||'')}${x.derived?'<br><span class="small">저장자료에서 복원</span>':''}</td></tr>`).join('')}</tbody></table></details>`}).join('');
 }
 function setupActivityHistoryUI(){
   $('activityRefreshBtn')?.addEventListener('click',()=>loadActivityLogs());
   ['activityStartDate','activityEndDate','activityCategoryFilter','activitySearch'].forEach(id=>$(id)?.addEventListener(id==='activitySearch'?'input':'change',renderActivityHistory));
   $('activityClearFilterBtn')?.addEventListener('click',()=>{if($('activityStartDate'))$('activityStartDate').value='';if($('activityEndDate'))$('activityEndDate').value='';if($('activityCategoryFilter'))$('activityCategoryFilter').value='all';if($('activitySearch'))$('activitySearch').value='';renderActivityHistory()});
+  $('activityExpandAllBtn')?.addEventListener('click',()=>document.querySelectorAll('#activityHistoryList details.activityDay').forEach(el=>{el.open=true}));
+  $('activityCollapseAllBtn')?.addEventListener('click',()=>document.querySelectorAll('#activityHistoryList details.activityDay').forEach(el=>{el.open=false}));
   renderActivityHistory();
 }
 
@@ -8656,24 +8660,50 @@ async function deleteCollectionDocs(querySnap,batchSize=350){
   }
 }
 
+async function jobLinkedGeneralCleanupInfo(jobId){
+  const txSnap=await userCol('generalReceiptTransactions').where('sourceJobId','==',jobId).get();
+  const txIds=new Set(txSnap.docs.map(d=>{const x=d.data()||{};return String(x.id||d.id||'')}).filter(Boolean));
+  const actSnap=await userCol('generalReceiptActions').get();
+  const linkedActions=actSnap.docs.map(d=>({id:d.id,...(d.data()||{})})).filter(a=>
+    String(a.sourceJobId||'')===String(jobId)||((a.entryIds||[]).some(id=>txIds.has(String(id))))
+  );
+  const lockedStatuses=new Set(['issued','cancelled','issue_requested','cancel_requested','carried']);
+  const locked=linkedActions.filter(a=>lockedStatuses.has(String(a.status||''))||a.type==='legacyIssue'||a.type==='returnCarry');
+  const removable=linkedActions.filter(a=>!locked.includes(a));
+  return {txSnap,txIds,linkedActions,locked,removable};
+}
+async function purgeUnfinishedGeneralDataForJob(jobId){
+  const info=await jobLinkedGeneralCleanupInfo(jobId);
+  if(info.locked.length){
+    const sample=info.locked.slice(0,4).map(a=>`${a.cust||'-'} · ${a.type||'-'} · ${a.status||'-'}`).join('\n');
+    throw new Error(`이 작업에는 이미 홈택스 요청/완료 또는 반품잔액 이월로 확정된 일반- 정산 ${info.locked.length}건이 연결되어 있어 자동삭제할 수 없습니다.\n\n${sample}${info.locked.length>4?'\n외 '+(info.locked.length-4)+'건':''}\n\n현금영수증 원장에서 해당 처리상태를 먼저 확인해 주세요.`);
+  }
+  if(info.removable.length){
+    for(let i=0;i<info.removable.length;i+=350){
+      const b=db.batch();
+      info.removable.slice(i,i+350).forEach(a=>b.delete(userCol('generalReceiptActions').doc(a.id)));
+      await b.commit();
+    }
+  }
+  await deleteCollectionDocs(info.txSnap);
+  return {transactions:info.txSnap.size||0,actions:info.removable.length};
+}
+
 async function deleteFirebaseJob(jobId){
   if(!user)throw new Error('로그인이 필요합니다.');
   const job=jobCache.find(j=>j.id===jobId)||await getCloudJob(jobId);
   if(!job)throw new Error('삭제할 작업을 찾지 못했습니다.');
 
-  const req=jobDownloadRequirements(job);
-  if(!req.allDone){
-    throw new Error('판매입력·현금입력·필요한 현금영수증 파일을 모두 다운로드한 뒤 삭제할 수 있습니다.');
-  }
-
-  const ok=confirm(
-    `${job.name||'이 작업'}의 Firebase 자료를 완전히 삭제할까요?\\n\\n`+
-    `삭제되는 것: 원본 장끼/일별정산, 거래처리스트, 작업 진행상태, 다운로드 기록\\n`+
-    `삭제 후 다른 PC에서도 이 작업을 다시 열 수 없습니다. 일반- 현금영수증 장기 원장은 별도로 유지됩니다.`
+  const req=jobDownloadRequirements(job),incomplete=!req.allDone;
+  const ok=confirm(incomplete
+    ?`${job.name||'이 작업'}은 필요한 다운로드가 끝나지 않은 작업입니다. 잘못 넣은 파일이라면 지금 삭제할 수 있습니다.\n\n삭제되는 것: 이 작업의 원본파일·작업상태·다운로드기록 + 이 작업에서 들어간 미처리 일반- 판매/반품 및 미완료 정산\n\n※ 이미 홈택스 발급/취소 요청 또는 완료 처리된 일반- 정산이 연결돼 있으면 안전을 위해 삭제를 중단합니다.\n\n정말 삭제할까요?`
+    :`${job.name||'이 작업'}의 Firebase 자료를 완전히 삭제할까요?\n\n삭제되는 것: 원본 장끼/일별정산, 거래처리스트, 작업 진행상태, 다운로드 기록\n삭제 후 다른 PC에서도 이 작업을 다시 열 수 없습니다. 일반- 현금영수증 장기 원장은 별도로 유지됩니다.`
   );
   if(!ok)return;
 
-  setJobSyncStatus('Firebase 자료 삭제 중…');
+  setJobSyncStatus(incomplete?'잘못된 작업 및 연결 미처리자료 삭제 중…':'Firebase 자료 삭제 중…');
+  let cleanup={transactions:0,actions:0};
+  if(incomplete)cleanup=await purgeUnfinishedGeneralDataForJob(jobId);
 
   const jobRef=cloudJobDoc(jobId);
   const filesSnap=await jobRef.collection('files').get();
@@ -8698,9 +8728,10 @@ async function deleteFirebaseJob(jobId){
   }catch(e){console.warn('로컬 작업캐시 삭제 실패',e)}
 
   if(activeJobId===jobId)activeJobId=null;
+  if(incomplete){try{await loadGeneralLedgerData()}catch(e){console.warn('일반- 원장 새로고침 실패',e)}}
   await refreshJobCache();
-  const d=new Date();
-  setJobSyncStatus(`Firebase 자료삭제 완료 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,'ok');
+  const d=new Date(),detail=incomplete&&cleanup.transactions?` · 일반- 거래 ${cleanup.transactions}건/미완료 정산 ${cleanup.actions}건 정리`:'';
+  setJobSyncStatus(`Firebase 자료삭제 완료 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}${detail}`,'ok');
 }
 window.deleteFirebaseJob=deleteFirebaseJob;
 
@@ -8736,7 +8767,7 @@ function renderJobList(){
       if(i===0){
         const _req=jobDownloadRequirements(job);
         h+=`<td rowspan="${rs}"><span class="jobDot ${si.cls}" title="${escAttr(si.title)}"></span></td>`;
-        h+=`<td rowspan="${rs}"><button class="jobNameBtn" onclick="openJobAll('${job.id}')">${esc(job.name||'매출변환')}</button><span class="jobSub">매출변환</span><button class="jobDeleteBtn" ${_req.allDone?'':'disabled'} onclick="deleteFirebaseJob('${job.id}')">Firebase 자료삭제</button>${_req.allDone?'':'<div class="jobDeleteHint">필요한 다운로드 완료 후 활성화</div>'}</td>`;
+        h+=`<td rowspan="${rs}"><button class="jobNameBtn" onclick="openJobAll('${job.id}')">${esc(job.name||'매출변환')}</button><span class="jobSub">매출변환</span><button class="jobDeleteBtn" onclick="deleteFirebaseJob('${job.id}')">${_req.allDone?'Firebase 자료삭제':'잘못된 작업 삭제'}</button>${_req.allDone?'':'<div class="jobDeleteHint">다운로드 미완료여도 삭제 가능 · 연결된 미처리 일반- 자료도 함께 정리</div>'}</td>`;
       }
       h+=`<td>${fmtJobDate(r.date)}</td><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':''}</td>`;
       h+=`<td><button class="jobAmountBtn" onclick="showJobSalesDetail('${job.id}','${r.date}','${r.loc}')">${Number(r.finalTotal||0).toLocaleString('ko-KR')}</button></td>`;
@@ -11221,7 +11252,8 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.14 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
+/* ===== v4.16 작업기록 날짜별 접기/펴기: 오늘만 기본 펼침 + 전체 펼치기/접기 ===== */
+/* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
 /* ===== v4.04 미수관리: 박스별 엑셀 운영양식 ===== */
 // 사용자가 정리한 샘플 엑셀 형식에 맞춰, 박스별 엑셀은 화면의 모든 관리열을 그대로 쏟지 않고
 // 실제 전달/확인에 필요한 핵심 열만 깔끔하게 정리해 저장한다.
