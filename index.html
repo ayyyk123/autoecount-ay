@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.21</title>
+<title>아도라블 매출 자동화 v4.22</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -683,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.21 · 잔액파일 최종잔액 기준 미수정리 · S/P·SP 확인요망 · 일반- 승인번호 적요</div>
+      <div class="badge">v4.22 · 적요의 샘플→SAMPLE 전체치환 · 잔액파일 최종잔액 기준 미수정리</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1742,7 +1742,7 @@ async function deleteItemAliasRule(alias){
     $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> 품목 수동매칭 규칙을 삭제했습니다. 다음 변환부터 자동매칭되지 않습니다.</p>`;
   }catch(e){alert(e.message||e)}
 }
-function normalizeMemo(v){const s=norm(v); return s==='샘플'?'SAMPLE':s}
+function normalizeMemo(v){const s=norm(v); return s.replace(/샘플/g,'SAMPLE')}
 function aoaFromSheet(wb,sheetName){return XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true,blankrows:false})}
 async function readWb(file){const buf=await file.arrayBuffer(); return XLSX.read(buf,{type:'array',cellDates:false,cellText:false})}
 async function readWbStyled(file){const buf=await file.arrayBuffer();return XLSX.read(buf,{type:'array',cellDates:false,cellText:false,cellStyles:true})}
@@ -2008,7 +2008,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.21',
+    appVersion:'v4.22',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2243,7 +2243,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.21'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.22'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -11321,6 +11321,7 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
+/* ===== v4.22 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
