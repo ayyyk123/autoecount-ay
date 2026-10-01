@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.22</title>
+<title>아도라블 매출 자동화 v4.23</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -683,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.22 · 적요의 샘플→SAMPLE 전체치환 · 잔액파일 최종잔액 기준 미수정리</div>
+      <div class="badge">v4.23 · S/P·SP 매출 입력/제외 선택 · 샘플→SAMPLE 전체치환 · 미수정리 개선</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -2008,7 +2008,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.22',
+    appVersion:'v4.23',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2243,7 +2243,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.22'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.23'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3280,7 +3280,9 @@ function dedupeIssues(items){
   const m=new Map();
   for(const x of items){
     const source=x.source||'';
-    const k=x.type+'|'+x.value+'|'+source;
+    const k=x.type==='S/P·SP 거래처 매출 입력선택'
+      ? x.type+'|'+String(x.ticketKey||x.ticketKeys?.[0]||'') 
+      : x.type+'|'+x.value+'|'+source;
     if(!m.has(k)){
       m.set(k,{
         ...x,
@@ -3409,8 +3411,16 @@ function renderIssues(issues,meta){
         action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }else if(x.type.includes('거래처')&&x.type.includes('미매칭')){
         action=`<div class="customerMatch"><input id="customermatch_${i}" list="customerChoices" placeholder="거래처코드 입력 (리스트에 없어도 직접 지정 가능)"><button class="btn light" onclick="saveCustomerAlias(${i},'${escAttr(x.value)}')">앞으로 이 거래처로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
-      }else if(x.type==='S/P·SP 거래처 매출 확인요망'){
-        action=`<div class="warn"><b>판매입력에는 이미 포함되어 있습니다.</b> 실제로 발생하면 안 되는 거래처인지 확인해 주세요.</div><div class="small" style="margin:4px 0 6px">${esc(x.detail||'')}</div><button class="btn light" onclick="confirmSampleSalesIssue(${x._issueIndex})">확인완료</button>`;
+      }else if(x.type==='S/P·SP 거래처 매출 입력선택'){
+        const decision=x.sampleDecision||'';
+        const status=decision==='include'
+          ? '<div class="ok"><b>현재 선택: 매출 입력</b> · 이 장끼는 판매입력에 포함됩니다.</div>'
+          : decision==='exclude'
+            ? '<div class="bad"><b>현재 선택: 입력 제외</b> · 이 장끼는 판매입력에서 빠집니다.</div>'
+            : '<div class="warn"><b>판매입력 여부를 선택해 주세요.</b> 선택 전에는 이 장끼를 판매입력에 넣지 않습니다.</div>';
+        const includeCls=decision==='include'?'btn':'btn light';
+        const excludeStyle=decision==='exclude'?'background:#b91c1c;color:#fff;border-color:#b91c1c':'';
+        action=`${status}<div class="small" style="margin:4px 0 7px">${esc(x.detail||'')}</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="${includeCls}" onclick="setSampleSalesDecision(${x._issueIndex},'include')">매출 입력${decision==='include'?' ✓':''}</button><button class="btn light" style="${excludeStyle}" onclick="setSampleSalesDecision(${x._issueIndex},'exclude')">입력 제외${decision==='exclude'?' ✓':''}</button></div>`;
       }
 
       html+=`<tr>
@@ -3428,14 +3438,15 @@ function renderIssues(issues,meta){
   window._dedupIssues=d;
   window._customerDuplicateGroups=duplicateGroups;
 }
-window.confirmSampleSalesIssue=async function(issueIndex){
+window.setSampleSalesDecision=async function(issueIndex,decision){
   try{
+    if(!['include','exclude'].includes(decision))throw new Error('S/P·SP 매출 처리방식을 선택해 주세요.');
     const x=(window._dedupIssues||[])[Number(issueIndex)];
-    if(!x||x.type!=='S/P·SP 거래처 매출 확인요망')throw new Error('확인할 S/P·SP 매출 항목을 찾지 못했습니다.');
+    if(!x||x.type!=='S/P·SP 거래처 매출 입력선택')throw new Error('선택할 S/P·SP 매출 항목을 찾지 못했습니다.');
     const keys=[...new Set(x.ticketKeys||[])];
-    if(!keys.length)throw new Error('확인대상 장끼 정보를 찾지 못했습니다.');
+    if(!keys.length)throw new Error('선택대상 장끼 정보를 찾지 못했습니다.');
     const now=Date.now();
-    for(const k of keys)currentSampleConfirmations[k]={confirmed:true,confirmedAtMs:now};
+    for(const k of keys)currentSampleConfirmations[k]={decision,decidedAtMs:now};
     const id=activeJobId||jobIdForCurrentState();
     if(user&&id)await cloudJobDoc(id).set({sampleConfirmations:{...currentSampleConfirmations},updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
     await processAll(state.parsed?.ticketOverrides||{});
@@ -8449,34 +8460,39 @@ async function processAll(ticketOverrides={}){try{
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
   const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets;
-  const samplePending=(gd.sampleTickets||[]).filter(t=>!currentSampleConfirmations[t.key]?.confirmed);
-  for(const t of samplePending){
+  const sampleTickets=gd.sampleTickets||[];
+  const samplePending=sampleTickets.filter(t=>!['include','exclude'].includes(currentSampleConfirmations[t.key]?.decision));
+  const sampleIncluded=sampleTickets.filter(t=>currentSampleConfirmations[t.key]?.decision==='include');
+  const sampleExcluded=sampleTickets.filter(t=>currentSampleConfirmations[t.key]?.decision==='exclude');
+  for(const t of sampleTickets){
     const productRows=(t.rows||[]).filter(o=>['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세');
     const gross=productRows.reduce((sum,o)=>sum+num(o['금액']),0);
-    issues.push({type:'S/P·SP 거래처 매출 확인요망',value:t.cust,source:t.loc==='store'?'매장 판매내역':'창고 판매내역',detail:`${formatDisplayDate(t.date)} · No.${t.no} · ${gross.toLocaleString('ko-KR')}원`,ticketKey:t.key,ticketKeys:[t.key]});
+    const decision=currentSampleConfirmations[t.key]?.decision||'';
+    issues.push({type:'S/P·SP 거래처 매출 입력선택',value:t.cust,source:t.loc==='store'?'매장 판매내역':'창고 판매내역',detail:`${formatDisplayDate(t.date)} · No.${t.no} · ${gross.toLocaleString('ko-KR')}원`,ticketKey:t.key,ticketKeys:[t.key],sampleDecision:decision,sampleDecisionPending:!decision});
   }
-  const receiptLink=buildReceiptRowsFromSales(tickets,mc.memo),receiptValidation=validateCashReceiptAmounts(tickets,settlementAnalysis.receiptExpectedRows||[],receiptLink.rows),br=buildSales(tickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
-  const canonicalGeneralRows=attachGeneralCodesFromSalesTickets(settlementAnalysis.generalRows||[],tickets,runtimeCustomer.maps);
-  const bizRegConditionalReview=await reviewConditionalExclusionsForSales(tickets,runtimeCustomer.maps);
-  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,receiptValidation,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:canonicalGeneralRows,receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleDetectedRows:gd.sampleDetectedRows,sampleDetectedTickets:gd.sampleDetectedTickets,sampleReviewPending:samplePending.length,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
+  const salesTickets=new Map([...tickets].filter(([key,t])=>!t.sampleCustomer||currentSampleConfirmations[key]?.decision==='include'));
+  const receiptLink=buildReceiptRowsFromSales(salesTickets,mc.memo),receiptValidation=validateCashReceiptAmounts(salesTickets,settlementAnalysis.receiptExpectedRows||[],receiptLink.rows),br=buildSales(salesTickets,mc.memo,runtimeCustomer.maps,cloud.itemMap,ticketOverrides,issues);
+  const canonicalGeneralRows=attachGeneralCodesFromSalesTickets(settlementAnalysis.generalRows||[],salesTickets,runtimeCustomer.maps);
+  const bizRegConditionalReview=await reviewConditionalExclusionsForSales(salesTickets,runtimeCustomer.maps);
+  state={salesRows:br.out.map(r=>[...r]),baseSalesRows:br.out.map(r=>[...r]),salesRowMeta:br.rowMeta,cashRows:mc.cash,cashReceiptRows:receiptLink.rows,receiptValidation,settlementSummaries:settlementAnalysis.summaries,settlementDayTotals:settlementAnalysis.dayTotals,generalCustomerRows:canonicalGeneralRows,receiptWarnings:[...(settlementAnalysis.receiptWarnings||[]),...(receiptLink.warnings||[])],issues,vatPending:br.pending,autoVatApplied:br.autoVatApplied,meta:{customerFileName:runtimeCustomer.fileName,customerCount:runtimeCustomer.count,sourceProductCount:br.sourceProductCount,sampleDetectedRows:gd.sampleDetectedRows,sampleDetectedTickets:gd.sampleDetectedTickets,sampleReviewPending:samplePending.length,sampleIncluded:sampleIncluded.length,sampleExcluded:sampleExcluded.length,unclassifiedFiles:unclassified,detailFiles:details.length,settlementFiles:sets.length,bizRegConditionalReview,...(receiptLink.meta||{})},parsed:{tickets,memo:mc.memo,ticketOverrides}};
   applyAllSalesMemos();finishRender();await persistCurrentJob();
   await safeLogActivity('매출변환','자동 변환·검수',deriveJobName(state),`판매 ${state.salesRows.length.toLocaleString()}행 · 현금 ${state.cashRows.length.toLocaleString()}행 · 일반- 거래 ${state.generalCustomerRows.length.toLocaleString()}건`);
 }catch(e){showError(e)}}
 function finishRender(){
   const issues=state.issues||[],salesRows=state.salesRows||[],cashRows=state.cashRows||[],vatPending=state.vatPending||[],meta=state.meta||{},unclassifiedFiles=meta.unclassifiedFiles||[];
-  const d=dedupeIssues(issues),custN=d.filter(x=>x.type.includes('거래처')).length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
+  const d=dedupeIssues(issues),custN=d.filter(x=>x.type.includes('거래처')&&x.type!=='S/P·SP 거래처 매출 입력선택').length,itemN=d.filter(x=>x.type.startsWith('품목')).length,receiptPending=receiptConfirmationPendingCount();
   renderDailySalesTop(state.settlementDayTotals||[]);renderSettlementSummaries(state.settlementSummaries||[],state.settlementDayTotals||[]);renderReceiptSummary(state.cashReceiptRows||[],state.receiptWarnings||[]);$('stats').classList.remove('hidden');$('sSales').textContent=salesRows.length;$('sCash').textContent=cashRows.length;$('sVat').textContent=vatPending.length;$('sCust').textContent=custN;$('sItem').textContent=itemN;renderVat(vatPending);renderAutoVat(state.autoVatApplied||[]);$('issueSection').classList.remove('hidden');renderIssues(issues,meta);renderGeneralLedger();
-  const samplePending=d.filter(x=>x.type==='S/P·SP 거래처 매출 확인요망').reduce((sum,x)=>sum+(Number(x.count)||1),0);
+  const samplePending=d.filter(x=>x.type==='S/P·SP 거래처 매출 입력선택'&&!x.sampleDecision).reduce((sum,x)=>sum+(Number(x.count)||1),0);
   const blocking=receiptPending>0||vatPending.length>0||samplePending>0||d.some(x=>x.type.includes('미매칭')||x.type.includes('중복')||x.type==='파일'||x.type.includes('파일 날짜'))||unclassifiedFiles.length>0;
   const receiptAmountBlocked=!!(state.receiptValidation&&state.receiptValidation.ok===false);
   $('salesBtn').disabled=blocking;$('cashBtn').disabled=d.some(x=>x.type.startsWith('현금 거래처'))||unclassifiedFiles.length>0;$('receiptBtn').disabled=!(state.cashReceiptRows||[]).length||receiptAmountBlocked;$('receiptBtn').textContent=receiptAmountBlocked?'현금영수증 금액 불일치 확인 필요':(receiptPending?'현금영수증 일괄발급 다운로드':'현금영수증 전체대상 다시받기');$('reviewBtn').disabled=false;
   let msg=`<p><b>판매 ${salesRows.length.toLocaleString()}행</b>, 현금 ${cashRows.length.toLocaleString()}행을 만들었습니다.</p>`;if(meta.customerFileName)msg+=`<p class="ok">✓ 이번 실행 거래처 기준: <b>${esc(meta.customerFileName)}</b> · ${Number(meta.customerCount||0).toLocaleString()}개</p>`;if((state.cashReceiptRows||[]).length||receiptAmountBlocked)msg+=`<p class="${receiptAmountBlocked?'bad':(receiptPending?'warn':'ok')}">현금영수증 일반거래처 대상 ${(state.cashReceiptRows||[]).length.toLocaleString()}건 · ${receiptAmountBlocked?`금액 교차검증 불일치 ${Number(state.receiptValidation?.mismatches?.length||0).toLocaleString()}건 · 다운로드 차단`:(receiptPending?`실제 발급확인 ${receiptPending}건 남음`:'전건 발급확인 완료')}</p>`;if((state.autoVatApplied||[]).length)msg+=`<p class="ok">✓ VAT 규칙으로 자동 처리된 장끼 ${(state.autoVatApplied||[]).length.toLocaleString()}개가 있습니다.</p>`;
-  if(meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(Number(meta.sampleDetectedTickets||0))msg+=`<p class="${samplePending?'warn':'ok'}">${samplePending?'⚠':'✓'} S/P·SP 거래처 매출 ${Number(meta.sampleDetectedTickets||0).toLocaleString()}장끼는 <b>판매입력에 포함</b>했습니다.${samplePending?` 확인요망 ${samplePending.toLocaleString()}건 · 미매칭/오류 목록에서 확인완료해 주세요.`:' 확인완료'}</p>`;if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭/S/P·SP 확인요망 검수와 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
+  if(meta?.bizRegConditionalReview?.removed?.length)msg+=`<p class="warn">사업자등록증 요청제외 해제: ${meta.bizRegConditionalReview.removed.map(esc).join(', ')}</p>`;if(Number(meta.sampleDetectedTickets||0)){const si=Number(meta.sampleIncluded||0),se=Number(meta.sampleExcluded||0);msg+=`<p class="${samplePending?'warn':'ok'}">${samplePending?'⚠':'✓'} S/P·SP 거래처 매출 ${Number(meta.sampleDetectedTickets||0).toLocaleString()}장끼 · 매출입력 ${si.toLocaleString()}건 · 입력제외 ${se.toLocaleString()}건${samplePending?` · 선택대기 ${samplePending.toLocaleString()}건` : ''}</p>`;}if(blocking)msg+='<p class="warn">판매입력 완료본은 아직 잠겨 있습니다. VAT/미매칭/S/P·SP 매출 입력여부 선택과 일반거래처 현금영수증 발급확인을 모두 완료해 주세요.</p>';else msg+='<p class="ok">✓ 검수 및 현금영수증 발급확인 완료. 판매입력 완료본을 다운로드할 수 있습니다.</p>';$('statusBox').innerHTML=msg;
 }
 function makeWorkbook(headers,rows,sheetName){const ws=XLSX.utils.aoa_to_sheet([headers,...rows]); ws['!cols']=headers.map((h,i)=>({wch:[8,7,17,18,10,10,8,8,20,18,10,10,12,12,14,12,28,12][i]||14})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); return wb}
 function downloadSales(jobId=activeJobId){XLSX.writeFile(makeWorkbook(SALES_HEADERS,state.salesRows,'1_판매입력'),'이카운트_판매입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'sales')}
 function downloadCash(jobId=activeJobId){XLSX.writeFile(makeWorkbook(CASH_HEADERS,state.cashRows,'입금보고서'),'이카운트_현금입력_자동완성.xlsx');if(jobId)recordJobDownload(jobId,'cash')}
-function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.shinsangMarketAmount||0,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','신상마켓금액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>{const c=currentReceiptConfirmations[r.id]||{};return [r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'',c.confirmed?'확인완료':'미확인',c.issueDate||''];}); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['판매일','판매 No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','원 적요','발급확인','실제 발급일'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 거래처 감지 장끼',state.meta.sampleDetectedTickets||0],['S/P·SP 거래처 감지 품목',state.meta.sampleDetectedRows||0],['S/P·SP 확인요망 남음',state.meta.sampleReviewPending||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
+function downloadReview(){const wb=XLSX.utils.book_new(); const issues=dedupeIssues(state.issues).map(x=>[x.type,x.value,x.count,x.detail||'']); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['구분','값','건수','상세'],...issues]),'미매칭_오류'); const vat=state.vatPending.map(t=>[t.date,t.no,t.cust,t.loc,t.pendingKind||'',t.hasVat?'Y':'N',t.rows.length]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','구분','검수유형','부가세행','원본행수'],...vat]),'VAT검수'); const vatAuto=(state.autoVatApplied||[]).map(r=>[r.date,r.no,r.cust,r.mode,r.source,r.productCount,r.originalTotal,r.supplyTotal,r.taxTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','No.','거래처','처리방식','적용근거','품목수','원금액합계','공급가합계','부가세합계'],...vatAuto]),'VAT자동적용'); const settlementRows=(state.settlementSummaries||[]).map(r=>[r.date,r.loc==='store'?'매장':'창고',r.fileName,r.sales,r.returns,r.spSales,r.spReturns,r.shinsangMarketAmount||0,r.finalTotal]); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['일자','구분','파일명','판매액','반품액','S/P판매액','S/P반품액','신상마켓금액','최종합계'],...settlementRows]),'일별정산합계'); const receiptRows=(state.cashReceiptRows||[]).map(r=>{const c=currentReceiptConfirmations[r.id]||{};return [r.date,r.no,'0','010-000-1234',r.total,r.supply,r.tax,r.memo||'',c.confirmed?'확인완료':'미확인',c.issueDate||''];}); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['판매일','판매 No.','용도구분','발급수단번호','총거래금액','공급가액','부가세액','원 적요','발급확인','실제 발급일'],...receiptRows]),'현금영수증대상'); const sum=[['항목','값'],['원본 판매품목수',state.meta.sourceProductCount||0],['생성 판매행',state.salesRows.length],['현금입금행',state.cashRows.length],['이번 거래처리스트',state.meta.customerFileName||''],['거래처수',state.meta.customerCount||0],['S/P·SP 거래처 감지 장끼',state.meta.sampleDetectedTickets||0],['S/P·SP 거래처 감지 품목',state.meta.sampleDetectedRows||0],['S/P·SP 선택대기',state.meta.sampleReviewPending||0],['S/P·SP 매출입력 선택',state.meta.sampleIncluded||0],['S/P·SP 입력제외 선택',state.meta.sampleExcluded||0],['판매내역 파일수',state.meta.detailFiles||0],['일별정산 파일수',state.meta.settlementFiles||0],['판별실패 파일',(state.meta.unclassifiedFiles||[]).join(', ')]]; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'요약'); XLSX.writeFile(wb,'매출자동화_검수보고서.xlsx')}
 
 
 
@@ -8668,10 +8684,10 @@ function jobMetrics(st){
   const receiptAmountMismatch=Number(st.receiptValidation?.mismatches?.length||0);
   const fatal=cnt(x=>x.type==='파일'||x.type.includes('파일 날짜')||x.type.includes('매장/창고 구분'))+(st.meta?.unclassifiedFiles?.length||0);
   const vat=(st.vatPending||[]).length;
-  const sample=cnt(x=>x.type==='S/P·SP 거래처 매출 확인요망');
+  const sample=cnt(x=>x.type==='S/P·SP 거래처 매출 입력선택'&&!x.sampleDecision);
   const receiptConfirmPending=Number(st.receiptConfirmPending!==undefined?st.receiptConfirmPending:receiptConfirmationPendingCount());return{salesCust,cashCust,item,receipt,receiptAmountMismatch,receiptConfirmPending,fatal,vat,sample,salesBlocking:vat+salesCust+item+fatal+receiptConfirmPending+sample,cashBlocking:cashCust+fatal};
 }
-function metricsForJob(job){const m={...(job.metrics||jobMetrics(job.state||{}))};if(m.receiptAmountMismatch===undefined)m.receiptAmountMismatch=Number(job.state?.receiptValidation?.mismatches?.length||0);if(m.sample===undefined)m.sample=Number((job.state?.issues||[]).filter(x=>x.type==='S/P·SP 거래처 매출 확인요망').length||0);if(job.receiptConfirmPending!==undefined)m.receiptConfirmPending=Number(job.receiptConfirmPending||0);m.salesBlocking=Number(m.vat||0)+Number(m.salesCust||0)+Number(m.item||0)+Number(m.fatal||0)+Number(m.receiptConfirmPending||0)+Number(m.sample||0);return m}
+function metricsForJob(job){const m={...(job.metrics||jobMetrics(job.state||{}))};if(m.receiptAmountMismatch===undefined)m.receiptAmountMismatch=Number(job.state?.receiptValidation?.mismatches?.length||0);if(m.sample===undefined)m.sample=Number((job.state?.issues||[]).filter(x=>x.type==='S/P·SP 거래처 매출 입력선택'&&!x.sampleDecision).length||0);if(job.receiptConfirmPending!==undefined)m.receiptConfirmPending=Number(job.receiptConfirmPending||0);m.salesBlocking=Number(m.vat||0)+Number(m.salesCust||0)+Number(m.item||0)+Number(m.fatal||0)+Number(m.receiptConfirmPending||0)+Number(m.sample||0);return m}
 function jobStatusInfo(job){const m=metricsForJob(job);if(m.fatal)return{cls:'red',title:`파일 오류 ${m.fatal}건`};if(m.salesBlocking||m.cashBlocking||m.receipt||m.receiptAmountMismatch||m.receiptConfirmPending)return{cls:'yellow',title:'검수 또는 미매칭 항목이 남아 있음'};return{cls:'green',title:'검수 완료'}}
 
 function aggregateJobSales(st){const m=new Map();for(const r of(st.settlementSummaries||[])){const k=`${r.date}|${r.loc}`;if(!m.has(k))m.set(k,{date:r.date,loc:r.loc,sales:0,returns:0,spSales:0,spReturns:0,shinsangMarketAmount:0,finalTotal:0});const x=m.get(k);x.sales+=Number(r.sales||0);x.returns+=Number(r.returns||0);x.spSales+=Number(r.spSales||0);x.spReturns+=Number(r.spReturns||0);if(r.shinsangMarketAmount!==undefined)x.shinsangMarketAmount+=Number(r.shinsangMarketAmount||0);else x.shinsangMarketAmount=undefined;x.finalTotal+=Number(r.finalTotal||0)}return[...m.values()].sort((a,b)=>String(a.date).localeCompare(String(b.date))||((a.loc==='store'?0:1)-(b.loc==='store'?0:1)))}
@@ -8777,7 +8793,7 @@ function jobOutputCell(job,type){
   const m=metricsForJob(job),dl=job.downloads||{};let lines=[],can=false;
   if(type==='receipt'){if(m.receipt)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">검수 ${m.receipt}건 남음</button>`);if(Number(m.receiptAmountMismatch||0))lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','receipt')">금액불일치 ${Number(m.receiptAmountMismatch)}건</button>`);if(Number(job.cashReceiptCount||0)){const rp=job.receiptConfirmPending===undefined?Number(job.cashReceiptCount||0):Number(job.receiptConfirmPending||0);if(rp)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">발급확인 ${rp}건</button>`);else lines.push('<span class="jobComplete">발급확인 완료</span>');lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">목록보기</button>`);can=Number(m.receiptAmountMismatch||0)===0;}else if(Number(m.receiptAmountMismatch||0))lines.push('<span class="small bad">금액검증 실패 · 대상 재생성 필요</span>');else lines.push('<span class="jobComplete">대상없음</span>');}
   if(type==='cash'){if(m.cashCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.cashCust}건</button>`);else lines.push('<span class="jobComplete">완료</span>');can=m.cashBlocking===0}
-  if(type==='sales'){if(m.vat)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','vatPending')">VAT 검수 ${m.vat}건</button>`);if(m.sample)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">S/P·SP 확인 ${m.sample}건</button>`);if(m.salesCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.salesCust}건</button>`);if(m.item)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">품목 미매칭 ${m.item}건</button>`);if(Number(m.receiptConfirmPending||0))lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">현금영수증 확인 ${Number(m.receiptConfirmPending)}건</button>`);if(!m.vat&&!m.sample&&!m.salesCust&&!m.item&&!m.fatal&&!Number(m.receiptConfirmPending||0))lines.push('<span class="jobComplete">완료</span>');can=m.salesBlocking===0}
+  if(type==='sales'){if(m.vat)lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','vatPending')">VAT 검수 ${m.vat}건</button>`);if(m.sample)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">S/P·SP 선택 ${m.sample}건</button>`);if(m.salesCust)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">거래처 미매칭 ${m.salesCust}건</button>`);if(m.item)lines.push(`<button class="jobIssueBtn danger" onclick="focusJobSection('${job.id}','issues')">품목 미매칭 ${m.item}건</button>`);if(Number(m.receiptConfirmPending||0))lines.push(`<button class="jobIssueBtn" onclick="focusJobSection('${job.id}','receipt')">현금영수증 확인 ${Number(m.receiptConfirmPending)}건</button>`);if(!m.vat&&!m.sample&&!m.salesCust&&!m.item&&!m.fatal&&!Number(m.receiptConfirmPending||0))lines.push('<span class="jobComplete">완료</span>');can=m.salesBlocking===0}
   const stamp=fmtJobDownloadTime(dl[type]),btnLabel=(type==='receipt'&&stamp)?'다시받기':'다운로드';lines.push(`<div><button class="jobDownloadBtn" ${can?'':'disabled'} onclick="downloadJobOutput('${job.id}','${type}')">${btnLabel}</button></div>`);if(stamp)lines.push(`<div class="jobDownloadTime">${stamp}</div>`);return lines.join('')
 }
 function jobReferenceCell(job){
@@ -11321,7 +11337,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.22 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.23 S/P·SP 매출 입력여부 선택 =====
+   - S/P·SP 장끼는 선택 전 판매입력에 보류
+   - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
+   - '입력 제외' 선택 시 판매입력에서 제외
+   - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
+   - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
+*/
+/* ===== v4.23 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
