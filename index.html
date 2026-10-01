@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.32</title>
+<title>아도라블 매출 자동화 v4.33</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -664,7 +664,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
 
 <style>
-/* ===== v4.32 사입비 엑셀 · 장끼금액 금액대조 ===== */
+/* ===== v4.33 사입비 엑셀 · 장끼금액 금액대조 ===== */
 .purchaseSlipGrid{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin-top:10px;align-items:start}
 .purchaseSlipPreviewBox{border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc;padding:8px;min-height:230px}
 .purchaseSlipPreviewBox img{display:block;max-width:100%;max-height:520px;margin:auto;border-radius:6px;object-fit:contain;background:#fff}
@@ -713,7 +713,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.32 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
+      <div class="badge">v4.33 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1226,7 +1226,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
             <button id="runMonthlyCompareBtn" class="btn" type="button">월매출 비교</button>
           </div>
           <div id="monthlyCompareStatus" class="small"></div>
-          <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)`은 비교대상에서 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.<br><b>불일치 확인방법</b> · 불일치 행의 <b>확정 비교금액</b>에 실제 확인한 금액을 입력하세요. 이카운트 합계와 같아지는 즉시 <b>✓ 확인완료</b>로 바뀌고 수정금액은 Firebase에 자동저장됩니다. 모든 행이 일치하면 상단 <b>일치확인 완료 + 저장·다운로드</b> 버튼이 활성화됩니다.</div>
+          <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)`은 비교대상에서 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.<br><b>불일치 확인방법</b> · 실제 비교대상이라면 <b>확정 비교금액</b>을 수정해 이카운트 합계와 맞추세요. `합계`처럼 애초에 비교하면 안 되는 행은 오른쪽 <b>비교제외</b> 버튼으로 빼면 됩니다. 제외한 행은 수동 제외목록에서 다시 복원할 수 있고 비교월별로 저장됩니다. 모든 남은 행이 일치하면 상단 <b>일치확인 완료 + 저장·다운로드</b> 버튼이 활성화됩니다.</div>
           <div class="monthlyCompareHistoryBox">
             <div class="monthlyCompareHistoryHead"><b>월별 맞춤 기록</b><span class="small">확인완료 시 비교결과 엑셀 자동 다운로드 + Firebase 보관 · 이후 다시 다운로드 가능</span></div>
             <div id="monthlyCompareHistory" class="monthlyHistoryGrid"></div>
@@ -1526,7 +1526,7 @@ let currentSampleConfirmations={};
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907',hometaxPendingIssueMatches=[],hometaxLastImportStats=null;
 let activityLogs=[];
 let cashCloseState={purchase:null,collection:null,purchaseRows:[],purchaseBankRows:[],purchaseMiscRows:[],collectionRows:[],purchaseTotal:0,cashPurchaseTotal:0,miscCashTotal:0,bankPurchaseTotal:0,collectionTotal:0,purchaseDates:[],bankAdjustments:[],history:[],historyLoaded:false,comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
-let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false};
+let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false,manualExcluded:[]};
 let monthlyCompareHistory=[];
 let shinsangDepositAliases=new Map();
 let shinsangCompareHistory=[];
@@ -2083,7 +2083,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.32',
+    appVersion:'v4.33',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2318,7 +2318,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.32'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.33'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -5258,11 +5258,15 @@ async function runMonthlySalesCompare(){
     sourceFiles:{store:$('monthlyStoreFile')?.files?.[0]?.name||'',warehouse:$('monthlyWarehouseFile')?.files?.[0]?.name||'',ecount:$('monthlyEcountFile')?.files?.[0]?.name||''}
   };
   monthlyCompareRememberAuto(rows);
+  rows.forEach((r,i)=>r._monthlyOriginalIndex=i);
   const savedAdjustments=await loadMonthlyCompareAdjustments(meta.compareMonth);
   applyMonthlyCompareAdjustments(rows,savedAdjustments);
-  const restoredCount=rows.filter(r=>r.manualAdjusted).length;
-  $('monthlyCompareStatus').textContent=`비교대상 매장 ${meta.storeCount}건 · 창고 ${meta.warehouseCount}건 · 이카운트 ${meta.ecountCount}건 · 비교제외 ${meta.excludedCount}건 · 신상마켓 VAT환산 ${meta.vatAdjustedCount}건${restoredCount?` · 저장된 수정금액 ${restoredCount}건 복원`:''}`;
-  compareState={...compareState,rows,mode:'sales',meta,specialOpen:false};renderCompare()
+  const savedExclusions=await loadMonthlyCompareExclusions(meta.compareMonth);
+  const activeRows=[],manualExcluded=[];
+  for(const r of rows){if(savedExclusions[monthlyCompareExcludeId(r)])manualExcluded.push(r);else activeRows.push(r)}
+  const restoredCount=activeRows.filter(r=>r.manualAdjusted).length;
+  $('monthlyCompareStatus').textContent=`비교대상 매장 ${meta.storeCount}건 · 창고 ${meta.warehouseCount}건 · 이카운트 ${meta.ecountCount}건 · 기본제외 ${meta.excludedCount}건 · 수동제외 ${manualExcluded.length}건 · 신상마켓 VAT환산 ${meta.vatAdjustedCount}건${restoredCount?` · 저장된 수정금액 ${restoredCount}건 복원`:''}`;
+  compareState={...compareState,rows:activeRows,manualExcluded,mode:'sales',meta,specialOpen:false};renderCompare()
 }
 
 function balanceDateFromFileName(name){
@@ -5612,7 +5616,7 @@ function inferCustomerLoc(key,name){
 }
 
 
-// ===== v4.32 월매출 비교 수동 확정금액 =====
+// ===== v4.33 월매출 비교 수동 확정금액 =====
 function monthlyCompareRowId(r,i=0){
   if(r?._monthlyRowId)return r._monthlyRowId;
   const sig=[r?.loc||'',r?.key||'',r?.code||'',r?.name||'',r?.rawSource==null?'':Number(r.rawSource),r?.ecount==null?'':Number(r.ecount),i].join('|');
@@ -5646,6 +5650,56 @@ window.updateMonthlyCompareConfirmedAmount=async function(index,value){
 function updateMonthlyCompareConfirmButton(){const btn=$('confirmMonthlyCompareBtn');if(!btn)return;const rows=compareState.mode==='sales'?(compareState.rows||[]):[];const mismatch=rows.filter(r=>r.status!=='일치').length;btn.disabled=!rows.length||mismatch>0;btn.title=!rows.length?'먼저 월매출 비교를 실행해 주세요.':mismatch?`불일치/확인 ${mismatch}건을 먼저 맞춰주세요.`:'전 항목 일치 · 월 확인완료 저장 가능'}
 function monthlyConfirmedAmountCell(r,rowIndex){const current=r.source==null?'':Number(r.source),manual=!!r.manualAdjusted;return `<div><input class="monthlyConfirmAmountInput ${manual?'manual':''}" type="number" step="1" value="${current===''?'':current}" onchange="updateMonthlyCompareConfirmedAmount(${rowIndex},this.value)" title="수정하면 자동저장되며 이카운트 합계와 다시 비교합니다.">${manual?'<div class="monthlyManualMark">수동 수정 · 자동저장</div>':''}</div>`}
 
+
+// ===== v4.33 월매출 비교 수동 비교제외 =====
+function monthlyCompareExcludeId(r){
+  if(r?._monthlyExcludeId)return r._monthlyExcludeId;
+  const sig=[r?.loc||'',r?.key||'',r?.code||'',r?.name||'',r?.rawSource==null?'':Number(r.rawSource),r?.ecount==null?'':Number(r.ecount)].join('|');
+  const id='MXR_'+simpleHash(sig);if(r)r._monthlyExcludeId=id;return id;
+}
+async function loadMonthlyCompareExclusions(month){
+  if(!user||!month)return {};
+  try{const snap=await userCol('monthlySalesCompareExclusions').doc(month).get();return snap.exists?{...(snap.data()?.exclusions||{})}:{}}catch(e){console.warn('월매출 비교제외 불러오기 실패',e);return {}}
+}
+function monthlyCompareExclusionSnapshot(r){
+  return {
+    id:monthlyCompareExcludeId(r),loc:r.loc||'',key:r.key||'',name:r.name||'',code:r.code||'',
+    rawSource:r.rawSource==null?null:Number(r.rawSource),autoSource:r.autoSource==null?null:Number(r.autoSource),
+    source:r.source==null?null:Number(r.source),ecount:r.ecount==null?null:Number(r.ecount),diff:Number(r.diff||0),
+    status:r.status||'',note:r.note||'',special:!!r.special,matchDetails:r.matchDetails||[],
+    originalIndex:Number(r._monthlyOriginalIndex||0),excludedAtMs:Date.now()
+  };
+}
+async function saveMonthlyCompareExclusions(){
+  if(!user||compareState.mode!=='sales')return;
+  const month=$('monthlyCompareMonth')?.value||compareState.meta?.compareMonth||'';if(!/^\d{4}-\d{2}$/.test(month))return;
+  const exclusions={};for(const r of compareState.manualExcluded||[])exclusions[monthlyCompareExcludeId(r)]=monthlyCompareExclusionSnapshot(r);
+  await userCol('monthlySalesCompareExclusions').doc(month).set({month,exclusions,updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:false});
+}
+window.excludeMonthlyCompareRow=async function(index){
+  try{
+    if(compareState.mode!=='sales')return;
+    const i=Number(index),r=(compareState.rows||[])[i];if(!r)return;
+    if(!confirm(`'${r.name||'이 항목'}'을(를) 이번 월매출 비교대상에서 제외할까요?\n\n제외 후에도 수동 제외목록에서 다시 복원할 수 있습니다.`))return;
+    compareState.rows.splice(i,1);compareState.manualExcluded=[...(compareState.manualExcluded||[]),r];
+    await saveMonthlyCompareExclusions();renderCompare();
+    const st=$('monthlyCompareStatus');if(st)st.textContent=`비교대상 제외 저장 완료 · ${r.name||''} · 수동 제외 ${(compareState.manualExcluded||[]).length}건`;
+  }catch(e){alert(e.message||e)}
+};
+window.restoreMonthlyCompareExcluded=async function(id){
+  try{
+    if(compareState.mode!=='sales')return;
+    const list=compareState.manualExcluded||[],i=list.findIndex(r=>monthlyCompareExcludeId(r)===id);if(i<0)return;
+    const [r]=list.splice(i,1);compareState.manualExcluded=list;compareState.rows=[...(compareState.rows||[]),r].sort((a,b)=>Number(a._monthlyOriginalIndex||0)-Number(b._monthlyOriginalIndex||0));
+    await saveMonthlyCompareExclusions();renderCompare();
+    const st=$('monthlyCompareStatus');if(st)st.textContent=`비교대상 복원 완료 · ${r.name||''}`;
+  }catch(e){alert(e.message||e)}
+};
+function monthlyManualExcludedHtml(){
+  if(compareState.mode!=='sales')return '';
+  const rows=compareState.manualExcluded||[];if(!rows.length)return '';
+  return `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:850;color:#475569">수동 제외목록 ${rows.length}건 · 클릭해서 복원</summary><div class="miniList" style="margin-top:6px">${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 7px;border-bottom:1px solid #eef2f7"><span style="min-width:52px">${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</span><b style="flex:1">${esc(r.name||'')}</b><span>${r.source==null?'-':Number(r.source).toLocaleString()}원</span><span>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}원</span><button type="button" class="btn light" onclick="restoreMonthlyCompareExcluded('${escAttr(monthlyCompareExcludeId(r))}')">복원</button></div>`).join('')}</div></details>`;
+}
 window.toggleCompareSpecialDetails=function(){
   compareState.specialOpen=!compareState.specialOpen;
   renderCompareSpecialDetails();
@@ -5655,7 +5709,7 @@ function renderCompareSpecialDetails(){
   if(compareState.mode!=='sales'&&compareState.mode!=='balance'){box.innerHTML='';return}
   const all=compareState.rows||[],rows=all.filter(r=>r.special);if(!rows.length){box.innerHTML='';return}
   const open=!!compareState.specialOpen,salesMode=compareState.mode==='sales';
-  box.innerHTML=`<div class="compareSpecialBox"><div class="compareSpecialHead" onclick="toggleCompareSpecialDetails()"><b>특수매칭 상세보기</b><span class="statusPill">${rows.length}건</span><span>${open?'▾':'▸'}</span></div>${open?`<div class="compareSpecialBody"><table><thead><tr><th>구분</th><th>원본 거래처</th><th>원본금액</th>${salesMode?'<th>자동 비교금액</th><th>확정 비교금액</th>':'<th>비교금액</th>'}<th>이카운트 합계</th><th>차이</th><th>상태</th><th>적용규칙</th><th>연결된 이카운트 상세</th></tr></thead><tbody>${rows.map(r=>{const ri=all.indexOf(r),autoVal=r.autoSource!==undefined?r.autoSource:r.source;return `<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td><b>${esc(r.name||'')}</b>${r.code?`<div class="small">코드 ${esc(r.code)}</div>`:''}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td>${salesMode?`<td>${autoVal==null?'-':Number(autoVal).toLocaleString()}</td><td>${monthlyConfirmedAmountCell(r,ri)}</td>`:`<td>${r.source==null?'-':Number(r.source).toLocaleString()}</td>`}<td><b>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</b></td><td>${Number(r.diff||0).toLocaleString()}</td><td>${r.status==='일치'?`<span class="statusPill ok">${r.manualAdjusted?'✓ 확인완료':'일치'}</span>`:`<span class="statusPill bad">${esc(r.status||'')}</span>`}</td><td><span class="compareSpecialRule">${esc(r.note||'')}</span></td><td><div class="compareSpecialMatch">${(r.matchDetails||[]).map((m,idx)=>`<div class="compareSpecialMatchLine"><b>${idx+1}. ${esc(m.name||m.jangki||'')}</b>${m.jangki&&m.jangki!==m.name?` / 장끼명 ${esc(m.jangki)}`:''}${m.code?` / 코드 ${esc(m.code)}`:''}<br>금액 <b>${Number(m.amount||0).toLocaleString()}원</b>${m.reason?` · 연결근거 ${esc(m.reason)}`:''}</div>`).join('')||'<span class="small">연결된 이카운트 행 없음</span>'}</div></td></tr>`}).join('')}</tbody></table></div>`:''}</div>`;
+  box.innerHTML=`<div class="compareSpecialBox"><div class="compareSpecialHead" onclick="toggleCompareSpecialDetails()"><b>특수매칭 상세보기</b><span class="statusPill">${rows.length}건</span><span>${open?'▾':'▸'}</span></div>${open?`<div class="compareSpecialBody"><table><thead><tr><th>구분</th><th>원본 거래처</th><th>원본금액</th>${salesMode?'<th>자동 비교금액</th><th>확정 비교금액</th>':'<th>비교금액</th>'}<th>이카운트 합계</th><th>차이</th><th>상태</th><th>적용규칙</th><th>연결된 이카운트 상세</th>${salesMode?'<th>관리</th>':''}</tr></thead><tbody>${rows.map(r=>{const ri=all.indexOf(r),autoVal=r.autoSource!==undefined?r.autoSource:r.source;return `<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td><b>${esc(r.name||'')}</b>${r.code?`<div class="small">코드 ${esc(r.code)}</div>`:''}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td>${salesMode?`<td>${autoVal==null?'-':Number(autoVal).toLocaleString()}</td><td>${monthlyConfirmedAmountCell(r,ri)}</td>`:`<td>${r.source==null?'-':Number(r.source).toLocaleString()}</td>`}<td><b>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</b></td><td>${Number(r.diff||0).toLocaleString()}</td><td>${r.status==='일치'?`<span class="statusPill ok">${r.manualAdjusted?'✓ 확인완료':'일치'}</span>`:`<span class="statusPill bad">${esc(r.status||'')}</span>`}</td><td><span class="compareSpecialRule">${esc(r.note||'')}</span></td><td><div class="compareSpecialMatch">${(r.matchDetails||[]).map((m,idx)=>`<div class="compareSpecialMatchLine"><b>${idx+1}. ${esc(m.name||m.jangki||'')}</b>${m.jangki&&m.jangki!==m.name?` / 장끼명 ${esc(m.jangki)}`:''}${m.code?` / 코드 ${esc(m.code)}`:''}<br>금액 <b>${Number(m.amount||0).toLocaleString()}원</b>${m.reason?` · 연결근거 ${esc(m.reason)}`:''}</div>`).join('')||'<span class="small">연결된 이카운트 행 없음</span>'}</div></td>${salesMode?`<td><button type="button" class="btn light" onclick="excludeMonthlyCompareRow(${ri})">비교제외</button></td>`:''}</tr>`}).join('')}</tbody></table></div>`:''}</div>`;
 }
 
 function compareExcelSafeName(v){
@@ -5715,15 +5769,11 @@ function buildCompareWorkbook(){
   XLSX.utils.book_append_sheet(wb,makeCompareSheet(special),'특수매칭');
 
   if(compareState.mode==='sales'||compareState.mode==='balance'){
-    const excluded=compareState.meta?.excluded||[];
+    const excluded=compareState.meta?.excluded||[],manualExcluded=compareState.mode==='sales'?(compareState.manualExcluded||[]):[];
     const exRows=[
       ['구분','거래처','금액','제외사유'],
-      ...excluded.map(x=>[
-        compareLocLabel(x.loc),
-        x.name||'',
-        Number(x.amount||0),
-        x.reason||''
-      ])
+      ...excluded.map(x=>[compareLocLabel(x.loc),x.name||'',Number(x.amount||0),x.reason||'자동 비교제외']),
+      ...manualExcluded.map(x=>[compareLocLabel(x.loc),x.name||'',x.source==null?(x.ecount==null?'':Number(x.ecount)):Number(x.source),'사용자 수동 비교제외'])
     ];
     const exWs=XLSX.utils.aoa_to_sheet(exRows);
     exWs['!cols']=[{wch:10},{wch:30},{wch:16},{wch:28}];
@@ -5737,7 +5787,8 @@ function buildCompareWorkbook(){
       ['일치건수',matched.length],
       ['불일치/확인건수',mismatch.length],
       ['특수매칭건수',special.length],
-      ['비교제외건수',Number(meta.excludedCount||0)],
+      ['자동 비교제외건수',Number(meta.excludedCount||0)],
+      ['수동 비교제외건수',Number((compareState.manualExcluded||[]).length)],
       ['신상마켓 VAT환산건수',Number(meta.vatAdjustedCount||0)],
       ['매장 비교대상건수',Number(meta.storeCount||0)],
       ['창고 비교대상건수',Number(meta.warehouseCount||0)],
@@ -5865,7 +5916,7 @@ async function confirmMonthlyCompare(){
     matchedCount:matched.length,mismatchCount:0,specialCount:special.length,
     manualAdjustmentCount:(compareState.rows||[]).filter(r=>r.manualAdjusted).length,
     storeCount:Number(meta.storeCount||0),warehouseCount:Number(meta.warehouseCount||0),ecountCount:Number(meta.ecountCount||0),
-    excludedCount:Number(meta.excludedCount||0),sourceTotal:Number(meta.sourceTotal||0),confirmedSourceTotal:(compareState.rows||[]).reduce((sum,r)=>sum+Number(r.source||0),0),ecountTotal:Number(meta.ecountTotal||0),
+    excludedCount:Number(meta.excludedCount||0)+Number((compareState.manualExcluded||[]).length),manualExcludedCount:Number((compareState.manualExcluded||[]).length),sourceTotal:Number(meta.sourceTotal||0),confirmedSourceTotal:(compareState.rows||[]).reduce((sum,r)=>sum+Number(r.source||0),0),ecountTotal:Number(meta.ecountTotal||0),
     sourceFiles:meta.sourceFiles||{},fileAvailable:true,fileName,fileVersion:file.version,fileChunkCount:file.chunkCount,fileBytes:file.bytes,
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
@@ -5893,12 +5944,13 @@ window.downloadSavedMonthlyCompareFile=async function(month){
 
 function renderCompare(){
   const all=compareState.rows||[];monthlyCompareRememberAuto(all);
-  const rows=all.filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length},meta=compareState.meta||{};
-  const specialCount=(compareState.mode==='sales'||compareState.mode==='balance')?all.filter(r=>r.special).length:0,manualCount=compareState.mode==='sales'?all.filter(r=>r.manualAdjusted).length:0;
-  const metaBadges=compareState.mode==='sales'?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">신상마켓 VAT환산 ${Number(meta.vatAdjustedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">수동수정 ${manualCount}</span><span class="statusPill">이카운트 기준</span>`:compareState.mode==='balance'?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">S/P·SP 제외 ${Number(meta.sampleExcludedCount||0)}</span><span class="statusPill">0원 제외 ${Number(meta.sourceZeroCount||0)}</span><span class="statusPill">신상마켓 별도 ${Number(meta.shinsangExcludedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 잔액 기준</span>${meta.dateWarning?'<span class="statusPill bad">기준일 불일치</span>':''}`:'';
-  $('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치 · 월 확인완료 가능</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span>${metaBadges}</div>`;
+  const rows=all.filter(r=>(compareState.loc==='all'||r.loc===compareState.loc)&&(!compareState.mismatchOnly||r.status!=='일치')),
+        counts={ok:all.filter(r=>r.status==='일치').length,bad:all.filter(r=>r.status!=='일치').length,store:all.filter(r=>r.loc==='store').length,warehouse:all.filter(r=>r.loc==='warehouse').length},meta=compareState.meta||{};
+  const specialCount=(compareState.mode==='sales'||compareState.mode==='balance')?all.filter(r=>r.special).length:0,manualCount=compareState.mode==='sales'?all.filter(r=>r.manualAdjusted).length:0,manualExcludedCount=compareState.mode==='sales'?(compareState.manualExcluded||[]).length:0;
+  const metaBadges=compareState.mode==='sales'?`<span class="statusPill">기본제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">수동제외 ${manualExcludedCount}</span><span class="statusPill">신상마켓 VAT환산 ${Number(meta.vatAdjustedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">수동수정 ${manualCount}</span><span class="statusPill">이카운트 기준</span>`:compareState.mode==='balance'?`<span class="statusPill">비교제외 ${Number(meta.excludedCount||0)}</span><span class="statusPill">S/P·SP 제외 ${Number(meta.sampleExcludedCount||0)}</span><span class="statusPill">0원 제외 ${Number(meta.sourceZeroCount||0)}</span><span class="statusPill">신상마켓 별도 ${Number(meta.shinsangExcludedCount||0)}</span><span class="statusPill">특수매칭 ${specialCount}</span><span class="statusPill">이카운트 잔액 기준</span>${meta.dateWarning?'<span class="statusPill bad">기준일 불일치</span>':''}`:'';
+  $('compareSummary').innerHTML=`${all.length&&counts.bad===0?'<div class="cashCloseEquation ok">✓ 전 거래처 금액 일치 · 월 확인완료 가능</div>':''}<div class="compareSummary"><span class="statusPill ok">일치 ${counts.ok}</span><span class="statusPill ${counts.bad?'bad':'ok'}">불일치/확인 ${counts.bad}</span><span class="statusPill">매장 ${counts.store}</span><span class="statusPill">창고 ${counts.warehouse}</span>${metaBadges}</div>${monthlyManualExcludedHtml()}`;
   if(compareState.mode==='sales'){
-    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본금액</th><th>자동 비교금액</th><th>확정 비교금액</th><th>이카운트 합계</th><th>차이(이카운트-확정금액)</th><th>상태</th><th>적용규칙</th></tr></thead><tbody>${rows.map(r=>{const ri=all.indexOf(r),autoVal=r.autoSource!==undefined?r.autoSource:r.source;return `<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td><td>${autoVal==null?'-':Number(autoVal).toLocaleString()}</td><td>${monthlyConfirmedAmountCell(r,ri)}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff||0).toLocaleString()}</td><td>${r.status==='일치'?`<span class="statusPill ok">${r.manualAdjusted?'✓ 확인완료':'일치'}</span>`:`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td></tr>`}).join('')}</tbody></table>`;
+    $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본금액</th><th>자동 비교금액</th><th>확정 비교금액</th><th>이카운트 합계</th><th>차이(이카운트-확정금액)</th><th>상태</th><th>적용규칙</th><th>관리</th></tr></thead><tbody>${rows.map(r=>{const ri=all.indexOf(r),autoVal=r.autoSource!==undefined?r.autoSource:r.source;return `<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.rawSource==null?'-':Number(r.rawSource).toLocaleString()}</td><td>${autoVal==null?'-':Number(autoVal).toLocaleString()}</td><td>${monthlyConfirmedAmountCell(r,ri)}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff||0).toLocaleString()}</td><td>${r.status==='일치'?`<span class="statusPill ok">${r.manualAdjusted?'✓ 확인완료':'일치'}</span>`:`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td><td><button type="button" class="btn light" onclick="excludeMonthlyCompareRow(${ri})">비교제외</button></td></tr>`}).join('')}</tbody></table>`;
   }else{
     $('compareTable').innerHTML=`<table><thead><tr><th>구분</th><th>거래처</th><th>원본 최종잔액</th><th>이카운트 잔액</th><th>차이(이카운트-원본)</th><th>상태</th><th>적용규칙</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.loc==='store'?'매장':r.loc==='warehouse'?'창고':'미분류'}</td><td>${esc(r.name)}</td><td>${r.source==null?'-':Number(r.source).toLocaleString()}</td><td>${r.ecount==null?'-':Number(r.ecount).toLocaleString()}</td><td>${Number(r.diff).toLocaleString()}</td><td>${r.status==='일치'?'<span class="statusPill ok">일치</span>':`<span class="statusPill bad">${esc(r.status)}</span>`}</td><td class="compareRuleNote">${esc(r.note||'')}</td></tr>`).join('')}</tbody></table>`;
   }
@@ -9103,7 +9155,7 @@ function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle'
 
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 
-// ===== v4.32 사입비 엑셀 · 판매금액 대조 =====
+// ===== v4.33 사입비 엑셀 · 판매금액 대조 =====
 // 목적: 사입비/1% 비교가 아니라 엑셀 판매금액과 프로그램 자동변환용 실제 판매데이터 금액을 대조한다.
 // 거래처명은 참고용이며 자동판정에 사용하지 않는다.
 // 검수필요 행의 검수결과/메모는 Firebase에 저장하고 동일 엑셀을 다시 올리면 복원한다.
@@ -11988,14 +12040,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.32 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.33 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.32 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.33 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -12004,7 +12056,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
-/* ===== v4.32 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
+/* ===== v4.33 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
