@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.24</title>
+<title>아도라블 매출 자동화 v4.25</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -683,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.24 · S/P·SP 매출 입력/제외 선택 · 샘플→SAMPLE 전체치환 · 미수정리 개선</div>
+      <div class="badge">v4.25 · S/P·SP 매출 입력/제외 선택 · 샘플→SAMPLE 전체치환 · 미수정리 개선</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -2008,7 +2008,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.24',
+    appVersion:'v4.25',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2243,7 +2243,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.24'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.25'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3896,6 +3896,33 @@ async function saveManualGeneralSale(){
   await safeLogActivity('현금영수증','추가매출·발급완료',`${cust} · ${Number(amount).toLocaleString()}원`,`판매일 ${ymdToInput(saleDate)} · 발급일 ${ymdToInput(issueDate)} · 승인 ${approvalNo}`,`manual-issue:${actionId}:${now}`);
   alert(`${ymdToInput(saleDate)} ${cust} ${Number(amount).toLocaleString()}원 추가매출과 현금영수증 발급완료 기록을 저장했습니다.`)
 }
+window.deleteManualGeneralIssue=async function(id){
+  try{
+    if(!user)throw new Error('로그인이 필요합니다.');
+    const a=(generalActions||[]).find(x=>x.id===id);
+    if(!a||a.type!=='issue'||a.status!=='issued'||!a.manual)throw new Error('삭제할 수 있는 수기 발급완료 기록을 찾지 못했습니다.');
+
+    const linkedCancels=(generalActions||[]).filter(x=>x.type==='cancel'&&(x.targets||[]).some(t=>String(t.actionId||'')===String(id)));
+    if(linkedCancels.length)throw new Error(`이 수기 발급건을 취소대상으로 연결한 반품/취소 기록이 ${linkedCancels.length}건 있어 바로 삭제할 수 없습니다. 연결된 취소 기록을 먼저 정리해 주세요.`);
+
+    const txIds=[...new Set((a.entryIds||[]).map(String).filter(Boolean))];
+    if(!txIds.length)throw new Error('연결된 수기 매출 기록을 찾지 못했습니다.');
+    if(txIds.some(txId=>!/^GT_MANUAL_/.test(txId)))throw new Error('일반 매출과 연결된 기록이 포함되어 있어 안전을 위해 삭제를 중단했습니다.');
+
+    if(!confirm(`${a.cust||''} ${Number(a.amount||0).toLocaleString('ko-KR')}원 수기등록을 삭제할까요?\n\n프로그램에 저장한 '추가매출 + 발급완료' 기록만 삭제됩니다.\n홈택스에서 실제 발급된 현금영수증은 취소되지 않습니다.`))return;
+
+    const batch=db.batch();
+    batch.delete(userCol('generalReceiptActions').doc(id));
+    for(const txId of txIds)batch.delete(userCol('generalReceiptTransactions').doc(txId));
+    await batch.commit();
+
+    await loadGeneralLedgerData();
+    applyAllSalesMemos();
+    finishRender();
+    await safeLogActivity('현금영수증','수기등록 삭제',`${a.cust||''} · ${Number(a.amount||0).toLocaleString('ko-KR')}원`,`판매일 ${a.saleDate?ymdToInput(a.saleDate):'-'} · 발급일 ${a.issueDate?ymdToInput(a.issueDate):'-'} · 승인 ${a.approvalNo||'-'} · 프로그램 기록만 삭제`,`manual-issue-delete:${id}:${Date.now()}`);
+    alert('수기로 등록한 추가매출과 발급완료 기록을 삭제했습니다.\n홈택스 실제 발급건은 변경되지 않았습니다.');
+  }catch(e){alert(e.message||e)}
+};
 window.undoGeneralAction=async function(id){const a=generalActions.find(x=>x.id===id);if(!a)return;if(a.status==='issued'||a.status==='cancelled'||a.type==='legacyIssue'){alert('완료된 발급/취소 기록은 원장에서 임의 삭제할 수 없습니다.');return}if(!confirm('이 정산을 취소하고 연결 거래를 다시 미정산 상태로 돌릴까요?'))return;await userCol('generalReceiptActions').doc(id).delete();await loadGeneralLedgerData();await safeLogActivity('현금영수증','대상 취소',`${a.cust||''} · ${Number(a.amount||0).toLocaleString()}원`,`${a.type==='issue'?'발급대상':a.type==='cancel'?'취소확인':'상계'}를 미정산 상태로 되돌림`)};
 async function saveLegacyApproval(){const ident=generalCustomerIdentity($('legacyApprovalCustomer').value),cust=ident.cust,custCode=ident.code,issueDate=dateInputToYmd($('legacyApprovalDate').value),approvalNo=norm($('legacyApprovalNo').value),amount=Math.abs(num($('legacyApprovalAmount').value));if(!cust.startsWith('일반-')||!issueDate||!approvalNo||amount<=0)throw new Error('거래처·발급일·승인번호·취소가능금액을 모두 입력해 주세요.');const id='LEGACY_'+simpleHash((custCode||cust)+'|'+approvalNo+'|'+issueDate),now=Date.now();await userCol('generalReceiptActions').doc(id).set({type:'legacyIssue',cust,custCode,amount,status:'issued',issueDate,approvalNo,entryIds:[],createdAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});$('legacyApprovalCustomer').value='';$('legacyApprovalDate').value='';$('legacyApprovalNo').value='';$('legacyApprovalAmount').value='';await loadGeneralLedgerData();await safeLogActivity('현금영수증','과거 승인건 등록',`${cust} · ${Number(amount).toLocaleString()}원`,`발급일 ${ymdToInput(issueDate)} · 승인 ${approvalNo}`,`legacy:${id}:${now}`)}
 function collectGeneralRows(){const map=new Map();for(const r of generalTransactions||[]){if(String(r.date||'')<generalStartDate)continue;const id=r.id||r.ticketKey;if(!id)continue;if(!map.has(id))map.set(id,{...r,id});}for(const o of generalOpenings||[]){const basis=o.basisDate||generalStartDate,delta=Number(o.amount||0)-Number(o.processedAmount||0);if(String(basis)<generalStartDate||delta===0)continue;const id='OPEN|'+o.id+'|'+String(o.version||o.updatedAtMs||basis);map.set(id,{id,cust:o.cust,custCode:o.custCode||'',amount:delta,date:basis,loc:'opening',no:0,opening:true,openingId:o.id,openingCurrentAmount:Number(o.amount||0)});}return [...map.values()]}
@@ -4520,7 +4547,13 @@ function renderGeneralLedger(){
     const entry=generalActionEntries(a)[0]||{},saleDate=entry.date||a.saleDate||'',saleNo=entry.no!==undefined?entry.no:(a.saleNo||0),grouped=(a.entryIds||[]).length!==1,info=issueInfoForAction(a),methodText=info.issueMethod==='mobile'?`휴대폰 ${esc(info.issueNumber)}`:'자진발급',memo=generalActionMemoText(a);
     const carryNote=Number(a.openingDeltaApplied||0)!==0?`<div class="small" style="margin-top:4px">이월잔액 ${Number(a.openingBalanceBefore||0).toLocaleString()}원 → ${Number(a.openingBalanceAfter||0).toLocaleString()}원 · ${Math.abs(Number(a.openingDeltaApplied||0)).toLocaleString()}원 상계${Number(a.grossAmount||0)>Number(a.amount||0)?` · 판매 ${Number(a.grossAmount||0).toLocaleString()}원 중 ${Number(a.amount||0).toLocaleString()}원만 발급`:''}</div>`:'';
     const st=a.status==='issued'?'<span class="statusPill ok">발급완료</span>':a.status==='issue_requested'?'<span class="statusPill warn">결과 확인 대기</span>':grouped?'<span class="statusPill bad">재생성필요</span>':'<span class="statusPill warn">발급 대기</span>';
-    const action=a.status==='issued'?'':a.status==='issue_requested'?`<div class="small" style="margin-top:5px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 발급요청 완료</b><br>익일 결과 확인 대기</div><div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:grouped?'<div class="small" style="margin-top:5px">판매건별 발급대상 생성을 다시 눌러주세요.</div>':`<div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="requestGeneralIssue('${a.id}')">오늘 발급요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
+    const action=a.status==='issued'
+      ?(a.manual?`<div class="small" style="margin-top:5px">수기등록</div><div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="deleteManualGeneralIssue('${a.id}')">수기등록 삭제</button></div>`:'')
+      :a.status==='issue_requested'
+        ?`<div class="small" style="margin-top:5px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 발급요청 완료</b><br>익일 결과 확인 대기</div><div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`
+        :grouped
+          ?'<div class="small" style="margin-top:5px">판매건별 발급대상 생성을 다시 눌러주세요.</div>'
+          :`<div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="requestGeneralIssue('${a.id}')">오늘 발급요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
     return `<tr><td>${st}${action}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b>${carryNote}</td><td>${methodText}</td><td><b>${esc(memo)}</b></td></tr>`;
   }
   function generalIssueSaleDate(a){const entry=generalActionEntries(a)[0]||{};return String(entry.date||a.saleDate||'날짜미확인')}
@@ -4560,7 +4593,7 @@ function renderGeneralLedger(){
   const legacyRows=legacyActs.length?`<details style="margin-top:8px"><summary class="small">등록된 과거 승인건 ${legacyActs.length}건 보기</summary><div style="padding-top:6px">${legacyActs.map(a=>`<div class="small">${esc(a.cust||'')} · ${esc(a.issueDate?formatDisplayDate(a.issueDate):'-')} · 승인 ${esc(a.approvalNo||'')} · 남은 취소가능 ${remainingForApproval(a).toLocaleString()}원</div>`).join('')}</div></details>`:'';
 
   box.innerHTML=`<div class="generalActionPanels">
-    <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><div class="generalIssueGroupActions"><button type="button" class="btn light" onclick="setAllGeneralIssueDays(true)">전체 펼치기</button><button type="button" class="btn light" onclick="setAllGeneralIssueDays(false)">전체 접기</button><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 날짜별로 묶어 표시합니다. 오늘 판매일이 있으면 오늘만 기본으로 펼치고, 오늘 내역이 없으면 가장 최근 판매일만 펼칩니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div>${issueGroupsHtml}</div>
+    <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><div class="generalIssueGroupActions"><button type="button" class="btn light" onclick="setAllGeneralIssueDays(true)">전체 펼치기</button><button type="button" class="btn light" onclick="setAllGeneralIssueDays(false)">전체 접기</button><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 날짜별로 묶어 표시합니다. 오늘 판매일이 있으면 오늘만 기본으로 펼치고, 오늘 내역이 없으면 가장 최근 판매일만 펼칩니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. <b>‘매출 추가입력 · 발급완료 등록’으로 직접 넣은 수기등록 건은 발급완료 행의 ‘수기등록 삭제’로 프로그램 기록만 삭제할 수 있습니다.</b> 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div>${issueGroupsHtml}</div>
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">이번 발행대상 기간 안에서 날짜가 달라도 같은 거래처의 판매·반품을 서로 상계한 내역과 이월잔액 상계를 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
     <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>첫 거래가 반품이라 과거 현금영수증 발행건 자체가 없는 경우에는 ‘반품잔액 이월’을 눌러 취소대상에서 제외하고 다음 판매와 자동 상계할 수 있습니다.</b> 과거 발행이 실제로 있었던 반품은 기존처럼 홈택스 취소 후 결과를 확정하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
@@ -11342,14 +11375,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.24 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.25 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.24 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.25 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -11358,7 +11391,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
-/* ===== v4.24 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
+/* ===== v4.25 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
