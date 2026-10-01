@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.27</title>
+<title>아도라블 매출 자동화 v4.28</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -660,7 +660,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
 
 <style>
-/* ===== v4.27 사입비 사진 · 장끼금액 매출확인 ===== */
+/* ===== v4.28 사입비 엑셀 · 장끼금액 매출확인 ===== */
 .purchaseSlipGrid{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin-top:10px;align-items:start}
 .purchaseSlipPreviewBox{border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc;padding:8px;min-height:230px}
 .purchaseSlipPreviewBox img{display:block;max-width:100%;max-height:520px;margin:auto;border-radius:6px;object-fit:contain;background:#fff}
@@ -705,7 +705,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.27 · 사입비 사진 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
+      <div class="badge">v4.28 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -937,31 +937,23 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   </div>
 
   <div id="purchaseSlipCheckSection" class="section">
-    <h3>사입비 사진 · 장끼금액 매출확인</h3>
+    <h3>사입비 엑셀 · 장끼금액 매출확인</h3>
     <div class="box">
-      <div class="hint"><b>손글씨 거래처명은 OCR로 읽지 않습니다.</b> 사진의 장끼금액 숫자를 기준으로 선택 날짜의 실제 장끼 매출에서 거래처·No.를 역으로 찾습니다. 금액이 하나뿐이면 자동 일치, 같은 금액이 여러 거래처에 있으면 후보를 보여줍니다. 자동읽기가 놓친 금액은 아래 <b>금액 빠른입력</b>에 한 줄에 하나씩 입력하면 바로 대조할 수 있습니다.</div>
+      <div class="hint">사입비 종이 사진은 ChatGPT에서 <b>비교용 엑셀</b>로 정리한 뒤 이곳에 올립니다. 권장 열은 <b>날짜 / 거래처 / 장끼금액 / 사입비 / 비고</b>입니다. 엑셀의 거래처와 장끼금액을 같은 날짜 실제 판매 장끼와 대조하고, 사입비는 장끼금액의 1% 기준금액·차액·실제 비율도 함께 계산합니다.</div>
       <div class="moduleToolbar" style="margin-top:8px">
-        <label>확인 날짜 <input id="purchaseSlipDate" type="date"></label>
-        <label class="filePickLabel">사입비 사진 업로드<input id="purchaseSlipImage" type="file" accept="image/*"></label>
-        <label>사진 방향 <select id="purchaseSlipRotation"><option value="left90" selected>왼쪽 90° (보내준 사진 형식)</option><option value="none">회전 없음</option><option value="right90">오른쪽 90°</option><option value="180">180°</option></select></label>
-        <button id="purchaseSlipOcrBtn" class="btn light" type="button">장끼금액 자동읽기</button>
+        <label>기본 확인 날짜 <input id="purchaseSlipDate" type="date"></label>
+        <label id="purchaseSlipExcelFileLabel" class="filePickLabel">사입비 비교 엑셀 업로드<input id="purchaseSlipExcelFile" type="file" accept=".xlsx,.xls"></label>
+        <span id="purchaseSlipExcelFileStatus" class="compareFileStatus">선택된 파일 없음</span>
+        <button id="purchaseSlipTemplateBtn" class="btn light" type="button">비교용 양식 다운로드</button>
         <button id="purchaseSlipCompareBtn" class="btn" type="button">매출 대조</button>
-        <button id="purchaseSlipAddRowBtn" class="btn light" type="button">금액 행 추가</button>
         <button id="purchaseSlipDownloadBtn" class="btn light" type="button" disabled>결과 엑셀</button>
       </div>
-      <div class="moduleToolbar" style="margin-top:6px;align-items:flex-start">
-        <label style="display:flex;align-items:flex-start;gap:7px;flex:1;min-width:360px"><span style="padding-top:7px;font-weight:850;white-space:nowrap">금액 빠른입력</span><textarea id="purchaseSlipQuickAmounts" rows="3" style="flex:1;min-width:260px;resize:vertical" placeholder="한 줄에 장끼금액 하나씩&#10;예)&#10;231000&#10;579200&#10;298000"></textarea></label>
-        <button id="purchaseSlipQuickApplyBtn" class="btn light" type="button">금액 적용</button>
-      </div>
-      <div id="purchaseSlipStatus" class="purchaseSlipProgress">사진을 올린 뒤 날짜를 선택하세요. 자동읽기 결과가 부족하면 금액만 빠르게 입력해도 거래처는 실제 매출에서 자동으로 찾습니다.</div>
-      <div class="purchaseSlipGrid">
-        <div class="purchaseSlipPreviewBox"><div id="purchaseSlipEmpty" class="purchaseSlipEmpty">사입비 사진 미리보기</div><img id="purchaseSlipPreview" class="hidden" alt="사입비 사진 미리보기"></div>
-        <div>
-          <div class="purchaseSlipTableWrap">
-            <table class="purchaseSlipTable"><thead><tr><th style="width:34px">#</th><th style="width:150px">사진 장끼금액</th><th style="width:210px">거래처 보정(선택)</th><th style="width:130px">판정</th><th>실제 매출 확인</th><th style="width:50px"></th></tr></thead><tbody id="purchaseSlipRows"><tr><td colspan="6" class="small">장끼금액 자동읽기 또는 금액 빠른입력으로 확인할 금액을 넣어주세요.</td></tr></tbody></table>
-          </div>
-          <details style="margin-top:8px"><summary class="small" style="cursor:pointer">자동읽기 원문 보기</summary><pre id="purchaseSlipOcrRaw" class="purchaseSlipOcrRaw">아직 자동읽기를 실행하지 않았습니다.</pre></details>
-        </div>
+      <div id="purchaseSlipStatus" class="purchaseSlipProgress">비교용 엑셀을 올려주세요. 날짜가 한 날짜로만 들어 있으면 기본 확인 날짜도 자동으로 맞춥니다.</div>
+      <div class="purchaseSlipTableWrap" style="margin-top:10px">
+        <table class="purchaseSlipTable" style="min-width:1120px">
+          <thead><tr><th style="width:34px">#</th><th style="width:115px">날짜</th><th style="width:210px">거래처</th><th style="width:140px">장끼금액</th><th style="width:120px">사입비</th><th style="width:120px">1% 기준</th><th style="width:110px">차액</th><th style="width:90px">사입비율</th><th style="width:125px">매출 판정</th><th>실제 매출 확인</th><th style="width:50px"></th></tr></thead>
+          <tbody id="purchaseSlipRows"><tr><td colspan="11" class="small">사입비 비교 엑셀을 업로드하면 거래처별 자료가 표시됩니다.</td></tr></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -2060,7 +2052,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.27',
+    appVersion:'v4.28',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2295,7 +2287,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.27'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.28'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -9075,237 +9067,52 @@ function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle'
 
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 
-// ===== v4.27 사입비 사진 · 장끼금액 실제매출 대조 =====
-// 손글씨 거래처명 OCR은 정확도가 낮아 사용하지 않는다.
-// 사진의 장끼금액 숫자만 보조적으로 읽고, 실제 장끼 판매내역에서 거래처/No.를 역매칭한다.
-let purchaseSlipState={rows:[],results:[],imageName:'',ocrText:'',previewUrl:''};
-function purchaseSlipSetStatus(msg,kind=''){
-  const el=$('purchaseSlipStatus');if(!el)return;el.className='purchaseSlipProgress '+(kind||'');el.textContent=msg||'';
-}
+// ===== v4.28 사입비 엑셀 · 장끼금액 실제매출 대조 =====
+// 사진 OCR은 사용하지 않는다. ChatGPT 등에서 정리한 엑셀(날짜/거래처/장끼금액/사입비)을 업로드하여 실제 장끼 판매내역과 대조한다.
+let purchaseSlipState={rows:[],results:[],fileName:''};
+function purchaseSlipSetStatus(msg,kind=''){const el=$('purchaseSlipStatus');if(!el)return;el.className='purchaseSlipProgress '+(kind||'');el.textContent=msg||''}
 function purchaseSlipMoney(v){return Number(v||0).toLocaleString('ko-KR')+'원'}
-function purchaseSlipNameKey(v){
-  let s=String(v||'');try{s=s.normalize('NFKC')}catch(e){}
-  return s.toLowerCase().replace(/주식회사|\(주\)|㈜|남평화-/g,'').replace(/\(a\)/ig,'').replace(/[^0-9a-z가-힣]/gi,'');
-}
-function purchaseSlipDistance(a,b){
-  a=purchaseSlipNameKey(a);b=purchaseSlipNameKey(b);if(!a)return b.length;if(!b)return a.length;
-  let prev=Array.from({length:b.length+1},(_,i)=>i);
-  for(let i=1;i<=a.length;i++){const cur=[i];for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur}return prev[b.length];
-}
-function purchaseSlipSimilarity(a,b){
-  const x=purchaseSlipNameKey(a),y=purchaseSlipNameKey(b);if(!x||!y)return 0;if(x===y)return 1;if(x.includes(y)||y.includes(x))return .9;
-  const m=Math.max(x.length,y.length);return m?Math.max(0,1-purchaseSlipDistance(x,y)/m):0;
-}
-function purchaseSlipAliases(t){
-  const out=new Set([t.cust||'']);
-  if(t.code){const c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(t.code));if(c){out.add(c.name||'');out.add(c.jangkiName||'')}}
-  return [...out].filter(Boolean);
-}
-function purchaseSlipAllSales(){
-  const map=new Map();
-  for(const x of purchaseSlipTicketSnapshot(state||{}))map.set(x.key||`${x.date}|${x.loc}|${x.no}|${x.cust}`,x);
-  for(const j of jobCache||[])for(const x of (j.ticketSales||[]))map.set(x.key||`${x.date}|${x.loc}|${x.no}|${x.cust}`,x);
-  return [...map.values()];
-}
-function purchaseSlipSalesSameDate(date,sales){
-  return (sales||[]).filter(x=>String(x.date||'')===String(date||'')&&Number(x.amount||0)>0);
-}
-function purchaseSlipCustomerGroups(rows){
-  const m=new Map();
-  for(const x of rows||[]){
-    const key=norm(x.code)||purchaseSlipNameKey(x.cust)||String(x.cust||'');
-    if(!m.has(key))m.set(key,{key,cust:x.cust||'',code:x.code||'',rows:[],sum:0});
-    const g=m.get(key);g.rows.push(x);g.sum+=Math.round(Number(x.amount||0));
-  }
-  return [...m.values()];
-}
+function purchaseSlipNameKey(v){let s=String(v||'');try{s=s.normalize('NFKC')}catch(e){}return s.toLowerCase().replace(/주식회사|\(주\)|㈜|남평화-/g,'').replace(/\(a\)/ig,'').replace(/[^0-9a-z가-힣]/gi,'')}
+function purchaseSlipDistance(a,b){a=purchaseSlipNameKey(a);b=purchaseSlipNameKey(b);if(!a)return b.length;if(!b)return a.length;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const cur=[i];for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur}return prev[b.length]}
+function purchaseSlipSimilarity(a,b){const x=purchaseSlipNameKey(a),y=purchaseSlipNameKey(b);if(!x||!y)return 0;if(x===y)return 1;if(x.includes(y)||y.includes(x))return .9;const m=Math.max(x.length,y.length);return m?Math.max(0,1-purchaseSlipDistance(x,y)/m):0}
+function purchaseSlipAliases(t){const out=new Set([t.cust||'']);if(t.code){const c=(cloud.runtimeCustomers||[]).find(x=>norm(x.code)===norm(t.code));if(c){out.add(c.name||'');out.add(c.jangkiName||'')}}return [...out].filter(Boolean)}
+function purchaseSlipAllSales(){const map=new Map();for(const x of purchaseSlipTicketSnapshot(state||{}))map.set(x.key||`${x.date}|${x.loc}|${x.no}|${x.cust}`,x);for(const j of jobCache||[])for(const x of (j.ticketSales||[]))map.set(x.key||`${x.date}|${x.loc}|${x.no}|${x.cust}`,x);return [...map.values()]}
+function purchaseSlipSalesSameDate(date,sales){return (sales||[]).filter(x=>String(x.date||'')===String(date||'')&&Number(x.amount||0)>0)}
+function purchaseSlipCustomerGroups(rows){const m=new Map();for(const x of rows||[]){const key=norm(x.code)||purchaseSlipNameKey(x.cust)||String(x.cust||'');if(!m.has(key))m.set(key,{key,cust:x.cust||'',code:x.code||'',rows:[],sum:0});const g=m.get(key);g.rows.push(x);g.sum+=Math.round(Number(x.amount||0))}return [...m.values()]}
 function purchaseSlipResultForRow(row,date,sales){
   const amount=Math.round(Number(row.amount||0)),name=norm(row.customer||''),same=purchaseSlipSalesSameDate(date,sales);
-  if(!(amount>0))return {status:'금액입력',kind:'warn',detail:'사진의 장끼금액을 입력해 주세요.'};
-
-  // 거래처를 사용자가 보정한 경우에는 거래처+금액을 함께 검증한다.
+  if(!date)return {status:'날짜확인',kind:'warn',detail:'엑셀 날짜 또는 기본 확인 날짜를 입력해 주세요.'};
+  if(!(amount>0))return {status:'금액확인',kind:'warn',detail:'장끼금액을 확인해 주세요.'};
+  if(!same.length)return {status:'매출자료없음',kind:'bad',detail:`${formatDisplayDate(date)} 실제 판매 장끼 상세가 저장되어 있지 않습니다.`};
   if(name){
     const scored=same.map(x=>({x,sim:Math.max(0,...purchaseSlipAliases(x).map(n=>purchaseSlipSimilarity(name,n)))})).sort((a,b)=>b.sim-a.sim);
-    const nameMatches=scored.filter(z=>z.sim>=.62);
-    const exact=nameMatches.filter(z=>Math.round(Number(z.x.amount||0))===amount);
-    if(exact.length===1){
-      const x=exact[0].x;return {status:'일치',kind:'ok',detail:`${x.cust} · ${x.loc==='store'?'매장':'창고'} No.${x.no} · ${purchaseSlipMoney(x.amount)}`,matched:[x]};
-    }
-    if(exact.length>1){
-      return {status:'후보확인',kind:'warn',detail:`${name} / ${purchaseSlipMoney(amount)}와 일치하는 장끼 ${exact.length}건 · ${exact.slice(0,6).map(z=>`${z.x.cust} No.${z.x.no}`).join(' / ')}`,matched:exact.map(z=>z.x)};
-    }
-    if(nameMatches.length){
-      const bestSim=nameMatches[0].sim,best=nameMatches.filter(z=>z.sim>=Math.max(.62,bestSim-.08)).map(z=>z.x);
-      const sum=best.reduce((a,b)=>a+Math.round(Number(b.amount||0)),0);
-      if(best.length>1&&sum===amount)return {status:'일치(합산)',kind:'ok',detail:`${best[0].cust} 당일 ${best.length}장 합계 ${purchaseSlipMoney(sum)} · ${best.map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:best};
-      return {status:'금액불일치',kind:'bad',detail:`${best[0].cust} 매출은 있으나 사진금액 ${purchaseSlipMoney(amount)}와 다름 · 실제 ${best.slice(0,6).map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:best};
-    }
+    const nameMatches=scored.filter(z=>z.sim>=.62),exact=nameMatches.filter(z=>Math.round(Number(z.x.amount||0))===amount);
+    if(exact.length===1){const x=exact[0].x;return {status:'일치',kind:'ok',detail:`${x.cust} · ${x.loc==='store'?'매장':'창고'} No.${x.no} · ${purchaseSlipMoney(x.amount)}`,matched:[x]}}
+    if(exact.length>1)return {status:'후보확인',kind:'warn',detail:`${name} / ${purchaseSlipMoney(amount)}와 일치하는 장끼 ${exact.length}건 · ${exact.slice(0,6).map(z=>`${z.x.cust} No.${z.x.no}`).join(' / ')}`,matched:exact.map(z=>z.x)};
+    if(nameMatches.length){const bestSim=nameMatches[0].sim,best=nameMatches.filter(z=>z.sim>=Math.max(.62,bestSim-.08)).map(z=>z.x),sum=best.reduce((a,b)=>a+Math.round(Number(b.amount||0)),0);if(best.length>1&&sum===amount)return {status:'일치(합산)',kind:'ok',detail:`${best[0].cust} 당일 ${best.length}장 합계 ${purchaseSlipMoney(sum)} · ${best.map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:best};return {status:'금액불일치',kind:'bad',detail:`${best[0].cust} 매출은 있으나 엑셀 장끼금액 ${purchaseSlipMoney(amount)}와 다름 · 실제 ${best.slice(0,6).map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:best}}
   }
-
-  // 거래처명이 없어도 금액이 유일하면 실제 매출에서 거래처를 자동 확정한다.
   const exactAmount=same.filter(x=>Math.round(Number(x.amount||0))===amount);
-  if(exactAmount.length===1){
-    const x=exactAmount[0];
-    return {status:'일치',kind:'ok',detail:`${x.cust} · ${x.loc==='store'?'매장':'창고'} No.${x.no} · ${purchaseSlipMoney(x.amount)}`,matched:[x],autoCustomer:x.cust};
-  }
-  if(exactAmount.length>1){
-    return {status:'후보확인',kind:'warn',detail:`같은 장끼금액 ${purchaseSlipMoney(amount)}이 ${exactAmount.length}건 있습니다. 사진의 거래처를 보고 '거래처 보정'에 입력하세요. · ${exactAmount.slice(0,8).map(x=>`${x.cust} No.${x.no}`).join(' / ')}`,matched:exactAmount};
-  }
-
-  // 같은 거래처 여러 장의 당일 합계가 사진 금액과 같으면 합산 일치로 인정한다.
+  if(exactAmount.length===1){const x=exactAmount[0];return {status:name?'거래처확인':'일치',kind:name?'warn':'ok',detail:`실제 ${x.cust} · ${x.loc==='store'?'매장':'창고'} No.${x.no} · ${purchaseSlipMoney(x.amount)}${name?` · 엑셀 거래처 '${name}' 확인 필요`:''}`,matched:[x],autoCustomer:x.cust}}
+  if(exactAmount.length>1)return {status:'후보확인',kind:'warn',detail:`같은 장끼금액 ${purchaseSlipMoney(amount)}이 ${exactAmount.length}건 있습니다. · ${exactAmount.slice(0,8).map(x=>`${x.cust} No.${x.no}`).join(' / ')}`,matched:exactAmount};
   const groups=purchaseSlipCustomerGroups(same).filter(g=>g.rows.length>1&&Math.round(g.sum)===amount);
-  if(groups.length===1){
-    const g=groups[0];return {status:'일치(합산)',kind:'ok',detail:`${g.cust} 당일 ${g.rows.length}장 합계 ${purchaseSlipMoney(g.sum)} · ${g.rows.map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:g.rows,autoCustomer:g.cust};
-  }
-  if(groups.length>1){
-    return {status:'후보확인',kind:'warn',detail:`${purchaseSlipMoney(amount)}과 같은 거래처별 당일 합계가 ${groups.length}곳 있습니다. · ${groups.slice(0,6).map(g=>`${g.cust}(${g.rows.length}장)`).join(' / ')}`,matched:groups.flatMap(g=>g.rows)};
-  }
-
+  if(groups.length===1){const g=groups[0];return {status:'일치(합산)',kind:'ok',detail:`${g.cust} 당일 ${g.rows.length}장 합계 ${purchaseSlipMoney(g.sum)} · ${g.rows.map(x=>`No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`,matched:g.rows,autoCustomer:g.cust}}
+  if(groups.length>1)return {status:'후보확인',kind:'warn',detail:`${purchaseSlipMoney(amount)}과 같은 거래처별 당일 합계가 ${groups.length}곳 있습니다. · ${groups.slice(0,6).map(g=>`${g.cust}(${g.rows.length}장)`).join(' / ')}`,matched:groups.flatMap(g=>g.rows)};
   const nearest=same.slice().sort((a,b)=>Math.abs(Number(a.amount||0)-amount)-Math.abs(Number(b.amount||0)-amount)).slice(0,4);
-  return {status:'매출없음',kind:'bad',detail:nearest.length?`정확히 같은 금액 없음 · 가까운 실제매출: ${nearest.map(x=>`${x.cust} No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`:'선택 날짜의 실제 판매내역을 찾지 못했습니다.'};
+  return {status:'매출없음',kind:'bad',detail:nearest.length?`정확히 같은 금액 없음 · 가까운 실제매출: ${nearest.map(x=>`${x.cust} No.${x.no} ${purchaseSlipMoney(x.amount)}`).join(' / ')}`:'선택 날짜의 실제 판매내역을 찾지 못했습니다.'}
 }
-function renderPurchaseSlipRows(){
-  const body=$('purchaseSlipRows');if(!body)return;
-  if(!purchaseSlipState.rows.length){body.innerHTML='<tr><td colspan="6" class="small">장끼금액 자동읽기 또는 금액 빠른입력으로 확인할 금액을 넣어주세요.</td></tr>';return}
-  body.innerHTML=purchaseSlipState.rows.map((r,i)=>{
-    const result=purchaseSlipState.results[i]||{};
-    return `<tr><td>${i+1}</td>
-      <td><input type="number" step="1" value="${Number(r.amount||0)||''}" oninput="purchaseSlipUpdateRow(${i},'amount',this.value)" placeholder="장끼금액"></td>
-      <td><input list="customerChoices" value="${escAttr(r.customer||'')}" oninput="purchaseSlipUpdateRow(${i},'customer',this.value)" placeholder="${result.autoCustomer?escAttr(result.autoCustomer):'중복금액일 때만 입력'}"></td>
-      <td>${result.status?`<span class="purchaseSlipStatusPill ${result.kind||''}">${esc(result.status)}</span>`:'-'}</td>
-      <td><div class="purchaseSlipResultDetail">${esc(result.detail||r.ocrSource||'')}</div></td>
-      <td><button class="btn light" type="button" onclick="purchaseSlipDeleteRow(${i})">×</button></td></tr>`;
-  }).join('');
-}
-window.purchaseSlipUpdateRow=function(i,key,value){
-  const r=purchaseSlipState.rows[i];if(!r)return;
-  r[key]=key==='amount'?Number(String(value).replace(/[^0-9.-]/g,''))||0:value;
-  purchaseSlipState.results=[];renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true;
-};
+function purchaseSlipOnePercent(r){const amt=Number(r?.amount||0),purchase=Number(r?.purchase||0),target=amt>0?Math.round(amt*.01):0,diff=purchase-target,ratio=amt>0&&purchase>=0?purchase/amt:0;return {target,diff,ratio}}
+function renderPurchaseSlipRows(){const body=$('purchaseSlipRows');if(!body)return;if(!purchaseSlipState.rows.length){body.innerHTML='<tr><td colspan="11" class="small">사입비 비교 엑셀을 업로드하면 거래처별 자료가 표시됩니다.</td></tr>';return}body.innerHTML=purchaseSlipState.rows.map((r,i)=>{const result=purchaseSlipState.results[i]||{},p=purchaseSlipOnePercent(r);return `<tr><td>${i+1}</td><td><input type="date" value="${escAttr(ymdToInput(r.date||''))}" oninput="purchaseSlipUpdateRow(${i},'date',this.value)"></td><td><input list="customerChoices" value="${escAttr(r.customer||'')}" oninput="purchaseSlipUpdateRow(${i},'customer',this.value)" placeholder="거래처명"></td><td><input type="number" step="1" value="${Number(r.amount||0)||''}" oninput="purchaseSlipUpdateRow(${i},'amount',this.value)" placeholder="장끼금액"></td><td><input type="number" step="1" value="${Number(r.purchase||0)||''}" oninput="purchaseSlipUpdateRow(${i},'purchase',this.value)" placeholder="사입비"></td><td class="amount">${p.target?purchaseSlipMoney(p.target):'-'}</td><td class="amount">${r.amount?`${p.diff>0?'+':''}${Number(p.diff).toLocaleString('ko-KR')}원`:'-'}</td><td>${r.amount&&Number(r.purchase)>=0?(p.ratio*100).toFixed(2)+'%':'-'}</td><td>${result.status?`<span class="purchaseSlipStatusPill ${result.kind||''}">${esc(result.status)}</span>`:'-'}</td><td><div class="purchaseSlipResultDetail">${esc(result.detail||r.memo||'')}</div></td><td><button class="btn light" type="button" onclick="purchaseSlipDeleteRow(${i})">×</button></td></tr>`}).join('')}
+window.purchaseSlipUpdateRow=function(i,key,value){const r=purchaseSlipState.rows[i];if(!r)return;if(key==='amount'||key==='purchase')r[key]=Number(String(value).replace(/[^0-9.-]/g,''))||0;else if(key==='date')r[key]=dateInputToYmd(value);else r[key]=value;purchaseSlipState.results=[];renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true};
 window.purchaseSlipDeleteRow=function(i){purchaseSlipState.rows.splice(i,1);purchaseSlipState.results=[];renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true};
-function purchaseSlipAddRow(customer='',amount=0,ocrSource=''){purchaseSlipState.rows.push({customer,amount,ocrSource});purchaseSlipState.results=[];renderPurchaseSlipRows()}
-function purchaseSlipParseAmountToken(v){
-  let d=String(v||'').replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/[^0-9]/g,'');
-  const n=Number(d);return Number.isFinite(n)?Math.abs(Math.round(n)):0;
-}
-function purchaseSlipQuickAmounts(text){
-  const rows=[];
-  for(const raw of String(text||'').split(/\r?\n/)){
-    const n=purchaseSlipParseAmountToken(raw);
-    if(n>=1000&&n<=50000000)rows.push({customer:'',amount:n,ocrSource:'빠른입력'});
-  }
-  return rows;
-}
-function purchaseSlipApplyQuickAmounts(){
-  const txt=$('purchaseSlipQuickAmounts')?.value||'',rows=purchaseSlipQuickAmounts(txt);
-  if(!rows.length){purchaseSlipSetStatus('금액 빠른입력은 한 줄에 장끼금액 하나씩 입력해 주세요.','warn');return}
-  purchaseSlipState.rows=rows;purchaseSlipState.results=[];renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true;
-  purchaseSlipSetStatus(`${rows.length}개 금액을 입력했습니다. ‘매출 대조’를 누르면 실제 장끼에서 거래처와 No.를 자동으로 찾습니다.`,'ok');
-}
-function purchaseSlipLoadImage(file,rotation){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const max=2200,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.round(img.naturalWidth*scale),h=Math.round(img.naturalHeight*scale),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(rotation==='left90'||rotation==='right90'){canvas.width=h;canvas.height=w}else{canvas.width=w;canvas.height=h}ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);if(rotation==='left90'){ctx.translate(0,w);ctx.rotate(-Math.PI/2)}else if(rotation==='right90'){ctx.translate(h,0);ctx.rotate(Math.PI/2)}else if(rotation==='180'){ctx.translate(w,h);ctx.rotate(Math.PI)}ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);resolve(canvas)}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('사진을 읽지 못했습니다.'))};img.src=url})}
-async function purchaseSlipRefreshPreview(){
-  const f=$('purchaseSlipImage')?.files?.[0];if(!f)return;
-  const canvas=await purchaseSlipLoadImage(f,$('purchaseSlipRotation')?.value||'left90'),img=$('purchaseSlipPreview'),empty=$('purchaseSlipEmpty');
-  if(purchaseSlipState.previewUrl)URL.revokeObjectURL(purchaseSlipState.previewUrl);
-  purchaseSlipState.previewUrl=canvas.toDataURL('image/jpeg',.9);
-  if(img){img.src=purchaseSlipState.previewUrl;img.classList.remove('hidden')}if(empty)empty.classList.add('hidden');
-}
-function purchaseSlipAmountCrop(src,x0,x1){
-  const y0=.07,y1=.90,sw=Math.max(1,Math.round(src.width*(x1-x0))),sh=Math.max(1,Math.round(src.height*(y1-y0)));
-  const scale=2.7,c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*scale));c.height=Math.max(1,Math.round(sh*scale));
-  const ctx=c.getContext('2d',{willReadFrequently:true});
-  ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
-  ctx.drawImage(src,Math.round(src.width*x0),Math.round(src.height*y0),sw,sh,0,0,c.width,c.height);
-  try{
-    const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
-    for(let i=0;i<d.length;i+=4){const g=Math.round(.299*d[i]+.587*d[i+1]+.114*d[i+2]);const v=g<115?0:g>215?255:Math.round((g-115)*2.55);d[i]=d[i+1]=d[i+2]=v}
-    ctx.putImageData(im,0,0);
-  }catch(e){}
-  return c;
-}
-function purchaseSlipAmountsFromOcrText(text,panel){
-  const rows=[],lines=String(text||'').split(/\r?\n/);
-  for(const raw of lines){
-    const tokens=raw.match(/[0-9OoIl|][0-9OoIl|,.\s]{2,}/g)||[];
-    for(const tok of tokens){
-      const n=purchaseSlipParseAmountToken(tok);
-      if(n>=1000&&n<=50000000)rows.push({customer:'',amount:n,ocrSource:`자동읽기 ${panel}열 · ${norm(raw)}`});
-    }
-  }
-  return rows;
-}
-async function purchaseSlipRunOcr(){
-  try{
-    const f=$('purchaseSlipImage')?.files?.[0];if(!f)throw new Error('사입비 사진을 먼저 선택해 주세요.');
-    if(typeof Tesseract==='undefined')throw new Error('자동읽기 모듈을 불러오지 못했습니다. 인터넷 연결 후 다시 시도해 주세요.');
-    purchaseSlipSetStatus('손글씨 거래처명은 읽지 않고 장끼금액 열 3곳의 숫자만 읽는 중입니다…','warn');
-    const canvas=await purchaseSlipLoadImage(f,$('purchaseSlipRotation')?.value||'left90');
-    const crops=[
-      {name:'왼쪽',c:purchaseSlipAmountCrop(canvas,.19,.29)},
-      {name:'가운데',c:purchaseSlipAmountCrop(canvas,.50,.61)},
-      {name:'오른쪽',c:purchaseSlipAmountCrop(canvas,.81,.92)}
-    ];
-    const all=[],raw=[];
-    for(let i=0;i<crops.length;i++){
-      const p=crops[i];
-      const ret=await Tesseract.recognize(p.c,'eng',{
-        logger:m=>{if(m?.status==='recognizing text')purchaseSlipSetStatus(`장끼금액 숫자 읽는 중… ${p.name} ${Math.round(Number(m.progress||0)*100)}%`,'warn')},
-        tessedit_char_whitelist:'0123456789,.-',
-        tessedit_pageseg_mode:'6'
-      });
-      const txt=ret?.data?.text||'';raw.push(`[${p.name} 장끼금액 열]\n${txt}`);all.push(...purchaseSlipAmountsFromOcrText(txt,p.name));
-    }
-    purchaseSlipState.imageName=f.name||'';purchaseSlipState.ocrText=raw.join('\n\n');
-    if($('purchaseSlipOcrRaw'))$('purchaseSlipOcrRaw').textContent=purchaseSlipState.ocrText||'(인식된 숫자 없음)';
-    purchaseSlipState.rows=all;purchaseSlipState.results=[];renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true;
-    if(all.length>=5){
-      purchaseSlipSetStatus(`사진에서 장끼금액 후보 ${all.length}개를 읽었습니다. 손글씨 숫자는 오인식될 수 있으니 금액만 눈으로 확인한 뒤 ‘매출 대조’를 눌러주세요.`,'warn');
-    }else if(all.length){
-      purchaseSlipSetStatus(`자동읽기가 ${all.length}개만 읽어 정확도가 부족합니다. 잘못 읽은 금액은 지우고, 누락된 금액은 ‘금액 빠른입력’ 또는 ‘금액 행 추가’로 보완해 주세요.`,'bad');
-    }else{
-      purchaseSlipSetStatus('이 사진은 손글씨 자동인식이 어렵습니다. 사진은 왼쪽에 그대로 두고 ‘금액 빠른입력’에 장끼금액만 한 줄씩 입력하면 실제 거래처·No.는 자동으로 찾습니다.','bad');
-    }
-  }catch(e){purchaseSlipSetStatus(e.message||String(e),'bad')}
-}
-function purchaseSlipCompare(){
-  try{
-    const date=dateInputToYmd($('purchaseSlipDate')?.value||'');if(!date)throw new Error('확인 날짜를 선택해 주세요.');
-    if(!purchaseSlipState.rows.length)throw new Error('대조할 장끼금액이 없습니다. 금액 빠른입력 또는 금액 행 추가를 이용해 주세요.');
-    const sales=purchaseSlipAllSales(),same=purchaseSlipSalesSameDate(date,sales);
-    if(!same.length)throw new Error(`${formatDisplayDate(date)} 판매 상세를 찾지 못했습니다. 해당 날짜의 매출변환 작업을 한 번 열어 자동 변환·검수하면 상세가 저장됩니다.`);
-    purchaseSlipState.results=purchaseSlipState.rows.map(r=>purchaseSlipResultForRow(r,date,sales));
-    renderPurchaseSlipRows();
-    const ok=purchaseSlipState.results.filter(x=>x.kind==='ok').length,warn=purchaseSlipState.results.filter(x=>x.kind==='warn').length,bad=purchaseSlipState.results.filter(x=>x.kind==='bad').length;
-    purchaseSlipSetStatus(`대조 완료 · 일치 ${ok}건${warn?` · 후보확인 ${warn}건`:''}${bad?` · 매출없음/불일치 ${bad}건`:''} · ${formatDisplayDate(date)} 실제 장끼 ${same.length}건 기준`,bad?'bad':warn?'warn':'ok');
-    if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=false;
-  }catch(e){purchaseSlipSetStatus(e.message||String(e),'bad')}
-}
-function downloadPurchaseSlipCheck(){
-  try{
-    if(!purchaseSlipState.results.length)throw new Error('먼저 매출 대조를 실행해 주세요.');
-    const date=dateInputToYmd($('purchaseSlipDate')?.value||''),rows=purchaseSlipState.rows.map((r,i)=>[date,purchaseSlipState.imageName||'',Number(r.amount||0),r.customer||'',purchaseSlipState.results[i]?.status||'',purchaseSlipState.results[i]?.detail||'']);
-    const ws=XLSX.utils.aoa_to_sheet([['확인일','사진파일','사진 장끼금액','거래처 보정','판정','실제 매출 확인'],...rows]);
-    ws['!cols']=[{wch:12},{wch:28},{wch:16},{wch:24},{wch:16},{wch:80}];
-    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'사입비 장끼확인');XLSX.writeFile(wb,`사입비_장끼금액_매출확인_${date||'결과'}.xlsx`);
-  }catch(e){alert(e.message||e)}
-}
-function setupPurchaseSlipCheck(){
-  if(!$('purchaseSlipCheckSection'))return;
-  const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  if($('purchaseSlipDate')&&!$('purchaseSlipDate').value)$('purchaseSlipDate').value=today;
-  $('purchaseSlipImage')?.addEventListener('change',()=>{
-    const f=$('purchaseSlipImage')?.files?.[0];
-    purchaseSlipState={rows:[],results:[],imageName:f?.name||'',ocrText:'',previewUrl:purchaseSlipState.previewUrl||''};
-    renderPurchaseSlipRows();purchaseSlipRefreshPreview().catch(e=>purchaseSlipSetStatus(e.message||e,'bad'));
-    if(f)purchaseSlipSetStatus(`${f.name} 선택됨 · ‘장끼금액 자동읽기’를 시도하거나 금액 빠른입력으로 바로 확인할 수 있습니다.`,'');
-  });
-  $('purchaseSlipRotation')?.addEventListener('change',()=>purchaseSlipRefreshPreview().catch(e=>purchaseSlipSetStatus(e.message||e,'bad')));
-  if($('purchaseSlipOcrBtn'))$('purchaseSlipOcrBtn').onclick=purchaseSlipRunOcr;
-  if($('purchaseSlipCompareBtn'))$('purchaseSlipCompareBtn').onclick=purchaseSlipCompare;
-  if($('purchaseSlipAddRowBtn'))$('purchaseSlipAddRowBtn').onclick=()=>purchaseSlipAddRow();
-  if($('purchaseSlipQuickApplyBtn'))$('purchaseSlipQuickApplyBtn').onclick=purchaseSlipApplyQuickAmounts;
-  if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').onclick=downloadPurchaseSlipCheck;
-}
+function purchaseSlipHeaderKey(v){return norm(v).toLowerCase().replace(/\s+/g,'').replace(/[()（）]/g,'')}
+function purchaseSlipFindHeader(a){const aliases={date:['날짜','일자','확인일','판매일','거래일'],customer:['거래처','거래처명','상호','업체명','판매처'],amount:['장끼금액','장끼액','장끼매출','매출액','판매액'],purchase:['사입비','지급사입비','사입비금액','사입금액','지급액'],memo:['비고','메모','적요']},keys={};for(const [k,vals] of Object.entries(aliases))keys[k]=new Set(vals.map(purchaseSlipHeaderKey));let best=null;for(let i=0;i<Math.min(30,a.length);i++){const row=(a[i]||[]).map(purchaseSlipHeaderKey),idx={};for(const k of Object.keys(keys))idx[k]=row.findIndex(x=>keys[k].has(x));const score=(idx.customer>=0?2:0)+(idx.amount>=0?2:0)+(idx.date>=0?1:0)+(idx.purchase>=0?1:0);if(!best||score>best.score)best={hi:i,idx,score}}return best&&best.score>=4?best:null}
+async function parsePurchaseSlipExcel(file){const wb=await readWb(file);let found=null;for(const sh of wb.SheetNames){const a=aoaFromSheet(wb,sh),h=purchaseSlipFindHeader(a);if(h){found={a,sh,...h};break}}if(!found)throw new Error(`${file.name}: '거래처'와 '장끼금액' 열을 찾지 못했습니다. 권장 열은 날짜 / 거래처 / 장끼금액 / 사입비 / 비고 입니다.`);const rows=[];for(const r of found.a.slice(found.hi+1)){const customer=found.idx.customer>=0?norm(r[found.idx.customer]):'',amount=found.idx.amount>=0?Math.abs(Math.round(num(r[found.idx.amount]))):0,purchase=found.idx.purchase>=0?Math.abs(Math.round(num(r[found.idx.purchase]))):0,rawDate=found.idx.date>=0?r[found.idx.date]:'',date=rawDate?(excelValueToYmd(rawDate)||ymd(rawDate)):'',memo=found.idx.memo>=0?norm(r[found.idx.memo]):'';if(!customer&&!amount&&!purchase&&!date)continue;if(!customer||!(amount>0))continue;rows.push({date,customer,amount,purchase,memo})}if(!rows.length)throw new Error(`${file.name}: 비교할 거래처·장끼금액 행을 찾지 못했습니다.`);return rows}
+async function purchaseSlipLoadExcel(file){try{if(!file)throw new Error('사입비 비교 엑셀을 선택해 주세요.');purchaseSlipSetStatus(`${file.name} 읽는 중…`,'warn');const rows=await parsePurchaseSlipExcel(file);purchaseSlipState={rows,results:[],fileName:file.name||''};const dates=[...new Set(rows.map(r=>r.date).filter(Boolean))];if(dates.length===1&&$('purchaseSlipDate'))$('purchaseSlipDate').value=ymdToInput(dates[0]);renderPurchaseSlipRows();if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=true;const noDate=rows.filter(r=>!r.date).length;purchaseSlipSetStatus(`${file.name} · ${rows.length}건 불러옴${dates.length?` · 날짜 ${dates.map(formatDisplayDate).join(', ')}`:''}${noDate?` · 날짜없는 행 ${noDate}건은 기본 확인 날짜 사용`:''}. ‘매출 대조’를 눌러주세요.`,'ok')}catch(e){purchaseSlipState={rows:[],results:[],fileName:file?.name||''};renderPurchaseSlipRows();purchaseSlipSetStatus(e.message||String(e),'bad')}}
+function purchaseSlipCompare(){try{if(!purchaseSlipState.rows.length)throw new Error('사입비 비교 엑셀을 먼저 업로드해 주세요.');const defaultDate=dateInputToYmd($('purchaseSlipDate')?.value||''),sales=purchaseSlipAllSales();purchaseSlipState.results=purchaseSlipState.rows.map(r=>purchaseSlipResultForRow(r,r.date||defaultDate,sales));renderPurchaseSlipRows();const ok=purchaseSlipState.results.filter(x=>x.kind==='ok').length,warn=purchaseSlipState.results.filter(x=>x.kind==='warn').length,bad=purchaseSlipState.results.filter(x=>x.kind==='bad').length,dates=[...new Set(purchaseSlipState.rows.map(r=>r.date||defaultDate).filter(Boolean))];purchaseSlipSetStatus(`대조 완료 · 일치 ${ok}건${warn?` · 확인필요 ${warn}건`:''}${bad?` · 불일치/자료없음 ${bad}건`:''}${dates.length?` · ${dates.map(formatDisplayDate).join(', ')} 기준`:''}`,bad?'bad':warn?'warn':'ok');if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').disabled=false}catch(e){purchaseSlipSetStatus(e.message||String(e),'bad')}}
+function downloadPurchaseSlipCheck(){try{if(!purchaseSlipState.results.length)throw new Error('먼저 매출 대조를 실행해 주세요.');const defaultDate=dateInputToYmd($('purchaseSlipDate')?.value||''),rows=purchaseSlipState.rows.map((r,i)=>{const p=purchaseSlipOnePercent(r),res=purchaseSlipState.results[i]||{};return [r.date||defaultDate,r.customer||'',Number(r.amount||0),Number(r.purchase||0),p.target,p.diff,p.ratio,res.status||'',res.detail||'',r.memo||'',purchaseSlipState.fileName||'']});const ws=XLSX.utils.aoa_to_sheet([['날짜','거래처','장끼금액','사입비','1% 기준사입비','1% 대비 차액','실제 사입비율','매출 판정','실제 매출 확인','비고','원본파일'],...rows]);ws['!cols']=[{wch:12},{wch:26},{wch:14},{wch:12},{wch:14},{wch:14},{wch:13},{wch:15},{wch:80},{wch:28},{wch:28}];for(let r=2;r<=rows.length+1;r++)if(ws['G'+r])ws['G'+r].z='0.00%';const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'사입비 매출대조');const dates=[...new Set(rows.map(r=>r[0]).filter(Boolean))],suffix=dates.length===1?dates[0]:'결과';XLSX.writeFile(wb,`사입비_장끼금액_매출확인_${suffix}.xlsx`)}catch(e){alert(e.message||e)}}
+function downloadPurchaseSlipTemplate(){try{const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([['날짜','거래처','장끼금액','사입비','비고'],['2026-09-29','예시거래처',579200,5800,'예시행은 삭제 후 사용']]);ws['!cols']=[{wch:14},{wch:28},{wch:16},{wch:14},{wch:34}];XLSX.utils.book_append_sheet(wb,ws,'사입비 비교용');XLSX.writeFile(wb,'사입비_매출비교용_양식.xlsx')}catch(e){alert(e.message||e)}}
+function updatePurchaseSlipExcelStatus(){const input=$('purchaseSlipExcelFile'),status=$('purchaseSlipExcelFileStatus'),label=$('purchaseSlipExcelFileLabel');if(!input||!status)return;const f=input.files?.[0];if(f){status.innerHTML=`<span class="compareFileName" title="${escAttr(f.name)}">✓ ${esc(f.name)}</span>`;status.classList.add('selected');label?.classList.add('compareSelected')}else{status.textContent='선택된 파일 없음';status.classList.remove('selected');label?.classList.remove('compareSelected')}}
+function setupPurchaseSlipCheck(){if(!$('purchaseSlipCheckSection'))return;const d=new Date(),today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if($('purchaseSlipDate')&&!$('purchaseSlipDate').value)$('purchaseSlipDate').value=today;$('purchaseSlipExcelFile')?.addEventListener('change',()=>{updatePurchaseSlipExcelStatus();const f=$('purchaseSlipExcelFile')?.files?.[0];if(f)purchaseSlipLoadExcel(f);else{purchaseSlipState={rows:[],results:[],fileName:''};renderPurchaseSlipRows();purchaseSlipSetStatus('사입비 비교 엑셀을 올려주세요.','')}});if($('purchaseSlipCompareBtn'))$('purchaseSlipCompareBtn').onclick=purchaseSlipCompare;if($('purchaseSlipDownloadBtn'))$('purchaseSlipDownloadBtn').onclick=downloadPurchaseSlipCheck;if($('purchaseSlipTemplateBtn'))$('purchaseSlipTemplateBtn').onclick=downloadPurchaseSlipTemplate;updatePurchaseSlipExcelStatus()}
 setupPurchaseSlipCheck();
 
 const WORK_TAB_KEY='autoecount-ay-work-tab-v1';
@@ -11687,14 +11494,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.27 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.28 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.27 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.28 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -11703,7 +11510,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
-/* ===== v4.27 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
+/* ===== v4.28 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
