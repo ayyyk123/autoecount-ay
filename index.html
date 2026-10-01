@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.23</title>
+<title>아도라블 매출 자동화 v4.24</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -683,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.23 · S/P·SP 매출 입력/제외 선택 · 샘플→SAMPLE 전체치환 · 미수정리 개선</div>
+      <div class="badge">v4.24 · S/P·SP 매출 입력/제외 선택 · 샘플→SAMPLE 전체치환 · 미수정리 개선</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1133,7 +1133,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <h4>월별 매출 비교</h4>
           <div class="moduleToolbar">
             <label>비교월 <input id="monthlyCompareMonth" type="month"></label>
-            <button id="confirmMonthlyCompareBtn" class="btn" type="button">일치확인 완료 + 결과보관</button>
+            <button id="confirmMonthlyCompareBtn" class="btn" type="button">일치확인 완료 + 저장·다운로드</button>
           </div>
           <div class="moduleToolbar">
             <span class="compareFilePick">
@@ -1153,7 +1153,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <div id="monthlyCompareStatus" class="small"></div>
           <div class="monthlyCompareRule"><b>월매출 비교 규칙</b> · 이카운트 `합계` 기준 · 매장/창고 피벗의 `Row Labels + 합계` 사용 · 소계/Grand Total/0원 제외 · S/P 및 `신상마켓(디테일)`은 비교대상에서 제외 · 매장 `신상마켓-`은 VAT 10% 포함금액으로 환산 · 변경명/장끼명/코드로 연결하고, 한 원본 거래처에 연결되는 이카운트 여러 행은 합산합니다.</div>
           <div class="monthlyCompareHistoryBox">
-            <div class="monthlyCompareHistoryHead"><b>월별 맞춤 기록</b><span class="small">확인완료 시 비교결과 엑셀도 Firebase에 함께 보관 · 이후 다시 다운로드 가능</span></div>
+            <div class="monthlyCompareHistoryHead"><b>월별 맞춤 기록</b><span class="small">확인완료 시 비교결과 엑셀 자동 다운로드 + Firebase 보관 · 이후 다시 다운로드 가능</span></div>
             <div id="monthlyCompareHistory" class="monthlyHistoryGrid"></div>
           </div>
         </div>
@@ -2008,7 +2008,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.23',
+    appVersion:'v4.24',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2243,7 +2243,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.23'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.24'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -5712,8 +5712,8 @@ function renderMonthlySalesCompareHistory(){
     const month=`${year}-${String(m).padStart(2,'0')}`,x=monthlyCompareHistoryByMonth(month);
     if(!x){items.push(`<div class="monthlyHistoryItem"><div class="mhTop"><b>${m}월</b><span class="statusPill">미확인</span></div><div class="mhMeta">맞춤 기록 없음</div></div>`);continue}
     const checked=monthlyHistoryCheckedText(x),matchedText=(x.matchedCount||x.mismatchCount)?`일치 ${Number(x.matchedCount||0)} · 불일치 ${Number(x.mismatchCount||0)}`:(x.legacy?'과거 확인기록':'확인완료');
-    const fileBtn=x.fileAvailable?`<button class="btn light" type="button" onclick="downloadSavedMonthlyCompareFile('${month}')">결과파일 다시받기</button>`:'';
-    const fileMeta=x.fileAvailable?`${esc(x.fileName||'결과파일 보관됨')} · ${Math.max(1,Math.round(Number(x.fileBytes||0)/1024)).toLocaleString()}KB`:'결과파일 없음'+(x.legacy?' · 과거 확인기록':'');
+    const fileBtn=x.fileAvailable?`<button class="btn light" type="button" onclick="downloadSavedMonthlyCompareFile('${month}')">결과파일 다운로드</button>`:'';
+    const fileMeta=x.fileAvailable?`${esc(x.fileName||'결과파일 보관됨')} · ${Math.max(1,Math.round(Number(x.fileBytes||0)/1024)).toLocaleString()}KB`:(x.legacy?'과거 버전 확인기록 · 결과파일 미보관 (재비교 후 저장 가능)':'결과파일 없음');
     items.push(`<div class="monthlyHistoryItem ok"><div class="mhTop"><b>${m}월</b><span class="statusPill ok">✓ 일치확인</span></div><div class="mhMeta">${esc(checked||'확인일 기록')}<br>${esc(matchedText)}<br>${fileMeta}</div>${fileBtn?`<div class="mhBtns">${fileBtn}</div>`:''}</div>`);
   }
   box.innerHTML=items.join('');
@@ -5754,8 +5754,13 @@ async function confirmMonthlyCompare(){
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
   await loadMonthlySalesCompareHistory();
-  $('monthlyCompareStatus').textContent=`✓ ${month} 월매출 일치확인 저장 완료 · 결과파일 Firebase 보관`;
-  alert(`${month} 월매출 맞춤 기록과 결과 엑셀을 저장했습니다.`);
+  $('monthlyCompareStatus').textContent=`✓ ${month} 월매출 일치확인 저장 완료 · 결과파일 자동 다운로드 + Firebase 보관`;
+  try{
+    XLSX.writeFile(wb,fileName);
+  }catch(downloadErr){
+    console.warn('월매출 확인결과 자동 다운로드 실패',downloadErr);
+  }
+  alert(`${month} 월매출 맞춤 기록과 결과 엑셀을 저장했습니다. 결과파일 다운로드도 시작합니다.`);
 }
 window.downloadSavedMonthlyCompareFile=async function(month){
   try{
@@ -11337,14 +11342,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.23 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.24 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.23 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.24 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -11353,6 +11358,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
+/* ===== v4.24 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
