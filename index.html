@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.34</title>
+<title>아도라블 매출 자동화 v4.35</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -664,7 +664,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
 
 <style>
-/* ===== v4.34 사입비 엑셀 · 장끼금액 금액대조 ===== */
+/* ===== v4.35 사입비 엑셀 · 장끼금액 금액대조 ===== */
 .purchaseSlipGrid{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin-top:10px;align-items:start}
 .purchaseSlipPreviewBox{border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc;padding:8px;min-height:230px}
 .purchaseSlipPreviewBox img{display:block;max-width:100%;max-height:520px;margin:auto;border-radius:6px;object-fit:contain;background:#fff}
@@ -713,7 +713,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.34 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
+      <div class="badge">v4.35 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1408,7 +1408,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
           <span id="taxPurchaseImportStatus" class="small"></span>
           <button id="addTaxPurchaseBtn" class="btn light" type="button">매입받을 항목 추가</button>
         </div>
-        <div class="taxBookSmallNote">고정 매입항목은 위의 `매입자료 가져오기`로 원하는 월의 목록과 최종금액을 불러옵니다. 금액·고정여부·목록순서는 언제든 수정할 수 있습니다. 여러 달 또는 여러 날짜 금액을 합산해 세금계산서로 받는 항목은 `월별합산`·`날짜별합산`에서 금액과 계산서 수취월을 관리할 수 있습니다.</div>
+        <div class="taxBookSmallNote">고정 매입항목은 위의 `매입자료 가져오기`로 원하는 월의 목록과 최종금액을 불러옵니다. 금액·고정여부·목록순서는 언제든 수정할 수 있습니다. 여러 달 또는 여러 날짜 금액을 합산해 세금계산서로 받는 항목은 `월별합산`·`날짜별합산`에서 금액과 계산서 수취월을 관리할 수 있습니다. 입력한 합산금액은 점검월별로 저장되며, 고정매입을 다시 가져와도 현재 점검월에 입력한 합산내역을 유지합니다.</div>
         <div class="taxBookPanel">
           <div id="taxPurchaseSummary" class="taxBookSummary"></div>
           <div class="taxPurchaseFilters">
@@ -2083,7 +2083,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.34',
+    appVersion:'v4.35',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2318,7 +2318,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.34'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.35'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -5616,7 +5616,7 @@ function inferCustomerLoc(key,name){
 }
 
 
-// ===== v4.34 월매출 비교 금액 직접수정 =====
+// ===== v4.35 월매출 비교 금액 직접수정 =====
 // 엑셀금액(rawSource)은 원본 표시용으로 고정.
 // 규칙적용금액(source)과 이카운트 합계(ecount)는 각각 직접 수정 가능하며,
 // 수정값은 비교월별 Firebase에 자동저장된다.
@@ -5811,7 +5811,7 @@ function monthlyEditableAmountCell(r,rowIndex,field){
   </div>`;
 }
 
-// ===== v4.34 월매출 비교 수동 비교제외 =====
+// ===== v4.35 월매출 비교 수동 비교제외 =====
 function monthlyCompareExcludeId(r){
   if(r?._monthlyExcludeId)return r._monthlyExcludeId;
   const baseEcount=r?.autoEcount!==undefined?r.autoEcount:r?.ecount;
@@ -7518,6 +7518,57 @@ function renderTaxPurchaseSourceOptions(){
   if([...sel.options].some(o=>o.value===wanted))sel.value=wanted;
 }
 
+
+/* ===== v4.35 세금계산서 월별합산 금액 보존 =====
+   - 고정매입 가져오기 시 현재 점검월에 이미 입력한 월별/날짜별 합산내역을 우선 보존
+   - 새 달에 처음 가져오는 항목은 직전월 합산사용 여부만 이어받고,
+     빈 합산내역으로 만들지 않고 현재월 금액 1줄을 생성
+   - 과거 버그로 manualInvoice.enabled=true인데 lines/dateLines가 비어 있는 자료는
+     현재 저장된 들어올 금액을 이용해 해당 점검월 1줄로 안전 복구
+*/
+function cloneTaxManualInvoice(mi){
+  if(!mi||typeof mi!=='object')return null;
+  return {
+    enabled:!!mi.enabled,
+    mode:mi.mode==='date'?'date':'month',
+    receiveMonth:String(mi.receiveMonth||''),
+    lines:Array.isArray(mi.lines)?mi.lines.map((x,k)=>({
+      id:String(x?.id||`line_${Date.now()}_${k}`),
+      month:String(x?.month||''),
+      amount:Number(x?.amount||0)
+    })):[],
+    dateLines:Array.isArray(mi.dateLines)?mi.dateLines.map((x,k)=>({
+      id:String(x?.id||`date_${Date.now()}_${k}`),
+      date:String(x?.date||''),
+      amount:Number(x?.amount||0)
+    })):[],
+    monthCollapsed:!!mi.monthCollapsed,
+    dateCollapsed:typeof mi.dateCollapsed==='boolean'?mi.dateCollapsed:true,
+    detailOpen:!!mi.detailOpen
+  };
+}
+function taxManualInvoiceHasLines(mi){
+  return !!(mi&&(
+    (Array.isArray(mi.lines)&&mi.lines.length)||
+    (Array.isArray(mi.dateLines)&&mi.dateLines.length)
+  ));
+}
+function repairEmptyTaxManualInvoice(r,month){
+  if(!r?.manualInvoice?.enabled)return false;
+  const m=normalizeTaxManualInvoice(r);
+  if(taxManualInvoiceHasLines(m))return false;
+  const amount=Number(r.expectedAmount||0);
+  if(!Number.isFinite(amount)||amount===0)return false;
+  if(m.mode==='date'){
+    m.dateLines=[{id:`date_repair_${Date.now()}`,date:`${month}-01`,amount}];
+  }else{
+    m.mode='month';
+    m.lines=[{id:`line_repair_${Date.now()}`,month,amount}];
+  }
+  if(!m.receiveMonth)m.receiveMonth=month;
+  return true;
+}
+
 async function importTaxPurchasesFromMonth(){
   const sourceMonth=$('taxPurchaseSourceMonth')?.value;
   const targetMonth=taxBookState.month||$('taxCheckMonth')?.value;
@@ -7538,28 +7589,63 @@ async function importTaxPurchasesFromMonth(){
     if(!confirm(`${Number(targetMonth.slice(5))}월의 현재 매입목록을 ${Number(sourceMonth.slice(5))}월 고정매입 ${fixedRows.length}건으로 교체할까요?\n금액확인·매입수취 상태는 새달 기준으로 초기화됩니다.`))return;
   }
 
+  const currentRows=Array.isArray(taxBookState.purchases)?taxBookState.purchases:[];
+  const currentByMaster=new Map(currentRows.filter(x=>x?.masterId).map(x=>[String(x.masterId),x]));
+  const currentByName=new Map(currentRows.filter(x=>x?.name).map(x=>[norm(x.name),x]));
+
   taxBookState.purchases=fixedRows.map((r,i)=>{
     const amount=r.received?Number(r.actualAmount||0):Number(r.expectedAmount||0);
+    const existing=(r.masterId&&currentByMaster.get(String(r.masterId)))||currentByName.get(norm(r.name||''))||null;
+    let manualInvoice=null;
+
+    // 현재 점검월에 사용자가 이미 입력해 둔 합산내역이 있으면 그것을 최우선 보존한다.
+    if(existing?.manualInvoice?.enabled){
+      manualInvoice=cloneTaxManualInvoice(existing.manualInvoice);
+      if(manualInvoice){
+        manualInvoice.receiveMonth=manualInvoice.receiveMonth||targetMonth;
+        // 과거 버그로 현재월 합산내역이 비어 있다면 현재 저장금액으로 1줄 복구
+        if(!taxManualInvoiceHasLines(manualInvoice)){
+          const repairAmount=Number(existing.expectedAmount||amount||0);
+          if(manualInvoice.mode==='date'){
+            manualInvoice.dateLines=[{id:`date_import_repair_${Date.now()}_${i}`,date:`${targetMonth}-01`,amount:repairAmount}];
+          }else{
+            manualInvoice.mode='month';
+            manualInvoice.lines=[{id:`line_import_repair_${Date.now()}_${i}`,month:targetMonth,amount:repairAmount}];
+          }
+        }
+      }
+    }else if(r.manualInvoice?.enabled){
+      // 새 달에 처음 가져오는 합산항목은 빈 0원 목록으로 만들지 않는다.
+      const mode=r.manualInvoice.mode==='date'?'date':'month';
+      manualInvoice={
+        enabled:true,
+        mode,
+        receiveMonth:targetMonth,
+        lines:mode==='month'?[{id:`line_import_${Date.now()}_${i}`,month:targetMonth,amount}]:[],
+        dateLines:mode==='date'?[{id:`date_import_${Date.now()}_${i}`,date:`${targetMonth}-01`,amount}]:[],
+        monthCollapsed:false,
+        dateCollapsed:true,
+        detailOpen:false
+      };
+    }
+
+    const expected=manualInvoice?.enabled
+      ?(manualInvoice.mode==='date'
+          ?manualInvoice.dateLines.reduce((sum,x)=>sum+Number(x.amount||0),0)
+          :manualInvoice.lines.reduce((sum,x)=>sum+Number(x.amount||0),0))
+      :amount;
+
     return {
       id:r.masterId?`m_${r.masterId}`:`copy_${Date.now()}_${i}`,
       masterId:r.masterId||'',
       name:r.name||'',
       fixed:r.fixed!==false,
-      expectedAmount:amount,
+      expectedAmount:expected,
       expectedConfirmed:false,
       received:false,
-      actualAmount:amount,
+      actualAmount:expected,
       reason:'',
-      manualInvoice:r.manualInvoice?.enabled?{
-        enabled:true,
-        mode:r.manualInvoice.mode==='date'?'date':'month',
-        receiveMonth:targetMonth,
-        lines:[],
-        dateLines:[],
-        monthCollapsed:false,
-        dateCollapsed:true,
-        detailOpen:false
-      }:null
+      manualInvoice
     };
   });
   taxBookState.purchaseTotalOverride=null;
@@ -7605,6 +7691,10 @@ async function loadTaxBookMonth(month,requestId=null){
     purchaseTotalOverride:null,historicalSummary:false
   };
   if(!Array.isArray(book.purchases))book.purchases=[];
+  let repairedManualInvoice=false;
+  for(const r of book.purchases){
+    if(repairEmptyTaxManualInvoice(r,month))repairedManualInvoice=true;
+  }
 
   const nextBookState={
     month,
@@ -7641,6 +7731,10 @@ async function loadTaxBookMonth(month,requestId=null){
   taxBookState=nextBookState;
   taxYearBooks=nextYearBooks;
   taxPrevSalesState=nextPrev;
+  if(repairedManualInvoice){
+    // 과거 버그로 비어 있던 합산내역 복구값을 Firebase에도 즉시 반영
+    await saveTaxBook(false);
+  }
   renderTaxBook();
   renderPreviousTaxSales();
   return true;
@@ -9442,7 +9536,7 @@ function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle'
 
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 
-// ===== v4.34 사입비 엑셀 · 판매금액 대조 =====
+// ===== v4.35 사입비 엑셀 · 판매금액 대조 =====
 // 목적: 사입비/1% 비교가 아니라 엑셀 판매금액과 프로그램 자동변환용 실제 판매데이터 금액을 대조한다.
 // 거래처명은 참고용이며 자동판정에 사용하지 않는다.
 // 검수필요 행의 검수결과/메모는 Firebase에 저장하고 동일 엑셀을 다시 올리면 복원한다.
@@ -12327,14 +12421,14 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.34 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.35 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.34 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.35 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -12343,7 +12437,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
-/* ===== v4.34 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
+/* ===== v4.35 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
