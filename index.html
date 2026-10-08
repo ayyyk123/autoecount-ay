@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.37</title>
+<title>아도라블 매출 자동화 v4.38</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -683,7 +683,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
 
 <style>
-/* ===== v4.37 사입비 엑셀 · 장끼금액 금액대조 ===== */
+/* ===== v4.38 사입비 엑셀 · 장끼금액 금액대조 ===== */
 .purchaseSlipGrid{display:grid;grid-template-columns:minmax(260px,34%) 1fr;gap:12px;margin-top:10px;align-items:start}
 .purchaseSlipPreviewBox{border:1px solid #dbe4ee;border-radius:10px;background:#f8fafc;padding:8px;min-height:230px}
 .purchaseSlipPreviewBox img{display:block;max-width:100%;max-height:520px;margin:auto;border-radius:6px;object-fit:contain;background:#fff}
@@ -732,7 +732,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.37 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
+      <div class="badge">v4.38 · 사입비 엑셀 장끼금액 대조 · 월매출 파일인식 개선 · S/P·SP 입력선택</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1544,6 +1544,8 @@ let currentReceiptBulkDate='';
 let currentBizRegConditionalReviews={};
 let currentSampleConfirmations={};
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907',hometaxPendingIssueMatches=[],hometaxLastImportStats=null;
+// v4.38: 현금영수증 발급목록 날짜 펼침 상태를 재렌더 후에도 유지
+let generalIssueOpenDaysState=null;
 let activityLogs=[];
 let cashCloseState={purchase:null,collection:null,purchaseRows:[],purchaseBankRows:[],purchaseMiscRows:[],collectionRows:[],purchaseTotal:0,cashPurchaseTotal:0,miscCashTotal:0,bankPurchaseTotal:0,collectionTotal:0,purchaseDates:[],bankAdjustments:[],history:[],historyLoaded:false,comboUnits:[{label:'단위 A',amount:30000,qty:0},{label:'단위 B',amount:200000,qty:0}]};
 let compareState={rows:[],loc:'all',mismatchOnly:true,mode:'',meta:{},specialOpen:false,manualExcluded:[]};
@@ -2103,7 +2105,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.37',
+    appVersion:'v4.38',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2338,7 +2340,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.37'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.38'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -4645,6 +4647,11 @@ function toggleGeneralUnprocessedDetails(){
 }
 function renderGeneralLedger(){
   const box=$('generalLedgerTable'),sum=$('generalLedgerSummary'),opening=$('openingList'),profiles=$('receiptProfileList');if(!box||!sum)return;
+  // 발급요청 완료 등으로 원장이 다시 그려져도 사용자가 열어 둔 날짜 그룹을 그대로 유지한다.
+  const _existingIssueDays=[...box.querySelectorAll('details.generalIssueDay[data-issue-day]')];
+  if(_existingIssueDays.length){
+    generalIssueOpenDaysState=new Set(_existingIssueDays.filter(el=>el.open).map(el=>String(el.dataset.issueDay||'')));
+  }
   const consumed=consumedGeneralIds(),rows=collectGeneralRows();
   const un=rows.filter(r=>!r.opening&&!consumed.has(r.id)&&Number(r.amount||0)!==0)
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.cust||'').localeCompare(String(b.cust||''))||Number(a.no||0)-Number(b.no||0));
@@ -4680,12 +4687,16 @@ function renderGeneralLedger(){
     return `<tr><td>${st}${action}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b>${carryNote}</td><td>${methodText}</td><td><b>${esc(memo)}</b></td></tr>`;
   }
   function generalIssueSaleDate(a){const entry=generalActionEntries(a)[0]||{};return String(entry.date||a.saleDate||'날짜미확인')}
-  window.setAllGeneralIssueDays=function(open){document.querySelectorAll('#generalLedgerTable details.generalIssueDay').forEach(el=>{el.open=!!open})};
+  window.setAllGeneralIssueDays=function(open){
+    const els=[...document.querySelectorAll('#generalLedgerTable details.generalIssueDay[data-issue-day]')];
+    generalIssueOpenDaysState=new Set();
+    els.forEach(el=>{el.open=!!open;if(open)generalIssueOpenDaysState.add(String(el.dataset.issueDay||''))});
+  };
   const issueLimited=issueActs.slice(-500),issueGroups=new Map();
   for(const a of issueLimited){const d=generalIssueSaleDate(a);if(!issueGroups.has(d))issueGroups.set(d,[]);issueGroups.get(d).push(a)}
   const issueDays=[...issueGroups.keys()].sort((a,b)=>{if(a==='날짜미확인')return 1;if(b==='날짜미확인')return -1;return String(b).localeCompare(String(a))});
   const todayIssueDay=activityLocalYmd(Date.now()),defaultIssueDay=issueGroups.has(todayIssueDay)?todayIssueDay:(issueDays[0]||'');
-  const issueGroupsHtml=issueDays.length?issueDays.map(d=>{const xs=issueGroups.get(d)||[];xs.sort((a,b)=>{const ae=generalActionEntries(a)[0]||{},be=generalActionEntries(b)[0]||{};return Number(ae.no||a.saleNo||0)-Number(be.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0)});const label=/^\d{8}$/.test(d)?activityDateLabel(d):d;return `<details class="generalIssueDay" ${d===defaultIssueDay?'open':''}><summary><span>${esc(label)}</span><span class="generalIssueDayCount">${xs.length.toLocaleString()}건</span></summary><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th></tr></thead><tbody>${xs.map(generalIssueRowHtml).join('')}</tbody></table></details>`}).join(''):'<div class="generalIssueEmpty">현재 발급대상 없음</div>';
+  const issueGroupsHtml=issueDays.length?issueDays.map(d=>{const xs=issueGroups.get(d)||[];xs.sort((a,b)=>{const ae=generalActionEntries(a)[0]||{},be=generalActionEntries(b)[0]||{};return Number(ae.no||a.saleNo||0)-Number(be.no||b.saleNo||0)||Number(a.createdAtMs||0)-Number(b.createdAtMs||0)});const label=/^\d{8}$/.test(d)?activityDateLabel(d):d;const keepOpen=generalIssueOpenDaysState instanceof Set?generalIssueOpenDaysState.has(d):d===defaultIssueDay;return `<details class="generalIssueDay" data-issue-day="${esc(d)}" ${keepOpen?'open':''}><summary><span>${esc(label)}</span><span class="generalIssueDayCount">${xs.length.toLocaleString()}건</span></summary><table><thead><tr><th>상태</th><th>판매일</th><th>거래처</th><th>장끼 No.</th><th>발급금액</th><th>발급방식</th><th>적요</th></tr></thead><tbody>${xs.map(generalIssueRowHtml).join('')}</tbody></table></details>`}).join(''):'<div class="generalIssueEmpty">현재 발급대상 없음</div>';
 
   const offsetRows=offsetActs.length?offsetActs.slice(0,500).map(a=>{
     const es=generalActionEntries(a),date=(es[0]?.date||a.saleDate||''),cust=a.cust||es[0]?.cust||'';
@@ -4720,6 +4731,14 @@ function renderGeneralLedger(){
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">이번 발행대상 기간 안에서 날짜가 달라도 같은 거래처의 판매·반품을 서로 상계한 내역과 이월잔액 상계를 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
     <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>첫 거래가 반품이라 과거 현금영수증 발행건 자체가 없는 경우에는 ‘반품잔액 이월’을 눌러 취소대상에서 제외하고 다음 판매와 자동 상계할 수 있습니다.</b> 과거 발행이 실제로 있었던 반품은 기존처럼 홈택스 취소 후 결과를 확정하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
+  // 사용자가 날짜 제목을 직접 펼치거나 접은 상태도 다음 재렌더까지 기억한다.
+  box.querySelectorAll('details.generalIssueDay[data-issue-day]').forEach(el=>{
+    el.addEventListener('toggle',()=>{
+      if(!(generalIssueOpenDaysState instanceof Set))generalIssueOpenDaysState=new Set();
+      const d=String(el.dataset.issueDay||'');
+      if(el.open)generalIssueOpenDaysState.add(d);else generalIssueOpenDaysState.delete(d);
+    });
+  });
 }
 window.editGeneralOpening=function(id){const o=(generalOpenings||[]).find(x=>x.id===id);if(!o)return;$('openingCustomer').value=o.cust||'';$('openingBasisDate').value=ymdToInput(o.basisDate||generalStartDate);$('openingAmount').value=Number(o.amount||0);$('openingCustomer').focus()}
 
@@ -5664,7 +5683,7 @@ function inferCustomerLoc(key,name){
 }
 
 
-// ===== v4.37 월매출 비교 금액 직접수정 =====
+// ===== v4.38 월매출 비교 금액 직접수정 =====
 // 엑셀금액(rawSource)은 원본 표시용으로 고정.
 // 규칙적용금액(source)과 이카운트 합계(ecount)는 각각 직접 수정 가능하며,
 // 수정값은 비교월별 Firebase에 자동저장된다.
@@ -5859,7 +5878,7 @@ function monthlyEditableAmountCell(r,rowIndex,field){
   </div>`;
 }
 
-// ===== v4.37 월매출 비교 수동 비교제외 =====
+// ===== v4.38 월매출 비교 수동 비교제외 =====
 function monthlyCompareExcludeId(r){
   if(r?._monthlyExcludeId)return r._monthlyExcludeId;
   const baseEcount=r?.autoEcount!==undefined?r.autoEcount:r?.ecount;
@@ -7567,7 +7586,7 @@ function renderTaxPurchaseSourceOptions(){
 }
 
 
-/* ===== v4.37 세금계산서 월별합산 금액 보존 =====
+/* ===== v4.38 세금계산서 월별합산 금액 보존 =====
    - 고정매입 가져오기 시 현재 점검월에 이미 입력한 월별/날짜별 합산내역을 우선 보존
    - 새 달에 처음 가져오는 항목은 직전월 합산사용 여부만 이어받고,
      빈 합산내역으로 만들지 않고 현재월 금액 1줄을 생성
@@ -9211,7 +9230,7 @@ function purchaseSlipTicketSnapshot(st){
 }
 
 
-/* ===== v4.37 매출 세부금액: SAMPLE/택배비/화물비 장끼 모아보기 ===== */
+/* ===== v4.38 매출 세부금액: SAMPLE/택배비/화물비 장끼 모아보기 ===== */
 function compactSpecialTicketLine(o){
   return {
     kind:norm(o?.['구분']||''),
@@ -9644,7 +9663,7 @@ async function showJobSalesDetail(id,date,loc){
     return;
   }
 
-  // 이전 작업은 신상마켓금액 또는 v4.37 특이장끼 요약이 없을 수 있으므로
+  // 이전 작업은 신상마켓금액 또는 v4.38 특이장끼 요약이 없을 수 있으므로
   // 저장된 원본으로 한 번만 다시 계산하여 Firebase에 보강한다.
   const needsSpecialRestore=!Array.isArray(j?.specialTicketSummary);
   const needsShinsangRestore=loc==='store'&&r.shinsangMarketAmount===undefined;
@@ -9693,7 +9712,7 @@ function setupJobListResize(){const v=$('jobListViewport'),h=$('jobResizeHandle'
 
 window.openJobAll=openJobAll;window.focusJobSection=focusJobSection;window.showJobSalesDetail=showJobSalesDetail;window.downloadJobOutput=downloadJobOutput;
 
-// ===== v4.37 사입비 엑셀 · 판매금액 대조 =====
+// ===== v4.38 사입비 엑셀 · 판매금액 대조 =====
 // 목적: 사입비/1% 비교가 아니라 엑셀 판매금액과 프로그램 자동변환용 실제 판매데이터 금액을 대조한다.
 // 거래처명은 참고용이며 자동판정에 사용하지 않는다.
 // 검수필요 행의 검수결과/메모는 Firebase에 저장하고 동일 엑셀을 다시 올리면 복원한다.
@@ -12578,15 +12597,15 @@ arCellHtml=function(r,key,boxKey){
 };
 
 
-/* ===== v4.37 세부매출 SAMPLE·택배비·화물비 장끼 모아보기 ===== */
-/* ===== v4.37 S/P·SP 매출 입력여부 선택 =====
+/* ===== v4.38 세부매출 SAMPLE·택배비·화물비 장끼 모아보기 ===== */
+/* ===== v4.38 S/P·SP 매출 입력여부 선택 =====
    - S/P·SP 장끼는 선택 전 판매입력에 보류
    - '매출 입력' 선택 시 실제 판매입력 엑셀에 포함
    - '입력 제외' 선택 시 판매입력에서 제외
    - 선택 결과는 작업별 Firebase에 저장되며 다시 열어도 유지
    - 이전 버전의 단순 '확인완료' 기록은 결정으로 간주하지 않고 다시 선택
 */
-/* ===== v4.37 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
+/* ===== v4.38 적요 정규화: 적요 어디에 있든 '샘플' → 'SAMPLE' 전체 치환 ===== */
 /* ===== v4.21 S/P·SP 매출 포함 + 확인요망 검수 ===== */
 /* ===== v4.21 미수관리: 잔액파일 최종잔액을 기준점으로 이후 거래만 반영 =====
    - 일요일 잔액파일의 최종 잔액을 그대로 기준으로 사용
@@ -12595,8 +12614,9 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
-/* ===== v4.37 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
-/* ===== v4.37 현금영수증 발급확인 승인번호 입력 + 판매적요 반영 ===== */
+/* ===== v4.38 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
+/* ===== v4.38 현금영수증 발급확인 승인번호 입력 + 판매적요 반영 ===== */
+/* ===== v4.38 현금영수증 발급목록 날짜 펼침상태 유지 ===== */
 /* ===== v4.19 일반- 적요 승인번호 반영 + 처리열 제거(작업버튼 상태열 이동) ===== */
 /* ===== v4.18 작업일자 고정정렬 + 일반- 현금영수증 발급목록 날짜별 접기 ===== */
 /* ===== v4.15 잘못된 작업 즉시삭제 + 원본/참고자료 재다운로드 + 현금영수증 금액 교차검증 ===== */
