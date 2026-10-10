@@ -619,7 +619,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .shinsangTable{min-width:980px;font-size:11px}.shinsangTable th,.shinsangTable td{padding:6px 7px;vertical-align:middle}.shinsangTable th{z-index:2}
   .shinsangBadge{display:inline-block;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:850;white-space:nowrap}
   .shinsangBadge.ok{background:#dcfce7;color:#166534}.shinsangBadge.bad{background:#fee2e2;color:#991b1b}.shinsangBadge.warn{background:#fef3c7;color:#92400e}.shinsangBadge.gray{background:#e2e8f0;color:#475569}
-  .shinsangMap{display:flex;gap:5px;align-items:center;min-width:300px}.shinsangMap select{max-width:220px;padding:5px 6px;font-size:10px}.shinsangMap .btn{padding:5px 7px;font-size:10px}
+  .shinsangMap{display:flex;gap:5px;align-items:center;min-width:360px;flex-wrap:wrap}.shinsangMap select{max-width:220px;padding:5px 6px;font-size:10px}.shinsangMap .btn{padding:5px 7px;font-size:10px}.shinsangMapSearch{width:270px!important;min-width:220px!important;padding:5px 7px!important;font-size:10px!important;border:1px solid #cbd5e1!important;border-radius:6px!important;background:#fff!important}.shinsangMapHint{width:100%;font-size:9px;color:#64748b;line-height:1.35}
   .shinsangMoney{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.shinsangDesc{max-width:280px;white-space:normal;line-height:1.35;color:#475569}
   @media(max-width:900px){.shinsangSummary{grid-template-columns:repeat(2,1fr)}.shinsangToolbar{align-items:stretch}.shinsangToolbar label{width:100%}}
   .shinsangHowto{margin:8px 0 10px;padding:9px 10px;border:1px solid #c7d2fe;border-radius:9px;background:#eef2ff;font-size:11px;line-height:1.55;color:#3730a3}
@@ -1973,7 +1973,7 @@ window.deleteVatRule=async function(key,source){try{if(!user)throw new Error('�
 window.restoreVatRule=async function(key){try{const docKey=key==='신상마켓-*'?'__shinsang_default__':key;await userCol('vatRules').doc(safeId(docKey)).delete();cloud.vatRules.delete(docKey);renderRulesDashboard()}catch(e){alert(e.message||e)}}
 window.editShinsangRule=function(key){const r=shinsangDepositAliases.get(key);$('rulesShinsangAlias').value=r?.description||key;$('rulesShinsangTarget').value=r?.code||'';$('rulesShinsangAlias').focus()}
 window.deleteShinsangRule=async function(key){try{if(!user)throw new Error('로그인이 필요합니다.');if(!confirm(`${shinsangDepositAliases.get(key)?.description||key} 영구매칭을 삭제할까요?`))return;await userCol('shinsangDepositAliases').doc(safeId(key)).delete();shinsangDepositAliases.delete(key);renderRulesDashboard()}catch(e){alert(e.message||e)}}
-function downloadAllRulesExcel(){try{const wb=XLSX.utils.book_new();const c=customerRuleRows(),i=itemRuleRows(),v=vatRuleRows(),sh=[...(shinsangDepositAliases||new Map()).values()];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 거래처명','연결 거래처코드','이카운트 거래처명','장끼명','출처','설명'],...c.map(r=>[r.key,r.code,r.name,r.jangki,r.source,r.note])]),'거래처규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 품목명','연결 품목코드','이카운트 품목명','출처','설명'],...i.map(r=>[r.key,r.code,r.name,r.source,r.note])]),'품목규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['거래처/적용대상','거래처코드','적용값','출처','설명'],...v.map(r=>[r.key,r.code,r.mode?vatModeText(r.mode):'자동적용 안 함',r.source,r.note])]),'VAT규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['입금 기재내용','매칭키','거래처코드','거래처명'],...sh.map(r=>[r.description||r.aliasKey,r.aliasKey,r.code,r.name])]),'신상마켓입금매칭');XLSX.writeFile(wb,`매출자동화_전체규칙_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`)}catch(e){alert(e.message||e)}}
+function downloadAllRulesExcel(){try{const wb=XLSX.utils.book_new();const c=customerRuleRows(),i=itemRuleRows(),v=vatRuleRows(),sh=[...(shinsangDepositAliases||new Map()).values()];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 거래처명','연결 거래처코드','이카운트 거래처명','장끼명','출처','설명'],...c.map(r=>[r.key,r.code,r.name,r.jangki,r.source,r.note])]),'거래처규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['원본/장끼 품목명','연결 품목코드','이카운트 품목명','출처','설명'],...i.map(r=>[r.key,r.code,r.name,r.source,r.note])]),'품목규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['거래처/적용대상','거래처코드','적용값','출처','설명'],...v.map(r=>[r.key,r.code,r.mode?vatModeText(r.mode):'자동적용 안 함',r.source,r.note])]),'VAT규칙');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['입금 기재내용','매칭키','거래처코드','거래처명','장끼거래처명'],...sh.map(r=>[r.description||r.aliasKey,r.aliasKey,r.code,r.name,r.jangkiName||''])]),'신상마켓입금매칭');XLSX.writeFile(wb,`매출자동화_전체규칙_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`)}catch(e){alert(e.message||e)}}
 function setupRuleManager(){
   $('rulesCustomerSave')?.addEventListener('click',saveCustomerRuleFromManager);$('rulesItemSave')?.addEventListener('click',saveItemRuleFromManager);$('rulesVatSave')?.addEventListener('click',saveVatRuleFromManager);$('rulesShinsangSave')?.addEventListener('click',saveShinsangRuleFromManager);$('rulesExportBtn')?.addEventListener('click',downloadAllRulesExcel);
   $('rulesCustomerClear')?.addEventListener('click',()=>{$('rulesCustomerAlias').value='';$('rulesCustomerTarget').value=''});$('rulesItemClear')?.addEventListener('click',()=>{$('rulesItemAlias').value='';$('rulesItemTarget').value=''});$('rulesVatClear')?.addEventListener('click',()=>{$('rulesVatCustomer').value=''});$('rulesShinsangClear')?.addEventListener('click',()=>{$('rulesShinsangAlias').value='';$('rulesShinsangTarget').value=''});
@@ -5305,11 +5305,11 @@ function buildMonthlyCompareRows(sources,ecountRows,assignResult){
     })
   });
   for(const e of assignResult.unassigned){
-    rows.push({key:`E:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',loc:e.loc||inferCustomerLoc('C:'+norm(e.code),e.name),rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'이카운트에만 있음',note:`이카운트: ${e.name}${e.jangki?' / 장끼 '+e.jangki:''}`,special:false,matchDetails:[]})
+    rows.push({key:`E:${e.code||e.name}`,name:e.jangki||e.name,ecountName:e.name||'',ecountJangki:e.jangki||'',code:e.code||'',loc:e.loc||inferCustomerLoc('C:'+norm(e.code),e.name),rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'이카운트에만 있음',note:`이카운트: ${e.name}${e.jangki?' / 장끼 '+e.jangki:''}`,special:false,matchDetails:[]})
   }
   for(const a of assignResult.ambiguous){
     const e=a.e;
-    rows.push({key:`A:${e.code||e.name}`,name:e.jangki||e.name,code:e.code||'',loc:e.loc||'',rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'매칭확인 필요',note:'동일 우선순위 후보가 여러 개라 자동연결하지 않음',special:false,matchDetails:[]})
+    rows.push({key:`A:${e.code||e.name}`,name:e.jangki||e.name,ecountName:e.name||'',ecountJangki:e.jangki||'',code:e.code||'',loc:e.loc||'',rawSource:null,source:null,ecount:Number(e.amount||0),diff:Number(e.amount||0),status:'매칭확인 필요',note:'동일 우선순위 후보가 여러 개라 자동연결하지 않음',special:false,matchDetails:[]})
   }
   return rows
 }
@@ -5993,6 +5993,25 @@ function compareExcelSafeName(v){
 function compareLocLabel(v){
   return v==='store'?'매장':v==='warehouse'?'창고':'미분류';
 }
+function compareRowEcountNames(r){
+  const names=[...(r.matchDetails||[])].map(m=>String(m?.name||'').trim()).filter(Boolean);
+  if(names.length)return [...new Set(names)].join(' / ');
+  if(r.ecountName)return String(r.ecountName||'');
+  // 이전 버전 저장데이터 중 이카운트 단독행은 note에 이름이 남아 있으므로 보조 복구
+  if((r.status==='이카운트에만 있음'||r.status==='매칭확인 필요')&&/^이카운트:\s*/.test(String(r.note||''))){
+    return String(r.note||'').replace(/^이카운트:\s*/,'').split(' / 장끼 ')[0].trim();
+  }
+  return '';
+}
+function compareRowEcountJangkiNames(r){
+  const names=[...(r.matchDetails||[])].map(m=>String(m?.jangki||'').trim()).filter(Boolean);
+  if(names.length)return [...new Set(names)].join(' / ');
+  if(r.ecountJangki)return String(r.ecountJangki||'');
+  if((r.status==='이카운트에만 있음'||r.status==='매칭확인 필요')&&String(r.note||'').includes(' / 장끼 ')){
+    return String(r.note||'').split(' / 장끼 ').slice(1).join(' / 장끼 ').trim();
+  }
+  return '';
+}
 function compareRowToExcel(r){
   const editKinds=[];
   if(r.manualRuleAdjusted)editKinds.push('규칙적용금액 수정');
@@ -6000,6 +6019,8 @@ function compareRowToExcel(r){
   return [
     compareLocLabel(r.loc),
     r.name||'',
+    compareRowEcountNames(r),
+    compareRowEcountJangkiNames(r),
     r.code||'',
     r.rawSource==null?'':Number(r.rawSource),
     r.source==null?'':Number(r.source),
@@ -6022,12 +6043,12 @@ function compareRowToExcel(r){
 }
 function makeCompareSheet(rows){
   const data=[
-    ['구분','원본 거래처','거래처코드','엑셀금액','규칙적용금액','이카운트 합계','수정구분','차이(이카운트-규칙적용금액)','상태','적용규칙','연결된 이카운트 상세'],
+    ['구분','장끼파일 거래처명','이카운트 거래처명','이카운트 장끼명','거래처코드','엑셀금액','규칙적용금액','이카운트 합계','수정구분','차이(이카운트-규칙적용금액)','상태','적용규칙','연결된 이카운트 상세'],
     ...rows.map(compareRowToExcel)
   ];
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[
-    {wch:10},{wch:28},{wch:18},{wch:15},{wch:17},{wch:17},{wch:25},{wch:24},{wch:16},{wch:38},{wch:70}
+    {wch:10},{wch:28},{wch:30},{wch:30},{wch:18},{wch:15},{wch:17},{wch:17},{wch:25},{wch:24},{wch:16},{wch:38},{wch:70}
   ];
   return ws;
 }
@@ -6315,6 +6336,7 @@ function renderCompare(){
   updateMonthlyCompareConfirmButton();
 }
 
+// ===== v4.41 신상마켓 전 거래처 검색형 영구매칭 =====
 // ===== 신상마켓 입금 · 매출 공급가액 비교 v3.44 =====
 function shinsangCompact(v){
   let s=norm(v);try{s=s.normalize('NFKC')}catch(e){}
@@ -6397,6 +6419,39 @@ async function parseShinsangDepositFiles(files){
   if(!foundSheets)throw new Error('신상마켓 입금자료에서 `기재내용 / 입금` 열을 찾지 못했습니다.');
   return {rows,sourceRows,foundSheets};
 }
+
+/* ===== v4.41 신상마켓 전 거래처 검색형 영구매칭 ===== */
+function shinsangMasterCustomers(){
+  const src=(cloud.runtimeCustomers?.length?cloud.runtimeCustomers:(cloud.customers||[]));
+  return src.filter(c=>{
+    if(c?.use&&norm(c.use)!=='YES')return false;
+    return shinsangIsSalesName(c?.name||'',c?.jangkiName||'');
+  }).slice().sort((a,b)=>norm(a.name||a.jangkiName).localeCompare(norm(b.name||b.jangkiName),'ko'));
+}
+function shinsangMasterChoiceText(c){
+  const name=norm(c?.name||''),jangki=norm(c?.jangkiName||''),code=norm(c?.code||'');
+  const bits=[];
+  if(name)bits.push(name);
+  if(jangki&&jangki!==name)bits.push(jangki);
+  if(code)bits.push(code);
+  return bits.join(' · ');
+}
+function shinsangFindMasterCustomer(v){
+  const q=norm(v);if(!q)return null;
+  const compact=shinsangCompact(q),all=shinsangMasterCustomers();
+  let x=all.find(c=>norm(c.code)===q||norm(c.name)===q||norm(c.jangkiName)===q||shinsangMasterChoiceText(c)===q);
+  if(x)return x;
+  x=all.find(c=>shinsangCompact(c.code)===compact||shinsangCompact(c.name)===compact||shinsangCompact(c.jangkiName)===compact||shinsangCompact(shinsangMasterChoiceText(c))===compact);
+  return x||null;
+}
+function shinsangMasterCustomerByCode(code){
+  code=norm(code);if(!code)return null;
+  return shinsangMasterCustomers().find(c=>norm(c.code)===code)||null;
+}
+function shinsangMasterDatalistHtml(){
+  return shinsangMasterCustomers().map(c=>`<option value="${escAttr(shinsangMasterChoiceText(c))}"></option>`).join('');
+}
+
 function shinsangSalesIndex(sales){
   const codeMap=new Map(),aliasMap=new Map();
   const add=(m,k,i)=>{if(!k)return;if(!m.has(k))m.set(k,new Set());m.get(k).add(i)};
@@ -6406,7 +6461,12 @@ function shinsangSalesIndex(sales){
 function shinsangUniqueIndex(set){return set&&set.size===1?[...set][0]:-1}
 function shinsangResolveDeposit(dep,sales,index){
   const saved=shinsangDepositAliases.get(dep.aliasKey);
-  if(saved?.code){const i=sales.findIndex(x=>norm(x.code)===norm(saved.code));if(i>=0)return {i,reason:'저장된 입금명 매칭'};}
+  if(saved?.code){
+    const i=sales.findIndex(x=>norm(x.code)===norm(saved.code));
+    if(i>=0)return {i,reason:'저장된 입금명 매칭'};
+    const target=shinsangMasterCustomerByCode(saved.code)||{code:saved.code||'',name:saved.name||'',jangkiName:saved.jangkiName||''};
+    return {i:-1,reason:'저장된 영구매칭 · 당월 매출 없음',savedTarget:target,savedMatch:true};
+  }
   if(dep.code){const i=shinsangUniqueIndex(index.codeMap.get(norm(dep.code)));if(i>=0)return {i,reason:'거래처코드 일치'};}
   const candidate=new Set();for(const a of dep.aliases||[])if(index.aliasMap.has(a))for(const i of index.aliasMap.get(a))candidate.add(i);
   if(candidate.size===1)return {i:[...candidate][0],reason:dep.name?'거래처명 일치':'신마+거래처명 일치'};
@@ -6458,18 +6518,29 @@ async function updateShinsangReview(key,patch){
 function shinsangUnresolvedRows(){return (shinsangCompareState.rows||[]).filter(r=>r.status!=='일치'&&!shinsangReviewComplete(r))}
 function rebuildShinsangCompareRows(){
   const sales=shinsangCompareState.sales||[],deps=shinsangCompareState.deposits||[],idx=shinsangSalesIndex(sales),assigned=new Map(),unmatched=[];
-  for(const d of deps){const m=shinsangResolveDeposit(d,sales,idx);if(m.i>=0){if(!assigned.has(m.i))assigned.set(m.i,[]);assigned.get(m.i).push({...d,matchReason:m.reason})}else unmatched.push({...d,matchReason:m.reason})}
+  for(const d of deps){
+    const m=shinsangResolveDeposit(d,sales,idx);
+    if(m.i>=0){
+      if(!assigned.has(m.i))assigned.set(m.i,[]);
+      assigned.get(m.i).push({...d,matchReason:m.reason});
+    }else{
+      unmatched.push({...d,matchReason:m.reason,savedTarget:m.savedTarget||null,savedMatch:!!m.savedMatch});
+    }
+  }
   const rows=[];
   sales.forEach((x,i)=>{
     const ds=assigned.get(i)||[],depTotal=ds.reduce((a,b)=>a+Number(b.amount||0),0),diff=depTotal-Number(x.amount||0);
     const status=depTotal===0?'입금없음':diff===0?'일치':'금액불일치';
     rows.push({type:'sales',key:x.key,code:x.code,name:x.name,jangki:x.jangki,sales:Number(x.amount||0),deposit:depTotal,diff,status,deposits:ds,reason:[...new Set(ds.map(d=>d.matchReason).filter(Boolean))].join(', ')});
   });
-  for(const d of unmatched)rows.push({type:'unmatched',key:'U:'+d.id,code:d.code||'',name:d.name||'',jangki:'',sales:null,deposit:Number(d.amount||0),diff:Number(d.amount||0),status:'입금 매칭필요',deposits:[d],reason:d.matchReason||'매칭 필요',dep:d});
-  rows.sort((a,b)=>{const rank={'입금 매칭필요':0,'금액불일치':1,'입금없음':2,'일치':3};return (rank[a.status]??9)-(rank[b.status]??9)||Math.abs(Number(b.diff||0))-Math.abs(Number(a.diff||0))||norm(a.name).localeCompare(norm(b.name),'ko')});
+  for(const d of unmatched){
+    const t=d.savedTarget||null,status=d.savedMatch?'당월 매출없음':'입금 매칭필요';
+    rows.push({type:'unmatched',key:'U:'+d.id,code:t?.code||d.code||'',name:t?.name||d.name||'',jangki:t?.jangkiName||'',sales:null,deposit:Number(d.amount||0),diff:Number(d.amount||0),status,deposits:[d],reason:d.matchReason||'매칭 필요',dep:d,savedTarget:t,savedMatch:!!d.savedMatch});
+  }
+  rows.sort((a,b)=>{const rank={'입금 매칭필요':0,'당월 매출없음':1,'금액불일치':2,'입금없음':3,'일치':4};return (rank[a.status]??9)-(rank[b.status]??9)||Math.abs(Number(b.diff||0))-Math.abs(Number(a.diff||0))||norm(a.name).localeCompare(norm(b.name),'ko')});
   shinsangCompareState.rows=rows;renderShinsangCompare();
 }
-function shinsangStatusBadge(status){const cls=status==='일치'?'ok':status==='입금 매칭필요'?'warn':'bad';return `<span class="shinsangBadge ${cls}">${esc(status)}</span>`}
+function shinsangStatusBadge(status){const cls=status==='일치'?'ok':(status==='입금 매칭필요'||status==='당월 매출없음')?'warn':'bad';return `<span class="shinsangBadge ${cls}">${esc(status)}</span>`}
 function shinsangRowVisible(r){
   const f=shinsangCompareState.filter||'mismatch',review=shinsangReviewFor(r),complete=shinsangReviewComplete(r);
   if(f==='mismatch'&&(r.status==='일치'||complete))return false;
@@ -6496,10 +6567,14 @@ function renderShinsangCompare(){
   for(const r of visible){
     const review=shinsangReviewFor(r),key=shinsangReviewKey(r),desc=(r.deposits||[]).map(d=>`${d.desc||'(기재내용 없음)'} ${Number(d.amount||0).toLocaleString()}원`).join(' + '),confirmedAmount=shinsangConfirmedAmountFor(r),complete=shinsangReviewComplete(r);
     let action=esc(r.reason||'');
-    if(r.status==='입금 매칭필요'){
-      const dep=r.dep||r.deposits?.[0];
-      const opts=(shinsangCompareState.sales||[]).slice().sort((a,b)=>norm(a.name).localeCompare(norm(b.name),'ko')).map(x=>`<option value="${escAttr(x.code||x.key)}">${esc(x.name||x.jangki)}${x.code?' · '+esc(x.code):''}</option>`).join('');
-      action=`<div class="shinsangMap"><select id="shinsangMap_${escAttr(dep.id)}"><option value="">거래처 선택</option>${opts}</select><button class="btn light" type="button" onclick="saveShinsangDepositAlias('${escAttr(dep.id)}')">영구매칭</button></div>`;
+    if(r.status==='입금 매칭필요'||r.status==='당월 매출없음'){
+      const dep=r.dep||r.deposits?.[0],saved=r.savedTarget||null;
+      const current=saved?shinsangMasterChoiceText(saved):'';
+      action=`<div class="shinsangMap">
+        <input id="shinsangMap_${escAttr(dep.id)}" class="shinsangMapSearch" type="text" list="shinsangMasterCustomerList" value="${escAttr(current)}" placeholder="신상마켓 거래처명/장끼명/코드 검색">
+        <button class="btn light" type="button" onclick="saveShinsangDepositAlias('${escAttr(dep.id)}')">${saved?'매칭변경':'영구매칭'}</button>
+        <div class="shinsangMapHint">${saved?`현재 영구매칭: ${esc(saved.name||saved.jangkiName||saved.code)} · 당월 매출 없음`:`전 신상마켓 거래처 ${shinsangMasterCustomers().length.toLocaleString()}곳에서 검색`}</div>
+      </div>`;
     }
     const reviewCell=r.status==='일치'?'<span class="shinsangBadge ok">자동일치</span>':`<label class="shinsangReviewCheck"><input type="checkbox" data-shinsang-review-check="${escAttr(key)}" ${review.done?'checked':''}>확인완료</label>${complete?'<div class="shinsangReviewSaved">✓ 저장됨</div>':review.done&&!shinsangHasManualConfirmedAmount(r)?'<div class="shinsangAmountNeed">확정금액 입력필요</div>':''}`;
     const memoCell=r.status==='일치'?'<span class="small">-</span>':`<input class="shinsangReviewMemo" type="text" data-shinsang-review-memo="${escAttr(key)}" value="${escAttr(review.memo||'')}" placeholder="확인내용 / 수정내용 메모">`;
@@ -6508,7 +6583,7 @@ function renderShinsangCompare(){
     const amountCell=`<input class="shinsangConfirmedAmount" type="text" inputmode="numeric" data-shinsang-confirmed-amount="${escAttr(key)}" data-shinsang-auto-amount="${r.status==='일치'?String(Number(r.sales||0)):''}" value="${escAttr(amountValue)}" placeholder="확정금액">${amountHint}`;
     h+=`<tr class="${complete&&r.status!=='일치'?'reviewDone':''}"><td>${shinsangStatusBadge(r.status)}</td><td><b>${esc(r.name||'(매칭 전 입금)')}</b>${r.jangki&&r.jangki!==r.name?`<div class="small">${esc(r.jangki)}</div>`:''}</td><td>${esc(r.code||'')}</td><td class="shinsangMoney">${r.sales==null?'':Number(r.sales).toLocaleString()}</td><td class="shinsangMoney">${Number(r.deposit||0).toLocaleString()}</td><td class="shinsangMoney ${Number(r.diff||0)===0?'ok':'bad'}">${Number(r.diff||0).toLocaleString()}</td><td class="shinsangReviewCell">${amountCell}</td><td class="shinsangDesc">${esc(desc)}</td><td>${action}</td><td class="shinsangReviewCell">${reviewCell}</td><td>${memoCell}</td></tr>`;
   }
-  h+='</tbody></table>';table.innerHTML=h;
+  h+='</tbody></table>';h+=`<datalist id="shinsangMasterCustomerList">${shinsangMasterDatalistHtml()}</datalist>`;table.innerHTML=h;
   table.querySelectorAll('[data-shinsang-review-check]').forEach(el=>el.addEventListener('change',()=>{
     const key=el.dataset.shinsangReviewCheck,row=(shinsangCompareState.rows||[]).find(r=>shinsangReviewKey(r)===key);
     if(el.checked&&row&&!shinsangHasManualConfirmedAmount(row)){
@@ -6533,11 +6608,14 @@ async function loadShinsangDepositAliases(){
 }
 window.saveShinsangDepositAlias=async function(depId){
   try{
-    if(!user)throw new Error('로그인이 필요합니다.');const dep=(shinsangCompareState.deposits||[]).find(x=>x.id===depId);if(!dep)throw new Error('입금내역을 찾지 못했습니다.');
-    const sel=$('shinsangMap_'+depId),value=sel?.value||'';if(!value)throw new Error('연결할 신상마켓 거래처를 선택해 주세요.');
-    const sales=(shinsangCompareState.sales||[]).find(x=>x.code===value||x.key===value);if(!sales)throw new Error('선택한 거래처를 찾지 못했습니다.');
-    const data={aliasKey:dep.aliasKey,description:dep.desc||'',code:sales.code||'',name:sales.name||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
-    await userCol('shinsangDepositAliases').doc(safeId(dep.aliasKey||dep.desc)).set(data,{merge:true});shinsangDepositAliases.set(dep.aliasKey,{...data,updatedAt:null});renderRulesDashboard();rebuildShinsangCompareRows();
+    if(!user)throw new Error('로그인이 필요합니다.');
+    const dep=(shinsangCompareState.deposits||[]).find(x=>x.id===depId);if(!dep)throw new Error('입금내역을 찾지 못했습니다.');
+    const input=$('shinsangMap_'+depId),value=norm(input?.value||'');if(!value)throw new Error('연결할 신상마켓 거래처를 검색해서 선택해 주세요.');
+    const target=shinsangFindMasterCustomer(value);if(!target)throw new Error('전체 신상마켓 거래처 목록에서 일치하는 거래처를 찾지 못했습니다. 목록에서 하나를 선택해 주세요.');
+    const data={aliasKey:dep.aliasKey,description:dep.desc||'',code:target.code||'',name:target.name||'',jangkiName:target.jangkiName||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    await userCol('shinsangDepositAliases').doc(safeId(dep.aliasKey||dep.desc)).set(data,{merge:true});
+    shinsangDepositAliases.set(dep.aliasKey,{...data,updatedAt:null});
+    renderRulesDashboard();rebuildShinsangCompareRows();
   }catch(e){alert(e.message||e)}
 }
 function shinsangCompareHistoryByMonth(month){return (shinsangCompareHistory||[]).find(x=>x.month===month)||null}
