@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.45</title>
+<title>아도라블 매출 자동화 v4.46</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -741,7 +741,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.45 · 월매출 합쳐비교/확인취소 · 다중거래처 합산표시 · 신상마켓 전거래처 검색</div>
+      <div class="badge">v4.46 · 품목 이번만매칭 · 월매출 합쳐비교/확인취소 · 다중거래처 합산표시</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1552,6 +1552,7 @@ let currentReceiptDraftApprovals={};
 let currentReceiptBulkDate='';
 let currentBizRegConditionalReviews={};
 let currentSampleConfirmations={};
+let currentItemOneTimeAliases={}; // v4.46: 현재 작업에서만 적용되는 품목 매칭
 let generalActions=[],generalOpenings=[],generalTransactions=[],generalCustomerSettings=[],generalStartDate='20260907',hometaxPendingIssueMatches=[],hometaxLastImportStats=null;
 // v4.38: 현금영수증 발급목록 날짜 펼침 상태를 재렌더 후에도 유지
 let generalIssueOpenDaysState=null;
@@ -1874,7 +1875,7 @@ function resolveCustomer(maps,name){
   if(j.type==='ambiguous')return j;if(e.type==='ambiguous')return e;
   return {ok:false,type:'missing'};
 }
-function resolveItem(map,name){const alias=cloud.aliases.get(norm(name)); if(alias){if(alias.disabled)return {ok:false,type:'blocked',via:'itemDisabled'};return {ok:true,value:alias.itemCode,via:'alias'}} return mapResolve(map,name)}
+function resolveItem(map,name){const key=norm(name),once=currentItemOneTimeAliases[key];if(once?.itemCode)return {ok:true,value:once.itemCode,via:'jobItemAlias'};const alias=cloud.aliases.get(key); if(alias){if(alias.disabled)return {ok:false,type:'blocked',via:'itemDisabled'};return {ok:true,value:alias.itemCode,via:'alias'}} return mapResolve(map,name)}
 
 
 // ===== v3.46 통합 규칙관리 =====
@@ -2115,7 +2116,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.45',
+    appVersion:'v4.46',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2350,7 +2351,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.45'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.46'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3543,7 +3544,7 @@ function renderIssues(issues,meta){
       let action=esc(x.detail||'');
 
       if(x.type==='품목 미매칭'){
-        action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
+        action=`<div class="itemmatch"><input id="itemmatch_${i}" list="itemChoices" placeholder="매칭할 품목코드 입력 (직접 코드 가능)"><button class="btn light" onclick="saveItemAliasOnce(${i},'${escAttr(x.value)}')">이번만 이 품목으로 매칭</button><button class="btn light" onclick="saveItemAlias(${i},'${escAttr(x.value)}')">앞으로 이 품목으로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }else if(x.type.includes('거래처')&&x.type.includes('미매칭')){
         action=`<div class="customerMatch"><input id="customermatch_${i}" list="customerChoices" placeholder="거래처코드 입력 (리스트에 없어도 직접 지정 가능)"><button class="btn light" onclick="saveCustomerAlias(${i},'${escAttr(x.value)}')">앞으로 이 거래처로 매칭</button></div><div class="small">${esc(x.detail||'')}</div>`;
       }else if(x.type==='S/P·SP 거래처 매출 입력선택'){
@@ -3657,7 +3658,31 @@ async function saveCustomerDuplicateAlias(groupIndex){
 }
 window.saveCustomerDuplicateAlias=saveCustomerDuplicateAlias;
 
-async function saveItemAlias(i,alias){try{const val=norm($('itemmatch_'+i).value); if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.'); let item=cloud.itemByCode.get(val); if(!item){const r=mapResolve(cloud.itemNameToCodes,val); if(r.ok)item=cloud.itemByCode.get(norm(r.value));} const itemCode=item?item.code:val; const itemName=item?item.name:'(수동 지정 코드)'; const data={alias:norm(alias),itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(norm(alias),{...data,updatedAt:null}); updateMasterStats(); renderItemRuleManager(); renderRulesDashboard(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
+function resolveItemTargetInput(i){
+  const val=norm($('itemmatch_'+i)?.value||'');
+  if(!val)throw new Error('매칭할 품목코드를 입력해 주세요.');
+  let item=cloud.itemByCode.get(val);
+  if(!item){const r=mapResolve(cloud.itemNameToCodes,val);if(r.ok)item=cloud.itemByCode.get(norm(r.value));}
+  return {val,item,itemCode:item?item.code:val,itemName:item?item.name:'(수동 지정 코드)'};
+}
+async function saveItemAliasOnce(i,alias){
+  try{
+    if(!user)throw new Error('로그인이 필요합니다.');
+    const {item,itemCode,itemName}=resolveItemTargetInput(i),key=norm(alias);
+    if(!key)throw new Error('원본 품목명을 찾지 못했습니다.');
+    const data={alias:key,itemCode,itemName,manualCode:!item,scope:'currentJob',updatedAtMs:Date.now()};
+    currentItemOneTimeAliases[key]=data;
+    const id=activeJobId||jobIdForCurrentState();
+    if(id)await cloudJobDoc(id).set({itemOneTimeAliases:{...currentItemOneTimeAliases},updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await processAll(state.parsed?.ticketOverrides||{});
+    $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b>로 <b>이번 작업에서만</b> 매칭했습니다. 품목 영구매칭 규칙에는 저장하지 않았습니다.</p>`;
+  }catch(e){alert(e.message||e)}
+}
+window.saveItemAliasOnce=saveItemAliasOnce;
+async function saveItemAlias(i,alias){try{const {item,itemCode,itemName}=resolveItemTargetInput(i);const key=norm(alias); const data={alias:key,itemCode:itemCode,itemName:itemName,manualCode:!item,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}; await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:true}); cloud.aliases.set(key,{...data,updatedAt:null});
+// 현재 작업의 임시매칭이 있었다면 영구매칭 선택을 우선 적용하도록 제거
+if(currentItemOneTimeAliases[key]){delete currentItemOneTimeAliases[key];const id=activeJobId||jobIdForCurrentState();if(id)await cloudJobDoc(id).set({itemOneTimeAliases:{...currentItemOneTimeAliases},updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}
+updateMasterStats(); renderItemRuleManager(); renderRulesDashboard(); await processAll(state.parsed?.ticketOverrides||{}); $('statusBox').innerHTML=`<p class="ok">✓ <b>${esc(alias)}</b> → <b>${esc(itemCode)}</b> 매칭규칙을 Firebase에 저장했습니다.${item?'':' <span class="small">기준 품목리스트에 없는 수동 지정 코드로 저장됨</span>'} 다른 PC에서도 자동 적용됩니다.</p>`;}catch(e){alert(e.message||e)}}
 function renderAutoVat(rows){
   const sec=$('vatAutoSection'),box=$('vatAutoTable'),count=$('vatAutoCount');
   if(count)count.textContent=`(${rows.length.toLocaleString()}개)`;
@@ -6162,11 +6187,7 @@ window.pickMonthlyCompareMerge=async function(index){
     [ia,ib].sort((x,y)=>y-x).forEach(i=>all.splice(i,1));
     all.splice(insertAt,0,merged);
     const groupId='MMG_'+simpleHash(merged._mergeMemberIds.slice().sort().join('|'));
-    const nextGroups={...(compareState.monthlyMerges||{})},mergedIds=new Set(merged._mergeMemberIds||[]);
-    // 기존 합쳐비교 그룹과 겹치면 새 그룹으로 교체 (A+B 후 C 추가 같은 연속 합치기 지원)
-    for(const [k,g] of Object.entries(nextGroups))if((g.memberIds||[]).some(x=>mergedIds.has(x)))delete nextGroups[k];
-    nextGroups[groupId]={id:groupId,memberIds:[...merged._mergeMemberIds],names:[...merged.mergeMemberNames],loc:merged.loc};
-    compareState.monthlyMerges=nextGroups;
+    compareState.monthlyMerges={...(compareState.monthlyMerges||{}),[groupId]:{id:groupId,memberIds:[...merged._mergeMemberIds],names:[...merged.mergeMemberNames],loc:merged.loc}};
     monthlyMergePickRowId='';
     await saveMonthlyCompareMerges();
     await saveMonthlyCompareAdjustments();
@@ -6194,8 +6215,7 @@ function monthlyCompareManageButtons(r,ri){
   const selected=monthlyMergePickRowId&&monthlyMergePickRowId===monthlyCompareRowId(r,ri);
   return `<div class="monthlyManageBtns">
     ${manual?`<button type="button" class="btn light" onclick="resetMonthlyCompareAdjustment(${ri})">확인취소</button>`:''}
-    <button type="button" class="btn light" onclick="pickMonthlyCompareMerge(${ri})">${selected?'선택취소':'합쳐비교'}</button>
-    ${r.mergedSource?`<button type="button" class="btn light" onclick="undoMonthlyCompareMerge(${ri})">합치기취소</button>`:''}
+    ${r.mergedSource?`<button type="button" class="btn light" onclick="undoMonthlyCompareMerge(${ri})">합치기취소</button>`:`<button type="button" class="btn light" onclick="pickMonthlyCompareMerge(${ri})">${selected?'선택취소':'합쳐비교'}</button>`}
     <button type="button" class="btn light" onclick="excludeMonthlyCompareRow(${ri})">비교제외</button>
   </div>${r.mergedSource?`<div class="monthlyMergeMark">원본 ${Number(r.mergedSourceCount||0)}거래처 합쳐비교</div>`:''}`;
 }
@@ -9536,6 +9556,7 @@ async function processAll(ticketOverrides={}){try{
   }
   currentBizRegConditionalReviews=existing.exists?{...(existing.data().bizRegConditionalReviews||{})}:{};
   currentSampleConfirmations=existing.exists?{...(existing.data().sampleConfirmations||{})}:{};
+  currentItemOneTimeAliases=existing.exists?{...(existing.data().itemOneTimeAliases||{})}:{};
   const jwbs=await Promise.all(jangki.map(readWb)),classified=jangki.map((f,i)=>classifyFile(f,jwbs[i])),details=classified.filter(x=>x.kind==='detail'),sets=classified.filter(x=>x.kind==='settlement'),unclassified=classified.filter(x=>x.kind==='unknown'||!x.loc).map(x=>x.file.name),issues=[];
   if(!details.length)issues.push({type:'파일',value:'판매내역',detail:'판매내역(생성) 파일을 찾지 못함'});if(!sets.length)issues.push({type:'파일',value:'일별정산',detail:'일별정산 파일을 찾지 못함'});
   const runtimeCustomer=await buildRuntimeCustomerMaps(),settlementAnalysis=analyzeSettlements(sets,issues),mc=buildMemoAndCash(sets,runtimeCustomer.maps,issues),gd=groupDetails(details),tickets=gd.tickets;
@@ -9800,6 +9821,7 @@ function compactJobRecord(st,old={}){
     receiptConfirmations:{...currentReceiptConfirmations},
     bizRegConditionalReviews:{...currentBizRegConditionalReviews},
     sampleConfirmations:{...currentSampleConfirmations},
+    itemOneTimeAliases:{...currentItemOneTimeAliases},
     receiptConfirmedCount:(st.cashReceiptRows||[]).length-receiptConfirmationPendingCount(),
     receiptConfirmPending:receiptConfirmationPendingCount(),
     generalCustomerRows:(st.generalCustomerRows||[]),
@@ -12038,7 +12060,7 @@ $('signupBtn').onclick=async()=>{try{if(!auth)throw new Error('Firebase 연결�
 $('logoutBtn').onclick=()=>auth.signOut(); $('importCustomerBtn').onclick=importCustomers; $('importItemBtn').onclick=importItems; $('processBtn').onclick=()=>processAll({}); $('salesBtn').onclick=downloadSales; $('cashBtn').onclick=downloadCash; $('receiptBtn').onclick=downloadCashReceipt; $('reviewBtn').onclick=downloadReview;
 if($('vatRuleLookupBtn')){$('vatRuleLookupBtn').onclick=lookupVatRuleManager;$('vatRuleSaveBtn').onclick=saveVatRuleManager;$('vatRuleDeleteBtn').onclick=deleteVatRuleManager;$('vatRuleCustomerInput').addEventListener('change',lookupVatRuleManager)}
 if($('itemRuleRefreshBtn')){$('itemRuleRefreshBtn').onclick=renderItemRuleManager;$('itemRuleSearchInput').addEventListener('input',renderItemRuleManager);$('itemRuleManagerBox').addEventListener('toggle',()=>{if($('itemRuleManagerBox').open)renderItemRuleManager()})}
-$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],receiptValidation:null,settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptDraftApprovals={}; currentReceiptBulkDate=''; currentSampleConfirmations={}; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
+$('clearDraftBtn').onclick=async()=>{if(!confirm('현재 선택된 로컬 원본파일만 비울까요? Firebase 작업목록과 저장된 작업 원본은 유지됩니다.'))return; activeJobId=null; await clearDraftFiles(); selectedFiles.jangki=[]; selectedFiles.customer=[]; selectedFiles.item=[]; ['jangki','customer','item'].forEach(renderSelectedFiles); state={salesRows:[],baseSalesRows:[],salesRowMeta:[],cashRows:[],cashReceiptRows:[],receiptValidation:null,settlementSummaries:[],generalCustomerRows:[],issues:[],vatPending:[],autoVatApplied:[],meta:{},parsed:null}; currentReceiptConfirmations={}; currentReceiptDraftDates={}; currentReceiptDraftApprovals={}; currentReceiptBulkDate=''; currentSampleConfirmations={}; currentItemOneTimeAliases={}; $('stats').classList.add('hidden'); $('dailySalesTopSection').classList.add('hidden'); $('settlementSummarySection').classList.add('hidden'); $('receiptSection').classList.add('hidden'); $('vatSection').classList.add('hidden'); $('vatAutoSection').classList.add('hidden'); $('issueSection').classList.add('hidden'); $('salesBtn').disabled=true; $('cashBtn').disabled=true; $('receiptBtn').disabled=true; $('reviewBtn').disabled=true; $('statusBox').innerHTML='<p>검수 중 파일을 모두 비웠습니다.</p>';};
 
 // 신규 월마감/원장 기능 이벤트
 $('saveGeneralStartBtn').onclick=()=>saveGeneralStartDate().catch(e=>alert(e.message||e));
@@ -13073,6 +13095,7 @@ arCellHtml=function(r,key,boxKey){
    - 월요일 이후 입금과 반품은 현재 미수에서 차감
    - 과거처럼 이월잔액에서 전주 판매/입금을 다시 재구성하지 않음
 */
+/* ===== v4.46 품목 미매칭: 이번 작업만 매칭 + 영구매칭 선택 분리 ===== */
 /* ===== v4.45 월매출: 확인취소 + 원본 거래처 합쳐비교/취소 + v4.44 다중거래처 표시 유지 ===== */
 /* ===== v4.44 월매출: 관련금액 합산 유지 + 2개 이상 이카운트 거래처 합산 전부 표시 + 발행사업자 자동판단 안 함 ===== */
 /* ===== v4.38 월매출 일치확인 결과파일 자동 다운로드 + 재다운로드 안내 ===== */
