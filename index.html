@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.50</title>
+<title>아도라블 매출 자동화 v4.51</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -741,7 +741,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.50 · 수기계산서 월별배분/일괄수취 · 선택월 매입조회 · 판매금액 거래처 우선매칭</div>
+      <div class="badge">v4.51 · 미수시작일 현재잔액 역산 · 표 저장 즉시반영 · 수기계산서 월별배분</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -927,7 +927,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
     <div class="arMiniCard">
       <div class="arSectionHead">
-        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다. <b>마지막입금일·미수시작일·SAMPLE은 더블클릭하면 직접 수정</b>할 수 있습니다.</div></div>
+        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다. <b>마지막입금일·미수시작일·SAMPLE은 더블클릭하면 직접 수정</b>할 수 있습니다. 표 안 입력값은 화면에 즉시 반영되고 Firebase에는 백그라운드로 자동저장됩니다.</div></div>
         <div class="arViewToolbar">
           <button id="arHiddenColumnsBtn" class="btn light" type="button" onclick="arOpenHiddenColumnsMenu(event)">숨긴 항목 <span id="arHiddenColumnsCount" class="arHiddenCount">0</span></button>
           <span class="arPresetGroup"><button class="btn light" type="button" onclick="arApplyTablePreset('preset1')">설정1</button><button class="arPresetSaveBtn" type="button" onclick="arSaveTablePreset('preset1')" title="현재 열 순서·숨김·너비를 설정1로 저장">저장</button></span>
@@ -2118,7 +2118,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.50',
+    appVersion:'v4.51',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2353,7 +2353,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.50'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.51'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -11884,7 +11884,14 @@ async function loadArHistory(){
 function renderArHistoryStatus(){const el=$('arHistoryStatus');if(!el)return;const m=arState.historyMeta;if(!m){el.textContent='저장된 미수 판매·입금 이력 없음 · 첫 실행은 1/1~현재 전체자료 권장';return}el.innerHTML=`Firebase 정규화 이력 · 판매장끼 <b>${Number(m.salesCount||0).toLocaleString()}</b>건 · 입금 <b>${Number(m.paymentCount||0).toLocaleString()}</b>건<br>${arShortDate(m.minDate)} ~ ${arShortDate(m.maxDate)} · 원본 엑셀파일 자체는 저장하지 않음`;}
 
 async function loadArCustomerSettings(){arState.customerSettings=new Map();if(!user)return;const snap=await userCol('arCustomerSettings').get();for(const d of snap.docs){const x=d.data()||{};arState.customerSettings.set(norm(x.code||d.id),x)}}
-async function saveArCustomerSetting(code,patch){if(!user)return;code=norm(code);const prev=arState.customerSettings.get(code)||{},next={...prev,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};arState.customerSettings.set(code,{...prev,...patch});await userCol('arCustomerSettings').doc(arSafeCode(code)).set({code,...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();}
+async function saveArCustomerSetting(code,patch){
+  if(!user)return;
+  code=norm(code);
+  const prev=arState.customerSettings.get(code)||{};
+  arState.customerSettings.set(code,{...prev,...patch,updatedAtMs:Date.now()});
+  arQueueCustomerSettingWrite(code,{...patch,updatedAtMs:Date.now()});
+  return arState.customerSettings.get(code);
+}
 
 function arPaymentDayNumber(text){text=norm(text);if(/요일답장필요/.test(text))return null;if(/당일/.test(text))return 0;if(/월/.test(text))return 1;if(/화/.test(text))return 2;if(/수/.test(text))return 3;if(/목/.test(text))return 4;if(/금/.test(text))return 5;if(/토/.test(text))return 6;if(/일/.test(text))return 7;return null}
 function arHasScheduledPaymentDay(text){return arPaymentDayNumber(text)!==null}
@@ -11892,67 +11899,65 @@ function arSampleLabel(x){if(!x)return '';const base=x.full&&!x.uncertain?`SAMPL
 function arTransactionsFor(code,cutoff){const sales=arState.sales.filter(x=>x.code===code&&x.date<=cutoff),payments=arState.payments.filter(x=>x.code===code&&x.date<=cutoff);return {sales,payments}}
 function arLastPayment(code,through){const p=arState.payments.filter(x=>x.code===code&&x.date<=through).sort((a,b)=>b.date.localeCompare(a.date));return p[0]?.date||''}
 function arEstimateOutstandingStart(code,target,cutoff){
-  target=Math.round(Number(target||0));
+  target=Math.max(0,Math.round(Number(target||0)));
   if(target<=0)return {label:'',exact:true,date:'',diff:0};
 
-  // v4.01: 현재 미수잔액을 최근 매출에서 단순 역산하지 않고,
-  // 거래를 시간순으로 재구성하여 입금/반품이 가장 오래된 미수부터
-  // 소진되는(FIFO) 방식으로 실제 남은 매출일을 찾는다.
-  const sales=arState.sales
-    .filter(x=>x.code===code&&x.date<=cutoff&&Number(x.amount||0)!==0)
-    .map(x=>({date:x.date,amount:Math.round(Number(x.amount||0)),kind:'sale',key:String(x.key||'')}));
-  const payments=arState.payments
-    .filter(x=>x.code===code&&x.date<=cutoff&&Number(x.amount||0)>0)
-    .map(x=>({date:x.date,amount:Math.round(Math.abs(Number(x.amount||0))),kind:'payment',key:String(x.key||'')}));
-  const all=[...sales,...payments].filter(x=>x.date);
-  if(!all.length)return {label:'거래이력 부족(추)',exact:false,date:'',diff:target};
+  code=norm(code);cutoff=ymd(cutoff)||'99999999';
 
-  // 같은 날짜에는 판매/반품을 먼저 놓고 입금을 뒤에 놓는다.
-  // ECOUNT 원장상 그날 판매 후 전일분/기존잔액을 입금하는 형태를 반영한다.
-  all.sort((a,b)=>a.date.localeCompare(b.date)||((a.kind==='sale'?0:1)-(b.kind==='sale'?0:1))||a.key.localeCompare(b.key));
-  const firstDate=all[0].date;
-  const netSales=sales.reduce((s,x)=>s+x.amount,0);
-  const paid=payments.reduce((s,x)=>s+x.amount,0);
-  // 잔액파일의 기준미수를 정답으로 두고, 업로드 이력 시작 이전의 기초잔액/선입금을 역산한다.
-  const opening=Math.round(target-(netSales-paid));
-  const q=[]; // 오래된 미수부터 {date,amount,opening}
-  let credit=0;
-  if(opening>0)q.push({date:'',amount:opening,opening:true});
-  else if(opening<0)credit=-opening;
+  // v4.51
+  // 잔액파일의 현재 미수잔액을 '정답'으로 두고,
+  // 그 잔액이 어떤 최근 매출들로 구성되어 있는지를 뒤에서부터 역산한다.
+  //
+  // 입금/반품은 오래된 미수부터 차감(FIFO)되므로,
+  // 현재 남아 있는 미수는 원칙적으로 '가장 최근 양수 매출들의 꼬리 부분'이다.
+  // 따라서 과거 이력 시작 전 기초잔액을 억지로 만들어 5월 같은 오래된 날짜를
+  // 남기는 대신, 현재 잔액만큼 최근 매출을 거꾸로 채워 가장 오래된 남은 매출일을 찾는다.
+  const sales=(arState.sales||[])
+    .filter(x=>norm(x.code)===code&&x.date&&x.date<=cutoff&&Number(x.amount||0)>0)
+    .map(x=>({
+      date:x.date,
+      amount:Math.max(0,Math.round(Number(x.amount||0))),
+      key:String(x.key||'')
+    }))
+    .filter(x=>x.amount>0)
+    .sort((a,b)=>b.date.localeCompare(a.date)||b.key.localeCompare(a.key));
 
-  const reduceOldest=(amt)=>{
-    let left=Math.max(0,Math.round(amt||0));
-    while(left>0&&q.length){
-      const use=Math.min(left,q[0].amount);
-      q[0].amount-=use;left-=use;
-      if(q[0].amount<=0)q.shift();
+  if(!sales.length)return {label:'거래이력 부족(추)',exact:false,date:'',diff:target};
+
+  let need=target;
+  const used=[];
+  for(const x of sales){
+    if(need<=0)break;
+    const take=Math.min(need,x.amount);
+    if(take>0){
+      used.push({date:x.date,amount:take,sourceAmount:x.amount,key:x.key});
+      need-=take;
     }
-    if(left>0)credit+=left;
-  };
-  const addSale=(date,amt)=>{
-    let left=Math.max(0,Math.round(amt||0));
-    if(credit>0){const use=Math.min(credit,left);credit-=use;left-=use;}
-    if(left>0)q.push({date,amount:left,opening:false});
-  };
-
-  for(const x of all){
-    if(x.kind==='payment')reduceOldest(x.amount);
-    else if(x.amount<0)reduceOldest(-x.amount); // 반품도 오래된 미수부터 차감
-    else addSale(x.date,x.amount);
   }
 
-  const openingRemain=q.find(x=>x.opening&&x.amount>0);
-  if(openingRemain){
-    return {label:`${arShortDate(firstDate)} 이전(추)`,exact:false,date:firstDate,diff:Math.round(openingRemain.amount)};
+  if(need>0){
+    const oldest=sales[sales.length-1]?.date||'';
+    return {
+      label:oldest?`${arShortDate(oldest)} 이전(추)`:'거래이력 부족(추)',
+      exact:false,
+      date:oldest,
+      diff:Math.round(need),
+      remainingAmount:Math.round(target-need)
+    };
   }
-  const remaining=q.filter(x=>!x.opening&&x.amount>0&&x.date);
-  if(!remaining.length){
-    // 잔액파일과 이력의 미세 불일치가 있으면 과거 방식처럼 임의의 최근일을 찍지 않고 추정으로 명시한다.
-    return {label:`${arShortDate(firstDate)} 이전(추)`,exact:false,date:firstDate,diff:target};
-  }
-  const dates=[...new Set(remaining.map(x=>x.date))].sort();
-  const start=dates[0],oneDay=dates.length===1;
-  return {label:oneDay?arShortDate(start):`${arShortDate(start)}~`,exact:true,date:start,diff:0,oneDay,remainingAmount:remaining.reduce((s,x)=>s+x.amount,0)};
+
+  const dates=[...new Set(used.map(x=>x.date))].sort();
+  const startDate=dates[0]||'';
+  const oneDay=dates.length===1;
+  return {
+    label:startDate?(oneDay?arShortDate(startDate):`${arShortDate(startDate)}~`):'',
+    exact:true,
+    date:startDate,
+    diff:0,
+    oneDay,
+    remainingAmount:target,
+    allocation:used
+  };
 }
 function arFindSampleMatch(code,target,cutoff,startDate=''){
   if(target<=0)return null;const from=startDate||'00000000';
@@ -12526,14 +12531,86 @@ function renderArResultTable(){
 }
 
 // 화면 위치를 유지한 채 액션 저장
+
+/* ===== v4.51 미수표 빠른 저장: UI 즉시반영 + Firebase 백그라운드 저장 ===== */
+const arActionWriteQueue=new Map();
+const arCustomerWriteQueue=new Map();
+
+function arQueueFirestoreMerge(queue,key,writeFn,patch){
+  let q=queue.get(key);
+  if(!q){q={pending:{},running:false};queue.set(key,q)}
+  Object.assign(q.pending,patch||{});
+  if(q.running)return;
+
+  q.running=true;
+  queueMicrotask(async()=>{
+    try{
+      while(Object.keys(q.pending).length){
+        const payload={...q.pending};
+        q.pending={};
+        try{
+          await writeFn(payload);
+          if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();
+        }catch(e){
+          // 실패한 값은 다시 pending에 합쳐 두어 다음 저장 때 재시도 가능
+          q.pending={...payload,...q.pending};
+          console.error('미수표 백그라운드 저장 실패',e);
+          const status=$('arRunStatus');
+          if(status)status.textContent='⚠ 일부 입력값의 Firebase 저장이 지연되고 있습니다. 인터넷 연결을 확인해 주세요.';
+          break;
+        }
+      }
+    }finally{
+      q.running=false;
+      if(!Object.keys(q.pending).length)queue.delete(key);
+    }
+  });
+}
+function arQueueActionWrite(code,patch){
+  if(!user||!arState.activeWeek)return;
+  const weekKey=arState.activeWeek,docKey=safeId(`${weekKey}|${code}`),queueKey=`${weekKey}|${code}`;
+  arQueueFirestoreMerge(arActionWriteQueue,queueKey,
+    payload=>userCol('arWeekActions').doc(docKey).set({
+      weekKey,code,...payload,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true}),
+    patch
+  );
+}
+function arQueueCustomerSettingWrite(code,patch){
+  if(!user)return;
+  const key=norm(code);
+  arQueueFirestoreMerge(arCustomerWriteQueue,key,
+    payload=>userCol('arCustomerSettings').doc(arSafeCode(key)).set({
+      code:key,...payload,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true}),
+    patch
+  );
+}
+
 saveArAction=async function(code,patch){
-  if(!user||!arState.activeWeek)return;const view=arCaptureViewPosition();code=norm(code);const prev=arState.actions.get(code)||{};
-  if(Object.prototype.hasOwnProperty.call(patch,'shipStatus')&&!Object.prototype.hasOwnProperty.call(patch,'shipAutoCarry'))patch={...patch,shipAutoCarry:false,shipCarryFromWeek:null};
-  if(Object.prototype.hasOwnProperty.call(patch,'reviewStatus')&&!Object.prototype.hasOwnProperty.call(patch,'reviewAutoCarry'))patch={...patch,reviewAutoCarry:false,reviewCarryFromWeek:null};
-  const next={...prev,...patch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};arState.actions.set(code,next);
-  await userCol('arWeekActions').doc(safeId(`${arState.activeWeek}|${code}`)).set({...next,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-  if(typeof noteAutoSaveSuccess==='function')noteAutoSaveSuccess();
-  refreshArWeekPayments();renderArAll();arRestoreViewPosition(view);
+  if(!user||!arState.activeWeek)return;
+  const view=arCaptureViewPosition();
+  code=norm(code);
+  const prev=arState.actions.get(code)||{};
+
+  if(Object.prototype.hasOwnProperty.call(patch,'shipStatus')&&!Object.prototype.hasOwnProperty.call(patch,'shipAutoCarry')){
+    patch={...patch,shipAutoCarry:false,shipCarryFromWeek:null};
+  }
+  if(Object.prototype.hasOwnProperty.call(patch,'reviewStatus')&&!Object.prototype.hasOwnProperty.call(patch,'reviewAutoCarry')){
+    patch={...patch,reviewAutoCarry:false,reviewCarryFromWeek:null};
+  }
+
+  const localPatch={...patch};
+  const next={...prev,...localPatch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};
+  arState.actions.set(code,next);
+
+  // 화면은 네트워크 저장 완료를 기다리지 않고 즉시 갱신
+  renderArAll();
+  arRestoreViewPosition(view);
+
+  // Firebase 저장은 뒤에서 처리
+  arQueueActionWrite(code,{...localPatch,updatedAtMs:next.updatedAtMs});
+  return next;
 }
 window.arSetShipStatus=(code,value)=>saveArAction(code,{shipStatus:value==='X'?'X':'O',shipAutoCarry:false,shipCarryFromWeek:null}).catch(e=>alert(e.message||e));
 window.arToggleReview=async function(code){try{const prev=arState.actions.get(norm(code))||{};if(prev.reviewStatus==='need'){if(!confirm('별표 확인필요를 취소하고 원래 박스로 돌릴까요?'))return;await saveArAction(code,{reviewStatus:'',reviewedBalance:null,reviewReturnToList:false,reviewCompletedAtMs:null,reviewAutoCarry:false,reviewCarryFromWeek:null});}else await saveArAction(code,{reviewStatus:'need',reviewedBalance:null,reviewReturnToList:false,reviewCompletedAtMs:null,reviewAutoCarry:false,reviewCarryFromWeek:null});}catch(e){alert(e.message||e)}};
@@ -13172,6 +13249,22 @@ refreshArWeekPayments=function(){
     r.weekPaid=prog.paymentTotal;
     r.weekReturned=prog.returnTotal;
     r.remaining=Math.max(0,target-prog.total);
+
+    // v4.51: 과거 저장 주차도 잔액 기준으로 미수시작일 자동 재계산.
+    // 수기수정값은 arDisplayOutstanding()에서 action.manualOutstanding이 우선하므로 보존된다.
+    if(!r.carriedOnly&&target>0){
+      const est=arEstimateOutstandingStart(r.code,target,r.cutoff||r.runDate||latest);
+      r.outstandingLabel=est.label;
+      r.outstandingExact=est.exact;
+      r.outstandingDate=est.date;
+      r.outstandingDiff=est.diff;
+    }else if(target<=0){
+      r.outstandingLabel='';
+      r.outstandingExact=true;
+      r.outstandingDate='';
+      r.outstandingDiff=0;
+    }
+
     r.paidCandidate=arIsResolved(r);
   }
 };
