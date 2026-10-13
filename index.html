@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.53</title>
+<title>아도라블 매출 자동화 v4.54</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -742,7 +742,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.53 · 입금요일 직접수정/박스이동 · 미수표 부분갱신 · 탭별 지연로딩</div>
+      <div class="badge">v4.54 · 마지막입금일 직접입력 · 입금요일 직접수정/박스이동 · 미수표 부분갱신</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -2119,7 +2119,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.53',
+    appVersion:'v4.54',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2354,7 +2354,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.53'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.54'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -13051,10 +13051,38 @@ function arDisplaySampleText(r){
   return r.sampleMatch?`${arSampleDateLabel(r.sampleMatch)} · ${arMoney(Number(r.sampleMatch.amount||0))}`:'';
 }
 function arEditCurrentValue(r,field){
-  if(field==='lastPayment'){const y=arDisplayLastPaymentYmd(r);return y?arYmdToIso(y):''}
+  if(field==='lastPayment'){const y=arDisplayLastPaymentYmd(r);return y?arShortDate(y):''}
   if(field==='outstanding')return arDisplayOutstanding(r);
   if(field==='sample')return arDisplaySampleText(r);
   return '';
+}
+function arParseFlexibleDateV454(raw){
+  let t=String(raw||'').trim();
+  if(!t)return '';
+  const base=ymd(arState.activeWeek||'')||ymd(new Date())||'';
+  const fallbackYear=base?base.slice(0,4):String(new Date().getFullYear());
+
+  t=t.replace(/\s+/g,'').replace(/[.]/g,'/').replace(/-/g,'/');
+  let y='',m='',d='';
+
+  let mm=t.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if(mm){y=mm[1];m=mm[2];d=mm[3]}
+  else{
+    mm=t.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if(mm){y=fallbackYear;m=mm[1];d=mm[2]}
+    else if(/^\d{8}$/.test(t)){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8)}
+    else if(/^\d{3,4}$/.test(t)){
+      y=fallbackYear;
+      if(t.length===3){m=t.slice(0,1);d=t.slice(1)}
+      else{m=t.slice(0,2);d=t.slice(2)}
+    }else return null;
+  }
+
+  const yy=Number(y),mo=Number(m),dd=Number(d);
+  if(!Number.isInteger(yy)||!Number.isInteger(mo)||!Number.isInteger(dd)||mo<1||mo>12||dd<1||dd>31)return null;
+  const dt=new Date(yy,mo-1,dd);
+  if(dt.getFullYear()!==yy||dt.getMonth()!==mo-1||dt.getDate()!==dd)return null;
+  return `${String(yy).padStart(4,'0')}${String(mo).padStart(2,'0')}${String(dd).padStart(2,'0')}`;
 }
 window.arBeginFieldEdit=function(ev,code,field){
   ev?.preventDefault?.();ev?.stopPropagation?.();
@@ -13062,14 +13090,19 @@ window.arBeginFieldEdit=function(ev,code,field){
   const r=arWeekRowByCode(code);if(!r)return;
   host.dataset.editing='1';
   const before=host.innerHTML,view=arCaptureViewPosition();
-  const input=document.createElement('input');input.className='arInlineEditInput';input.type=field==='lastPayment'?'date':'text';input.value=arEditCurrentValue(r,field);input.autocomplete='off';
+  const input=document.createElement('input');input.className='arInlineEditInput';input.type='text';input.value=arEditCurrentValue(r,field);input.autocomplete='off';
+  if(field==='lastPayment'){input.placeholder='예: 10/13';input.inputMode='numeric'}
   if(field==='outstanding')input.placeholder='예: 9/6~';
   if(field==='sample')input.placeholder='예: 9/6 · 50,000원';
   host.innerHTML='';host.appendChild(input);input.focus();if(input.type==='text')input.select();
   let finished=false,cancelled=false;
   const cancel=()=>{if(finished)return;finished=true;cancelled=true;host.innerHTML=before;delete host.dataset.editing;arRestoreViewPosition(view)};
   const commit=async()=>{if(finished)return;finished=true;const raw=input.value;let patch={};
-    if(field==='lastPayment')patch={manualLastPayment:raw?arIsoToYmd(raw):null,manualLastPaymentAtMs:raw?Date.now():null};
+    if(field==='lastPayment'){
+      const parsed=arParseFlexibleDateV454(raw);
+      if(parsed===null){finished=false;alert('날짜를 10/13 또는 2026/10/13 형식으로 입력해 주세요.');input.focus();input.select();return}
+      patch={manualLastPayment:parsed||null,manualLastPaymentAtMs:parsed?Date.now():null};
+    }
     else if(field==='outstanding')patch={manualOutstanding:raw.trim()||null,manualOutstandingAtMs:raw.trim()?Date.now():null};
     else if(field==='sample')patch={manualSample:raw.trim()||null,manualSampleAtMs:raw.trim()?Date.now():null};
     try{await saveArAction(code,patch);if(field==='outstanding'&&raw.trim())arRememberOutstandingMemo(code,raw.trim(),arState.activeWeek)}catch(e){host.innerHTML=before;delete host.dataset.editing;alert(e.message||e)}
@@ -13110,7 +13143,7 @@ const _arCellHtml391=arCellHtml;
 arCellHtml=function(r,key,boxKey){
   if(key==='lastPayment'){
     const y=arDisplayLastPaymentYmd(r),txt=y?arShortDateWeekday(y):'-';
-    return `<span class="arEditableValue${arHasManualField(r,'lastPayment')?' manual':''}" title="더블클릭해서 마지막입금일 수정 · 빈값 저장 시 자동값 복귀" ondblclick="arBeginFieldEdit(event,'${escAttr(r.code)}','lastPayment')">${esc(txt)}</span>`;
+    return `<span class="arEditableValue${arHasManualField(r,'lastPayment')?' manual':''}" title="더블클릭해서 마지막입금일 수정 · 10/13처럼 직접 입력 · 빈값 저장 시 자동값 복귀" ondblclick="arBeginFieldEdit(event,'${escAttr(r.code)}','lastPayment')">${esc(txt)}</span>`;
   }
   if(key==='outstanding'){
     const txt=arDisplayOutstanding(r)||'-';
