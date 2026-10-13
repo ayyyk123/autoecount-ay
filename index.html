@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.54</title>
+<title>아도라블 매출 자동화 v4.55</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -742,7 +742,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.54 · 마지막입금일 직접입력 · 입금요일 직접수정/박스이동 · 미수표 부분갱신</div>
+      <div class="badge">v4.55 · 거래처 수동매칭 최신코드 검증 · 마지막입금일 직접입력 · 미수표 부분갱신</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1862,20 +1862,58 @@ function findHeader(rows,need){for(let i=0;i<Math.min(rows.length,30);i++){const
 function objectsFromRows(rows,headerIdx){const h=rows[headerIdx].map(norm); return rows.slice(headerIdx+1).map(r=>{const o={}; h.forEach((k,i)=>{if(k)o[k]=r[i]}); return o})}
 function mapAdd(map,k,v){k=norm(k);v=norm(v); if(!k||!v)return; if(!map.has(k))map.set(k,new Set()); map.get(k).add(v)}
 function mapResolve(map,k){const s=map.get(norm(k)); if(!s||s.size===0)return {ok:false,type:'missing'}; if(s.size>1)return {ok:false,type:'ambiguous',values:[...s]}; return {ok:true,value:[...s][0]}}
+function customerByLatestCode(code){
+  code=norm(code);
+  if(!code)return null;
+  return (cloud.runtimeCustomers||[]).find(c=>norm(c.code)===code)||null;
+}
+function resolveSavedCustomerAliasTarget(maps,alias){
+  if(!alias)return null;
+
+  // 저장 당시의 이카운트명/장끼명을 최신 거래처리스트에서 다시 찾는다.
+  // 코드가 변경되었더라도 이름이 이어져 있으면 최신 코드로 자동 연결된다.
+  const names=[alias.targetName,alias.targetJangkiName].map(norm).filter(Boolean);
+  const seen=new Set();
+  for(const n of names){
+    if(seen.has(n))continue;
+    seen.add(n);
+    const e=mapResolve(maps.ecount,n);
+    if(e.ok)return {...e,via:'customerAliasLatestName'};
+    const j=mapResolve(maps.jangki,n);
+    if(j.ok)return {...j,via:'customerAliasLatestName'};
+  }
+
+  // 직접 저장코드는 '오늘 기준 최신 거래처리스트에 실제 존재할 때만' 사용한다.
+  const manual=norm(alias.manualCode||'');
+  if(manual&&customerByLatestCode(manual)){
+    return {ok:true,value:manual,via:'customerManualCodeValidated'};
+  }
+  return null;
+}
 function resolveCustomer(maps,name){
   const key=norm(name),alias=cloud.customerAliases.get(key);
-  // v3.46: 사용자가 규칙관리에서 만든 매칭/제외규칙을 기준정보 자동일치보다 우선한다.
+  // v4.55: 사용자 규칙은 우선하되, 사라진 과거 거래처코드는 절대 변환에 사용하지 않는다.
   if(alias){
     if(alias.disabled)return {ok:false,type:'blocked',via:'customerDisabled'};
-    if(alias.targetName){
-      const ar=mapResolve(maps.ecount,alias.targetName); if(ar.ok)return {...ar,via:'customerAlias'};
-      const aj=mapResolve(maps.jangki,alias.targetName); if(aj.ok)return {...aj,via:'customerAlias'};
-    }
-    if(alias.manualCode)return {ok:true,value:alias.manualCode,via:'customerManualCode'};
+    const saved=resolveSavedCustomerAliasTarget(maps,alias);
+    if(saved)return saved;
   }
+
+  // 저장규칙이 오래되어 무효가 되었더라도 최신 거래처리스트의 현재 명칭으로 다시 자동매칭 시도.
   const j=mapResolve(maps.jangki,key),e=mapResolve(maps.ecount,key);
-  if(j.ok)return j;if(e.ok)return e;
+  if(j.ok)return {...j,via:alias?'customerAliasFallbackLatest':'jangki'};
+  if(e.ok)return {...e,via:alias?'customerAliasFallbackLatest':'ecount'};
   if(j.type==='ambiguous')return j;if(e.type==='ambiguous')return e;
+
+  if(alias?.manualCode&&!customerByLatestCode(alias.manualCode)){
+    return {
+      ok:false,
+      type:'missing',
+      via:'staleCustomerAlias',
+      staleCode:norm(alias.manualCode),
+      detail:`저장된 수동매칭 코드 ${norm(alias.manualCode)}은(는) 최신 거래처리스트에 없습니다.`
+    };
+  }
   return {ok:false,type:'missing'};
 }
 function resolveItem(map,name){const key=norm(name);const once=currentItemOneTimeAliases[key];if(once?.itemCode)return {ok:true,value:once.itemCode,via:'jobItemAlias'};const alias=cloud.aliases.get(key); if(alias){if(alias.disabled)return {ok:false,type:'blocked',via:'itemDisabled'};return {ok:true,value:alias.itemCode,via:'alias'}} return mapResolve(map,name)}
@@ -1904,10 +1942,14 @@ function customerRuleRows(){
     const custom=cloud.customerAliases.get(key),j=mapResolve(cloud.customerMaps.jangki,key),e=mapResolve(cloud.customerMaps.ecount,key);
     if(custom){
       if(custom.disabled){rows.push({key,source:'blocked',code:'',name:'',jangki:'',note:'사용자가 기준정보 자동연결을 제외함'});continue}
-      let code=norm(custom.manualCode||''),target=null;
-      if(!code&&custom.targetName){const r=mapResolve(cloud.customerMaps.ecount,custom.targetName);if(r.ok)code=r.value}
-      target=ruleCustomerByCode(code);
-      rows.push({key,source:'user',code:code||'',name:target?.name||custom.targetName||'',jangki:target?.jangkiName||custom.targetJangkiName||'',note:custom.selectedFromAmbiguous?'중복 후보에서 선택 저장':''});continue;
+      const saved=resolveSavedCustomerAliasTarget(cloud.customerMaps,custom);
+      const staleCode=norm(custom.manualCode||'')&&!customerByLatestCode(custom.manualCode)?norm(custom.manualCode):'';
+      const code=saved?.ok?norm(saved.value):'';
+      const target=ruleCustomerByCode(code);
+      let note=custom.selectedFromAmbiguous?'중복 후보에서 선택 저장':'';
+      if(staleCode&&code)note=`저장코드 ${staleCode}는 최신 목록에 없음 · 현재 최신코드 ${code} 사용`;
+      else if(staleCode&&!code)note=`⚠ 저장코드 ${staleCode}는 최신 거래처리스트에 없음 · 변환 시 사용하지 않음`;
+      rows.push({key,source:'user',code:code||'',name:target?.name||custom.targetName||'',jangki:target?.jangkiName||custom.targetJangkiName||'',note});continue;
     }
     const resolved=j.ok?j:e.ok?e:null;
     if(resolved){const c=ruleCustomerByCode(resolved.value);rows.push({key,source:'base',code:resolved.value,name:c?.name||'',jangki:c?.jangkiName||'',note:j.ok?'장끼거래처명 우선':'거래처명 자동일치'});}
@@ -1968,7 +2010,7 @@ function renderShinsangRules(){
 }
 function renderRulesDashboard(){renderRulesSummary();renderCustomerRules();renderItemRules();renderVatRules();renderShinsangRules()}
 function setRuleStatus(id,msg,kind=''){const el=$(id);if(!el)return;el.className='ruleStatus '+kind;el.innerHTML=msg}
-async function saveCustomerRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesCustomerAlias').value),q=norm($('rulesCustomerTarget').value);if(!alias||!q)throw new Error('원본 거래처명과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);const data={alias,targetName:t?.name||'',targetJangkiName:t?.jangkiName||'',manualCode:t?.code||q,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:false});cloud.customerAliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesCustomerStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(t?.code||q)} ${esc(t?.name||'')}</b> 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesCustomerStatus',esc(e.message||e),'bad')}}
+async function saveCustomerRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesCustomerAlias').value),q=norm($('rulesCustomerTarget').value);if(!alias||!q)throw new Error('원본 거래처명과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);if(!t)throw new Error('최신 거래처리스트에서 연결할 거래처를 찾지 못했습니다. 현재 리스트에 존재하는 거래처코드/거래처명을 선택해 주세요.');const data={alias,targetName:t.name||'',targetJangkiName:t.jangkiName||'',manualCode:t.code||'',disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:false});cloud.customerAliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesCustomerStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(t.code||'')} ${esc(t.name||'')}</b> 저장완료 · 최신 거래처리스트 검증 적용`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesCustomerStatus',esc(e.message||e),'bad')}}
 async function saveItemRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesItemAlias').value),q=norm($('rulesItemTarget').value);if(!alias||!q)throw new Error('원본 품목명과 연결할 품목을 모두 입력해 주세요.');const t=ruleFindItem(q),code=t?.code||q,data={alias,itemCode:code,itemName:t?.name||'(수동 지정 코드)',manualCode:!t,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:false});cloud.aliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesItemStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(code)} ${esc(t?.name||'')}</b> 저장완료`,'ok');updateMasterStats();renderRulesDashboard()}catch(e){setRuleStatus('rulesItemStatus',esc(e.message||e),'bad')}}
 async function saveVatRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const q=norm($('rulesVatCustomer').value),mode=$('rulesVatMode').value;if(!q)throw new Error('거래처를 입력해 주세요.');let key=q,data;if(q==='신상마켓-*'){key='__shinsang_default__';data={customer:key,name:'신상마켓-*',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}else{const t=ruleFindCustomer(q);key=norm(t?.jangkiName)||norm(t?.name)||q;data={customer:key,code:t?.code||'',name:t?.name||q,jangkiName:t?.jangkiName||'',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}await userCol('vatRules').doc(safeId(key)).set(data,{merge:true});cloud.vatRules.set(key,mode);setRuleStatus('rulesVatStatus',`✓ <b>${esc(q)}</b> · ${esc(vatModeText(mode))} 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesVatStatus',esc(e.message||e),'bad')}}
 async function saveShinsangRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const raw=norm($('rulesShinsangAlias').value),q=norm($('rulesShinsangTarget').value);if(!raw||!q)throw new Error('입금 기재내용과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);if(!t)throw new Error('거래처 기준정보에서 연결할 거래처를 찾지 못했습니다.');const aliasKey=shinsangCompact(raw),data={aliasKey,description:raw,code:t.code||'',name:t.name||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('shinsangDepositAliases').doc(safeId(aliasKey)).set(data,{merge:false});shinsangDepositAliases.set(aliasKey,{...data,updatedAt:null});setRuleStatus('rulesShinsangStatus',`✓ <b>${esc(raw)}</b> → <b>${esc(t.code)} ${esc(t.name)}</b> 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesShinsangStatus',esc(e.message||e),'bad')}}
@@ -2119,7 +2161,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.54',
+    appVersion:'v4.55',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2354,7 +2396,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.54'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.55'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3256,7 +3298,7 @@ function buildMemoAndCash(settlements,customerMaps,issues){const memo=new Map(),
   source:f.loc==='store'?'매장 정산':'창고 정산',
   sourceFile:f.file.name,
   candidateCodes:cm.values?[...cm.values]:[],
-  detail:(cm.values?cm.values.join(', ')+' · ':'')+date+' No.'+no
+  detail:(cm.staleCode?`저장된 수동매칭 코드 ${cm.staleCode}은 최신 거래처리스트에 없음 · `:(cm.values?cm.values.join(', ')+' · ':''))+date+' No.'+no
 }); cashTmp.push({date,loc:f.loc,no:Number(no)||0,row:[date,null,'1019','1089',cm.ok?cm.value:'[미매칭] '+cust,null,amt,null,null]});}}} cashTmp.sort((a,b)=>a.date.localeCompare(b.date)||((a.loc==='store'?0:1)-(b.loc==='store'?0:1))||a.no-b.no); return {memo,cash:cashTmp.map(x=>x.row)};}
 function groupDetails(details){const tickets=new Map(),sampleKeys=new Set(); let sampleDetectedRows=0; for(const f of details){if(!f.loc)continue; const objs=objectsFromRows(f.a,f.header); for(const o of objs){const date=ymd(o['일자']); const cust=norm(o['받는곳']); const no=o['No.']; if(!date||!cust||no==null)continue; const k=keyTicket(f.loc,date,no,cust); const sampleCustomer=isSampleCustomer(cust); if(sampleCustomer){if(['판매','반품'].includes(norm(o['구분']))&&norm(o['상품명'])!=='부가세')sampleDetectedRows++;sampleKeys.add(k);} if(!tickets.has(k))tickets.set(k,{key:k,loc:f.loc,date,no,cust,rows:[],hasVat:false,sampleCustomer}); const t=tickets.get(k);if(sampleCustomer)t.sampleCustomer=true; const item=norm(o['상품명']); if(item==='부가세')t.hasVat=true; t.rows.push(o);}} return {tickets,sampleDetectedRows,sampleDetectedTickets:sampleKeys.size,sampleTickets:[...tickets.values()].filter(t=>t.sampleCustomer)};}
 
@@ -3325,7 +3367,7 @@ function buildSales(tickets,memo,customerMaps,itemMap,ticketOverrides,issues){
       value:t.cust,
       source:t.loc==='store'?'매장 판매내역':'창고 판매내역',
       candidateCodes:cm.values?[...cm.values]:[],
-      detail:(cm.values?cm.values.join(', ')+' · ':'')+t.date+' No.'+t.no
+      detail:(cm.staleCode?`저장된 수동매칭 코드 ${cm.staleCode}은 최신 거래처리스트에 없음 · `:(cm.values?cm.values.join(', ')+' · ':''))+t.date+' No.'+t.no
     });
 
     const ticketMemo=normalizeMemo(memo.get(t.key)||'');
@@ -3621,19 +3663,12 @@ async function saveCustomerAlias(i,alias){
         alias:norm(alias),
         targetName:target.name,
         targetJangkiName:target.jangkiName||'',
-        manualCode:'',
+        manualCode:target.code||'',
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       };
-      message=`<b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 거래처코드는 매번 최신 거래처리스트에서 다시 찾습니다.`;
+      message=`<b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 다음 변환에서도 최신 거래처리스트를 다시 확인해 유효한 코드만 사용합니다.`;
     }else{
-      data={
-        alias:norm(alias),
-        targetName:'',
-        targetJangkiName:'',
-        manualCode:val,
-        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-      };
-      message=`<b>${esc(alias)}</b> → 거래처코드 <b>${esc(val)}</b>로 수동 지정했습니다. 이번 거래처리스트에 없어도 이 코드로 바로 변환합니다.`;
+      throw new Error('최신 거래처리스트에서 해당 거래처코드/거래처명을 찾지 못했습니다. 최신 리스트에 존재하는 거래처를 선택해 주세요.');
     }
 
     await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:true});
