@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.51</title>
+<title>아도라블 매출 자동화 v4.53</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -597,6 +597,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
   .arFilterPopup{position:fixed;z-index:99999;width:270px;max-height:390px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 35px rgba(15,23,42,.18);padding:9px;font-size:11px;color:#334155}.arFilterPopupTitle{font-weight:900;margin-bottom:7px}.arFilterSortRow{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:7px}.arFilterSortBtn{border:1px solid #dbe2ea;background:#fff;border-radius:6px;padding:5px 3px;font-size:10px;font-weight:800;cursor:pointer}.arFilterSortBtn.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}.arFilterSearch{width:100%;height:28px!important;padding:4px 7px!important;font-size:10px!important;margin-bottom:6px}.arFilterQuick{display:flex;gap:5px;margin-bottom:5px}.arFilterQuick button{border:1px solid #dbe2ea;background:#fff;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:800;cursor:pointer}.arFilterList{max-height:205px;overflow:auto;border:1px solid #eef2f7;border-radius:7px;padding:3px}.arFilterCheck{display:flex;align-items:center;gap:6px;padding:4px 5px;border-radius:5px;cursor:pointer;white-space:normal;line-height:1.3}.arFilterCheck:hover{background:#f8fafc}.arFilterCheck input{margin:0}.arFilterActions{display:flex;justify-content:flex-end;gap:5px;margin-top:7px}.arFilterActions button{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:850;cursor:pointer}.arFilterActions .apply{background:#4f46e5;color:#fff;border-color:#4f46e5}
   .arShipBlocked td{color:#dc2626!important;background:#fff5f5!important}.arShipBlocked td b{color:#dc2626!important}.arPaymentResolved:not(.arShipBlocked) td{background:#eaf6ff!important}.arPaymentResolved:not(.arShipBlocked) td b{color:inherit}
   .arShipSelect{height:26px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:10px;font-weight:900}.arShipSelect.shipX{color:#dc2626;border-color:#fca5a5;background:#fff1f2}
+  .arPaymentDaySelect{height:26px;min-width:78px;max-width:100%;padding:2px 4px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:10px;font-weight:800;color:#334155}.arPaymentDaySelect:hover{border-color:#60a5fa}.arPaymentDaySelect:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.12)}
   .arSampleToggle{border:0;background:transparent;padding:0;color:#6d28d9;font-size:10px;font-weight:900;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}.arSampleDetail{margin-top:5px;padding:6px;border:1px solid #ddd6fe;border-radius:7px;background:#faf5ff;color:#5b21b6;white-space:normal;line-height:1.45;min-width:180px}.arSampleDetailRow{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #e9d5ff;padding:2px 0}.arSampleDetailRow:last-child{border-bottom:0}.arSampleDetailRow .neg{color:#dc2626}.arSampleDetailRow .pos{color:#2563eb}
   .arStarBtn{appearance:none;border:0;background:transparent;font-size:21px;line-height:1;cursor:pointer;padding:1px 3px;color:#cbd5e1}.arStarBtn.need{color:#f59e0b}.arStarBtn.done{color:#16a34a}.arStarBtn:hover{transform:scale(1.08)}
   .arReviewControls{display:grid;grid-template-columns:95px 130px auto;gap:4px;align-items:center;margin-top:4px}.arReviewControls input,.arReviewControls select{height:25px!important;padding:2px 4px!important;font-size:9px!important}.arReviewControls .btn{padding:4px 7px;font-size:9px;border-radius:5px}
@@ -741,7 +742,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.51 · 미수시작일 현재잔액 역산 · 표 저장 즉시반영 · 수기계산서 월별배분</div>
+      <div class="badge">v4.53 · 입금요일 직접수정/박스이동 · 미수표 부분갱신 · 탭별 지연로딩</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -927,7 +928,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 
     <div class="arMiniCard">
       <div class="arSectionHead">
-        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다. <b>마지막입금일·미수시작일·SAMPLE은 더블클릭하면 직접 수정</b>할 수 있습니다. 표 안 입력값은 화면에 즉시 반영되고 Firebase에는 백그라운드로 자동저장됩니다.</div></div>
+        <div><h3>자동정리 결과</h3><div class="arWeekHint">창고/남평화와 SAMPLE 잔액을 나눠 표시하고, <b>입금요일 지정 거래처는 창고·남평화 구분 없이 하나의 박스</b>로 모읍니다. 모든 박스는 접기/펼치기가 가능하며, <b>열 이름 자체를 클릭</b>하면 복수선택 필터·오름/내림차순 정렬·열 숨기기를 사용할 수 있습니다. ⋮⋮ 드래그로 열 순서, 열 오른쪽 경계 드래그로 너비를 조절합니다. 열 메뉴에서 숨길 수 있고, <b>설정1/설정2</b>에 저장하면 같은 계정으로 다른 PC에서도 바로 불러올 수 있습니다. <b>입금요일은 표에서 직접 수정</b>할 수 있고, 미지정 거래처에 요일을 지정하면 입금요일 지정 거래처 박스로 바로 이동합니다. <b>마지막입금일·미수시작일·SAMPLE은 더블클릭하면 직접 수정</b>할 수 있습니다. 표 안 입력값은 화면에 즉시 반영되고 Firebase에는 백그라운드로 자동저장됩니다.</div></div>
         <div class="arViewToolbar">
           <button id="arHiddenColumnsBtn" class="btn light" type="button" onclick="arOpenHiddenColumnsMenu(event)">숨긴 항목 <span id="arHiddenColumnsCount" class="arHiddenCount">0</span></button>
           <span class="arPresetGroup"><button class="btn light" type="button" onclick="arApplyTablePreset('preset1')">설정1</button><button class="arPresetSaveBtn" type="button" onclick="arSaveTablePreset('preset1')" title="현재 열 순서·숨김·너비를 설정1로 저장">저장</button></span>
@@ -2118,7 +2119,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.51',
+    appVersion:'v4.53',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2353,7 +2354,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.51'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.53'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -12764,7 +12765,7 @@ arHeaderHtml=function(boxKey){
 arRowsTable=function(rows,boxKey){
   const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터/검색에 해당하는 거래처가 없습니다.</div>';const order=arVisibleColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
   const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
-  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':''].filter(Boolean).join(' ');return `<tr class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':''].filter(Boolean).join(' ');return `<tr data-ar-code="${escAttr(r.code)}" class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
 };
 
 // 필터 메뉴에 '이 열 숨기기' 추가
@@ -13388,6 +13389,9 @@ arExportRowObject=function(r){
   o.periodReceipts=arDisplayReceipts(r);
   o.baseBalance=arDisplayCurrentBalance(r);
   o.memo=arRowMemo(r);
+  // v4.52: 미수 엑셀에서는 이카운트 거래처명과 장끼거래처명을 별도 열로 내보낸다.
+  o.ecountName=r.name||'';
+  o.jangkiName=r.jangkiName||'';
   return o;
 };
 
@@ -13517,7 +13521,7 @@ arCellHtml=function(r,key,boxKey){
 function arCompactExportKeys(boxKey){
   const keys=['shipStatus','memo'];
   if(boxKey==='scheduled')keys.push('paymentDay');
-  keys.push('name','carryover','periodSales','periodReceipts','baseBalance','lastPayment','outstanding');
+  keys.push('ecountName','jangkiName','carryover','periodSales','periodReceipts','baseBalance','lastPayment','outstanding');
   if(boxKey==='warehouseSample'||boxKey==='nampyeonghwaSample')keys.push('sample');
   if(boxKey==='review')keys.push('review');
   return keys;
@@ -13529,14 +13533,19 @@ function arCompactExportTitle(def){
   return def?.title||'미수정리';
 }
 function arCompactColWidth(key){
-  return ({shipStatus:9,memo:28,paymentDay:9,name:25,carryover:11,periodSales:11,periodReceipts:11,baseBalance:12,lastPayment:13,outstanding:13,sample:22,review:22})[key]||14;
+  return ({shipStatus:9,memo:28,paymentDay:9,ecountName:28,jangkiName:28,carryover:11,periodSales:11,periodReceipts:11,baseBalance:12,lastPayment:13,outstanding:13,sample:22,review:22})[key]||14;
 }
 function arCompactCellValue(r,key){
   const o=arExportRowObject(r);
   return o[key]??'';
 }
+function arCompactExportLabel(key){
+  if(key==='ecountName')return '이카운트 거래처명';
+  if(key==='jangkiName')return '장끼거래처명';
+  return arColumnDef(key)?.label||key;
+}
 function arCompactSheetFromRows(rows,def){
-  const keys=arCompactExportKeys(def?.key||''),headers=keys.map(k=>arColumnDef(k)?.label||k),title=arCompactExportTitle(def);
+  const keys=arCompactExportKeys(def?.key||''),headers=keys.map(arCompactExportLabel),title=arCompactExportTitle(def);
   const data=rows.map(r=>keys.map(k=>arCompactCellValue(r,k)));
   const aoa=[[title,...Array(Math.max(0,headers.length-1)).fill('')],headers,...data];
   const ws=XLSX.utils.aoa_to_sheet(aoa);
@@ -13577,6 +13586,301 @@ exportArAllExcel=function(){
   const wb=XLSX.utils.book_new(),date=arState.activeWeek||arIsoToYmd($('arRunDate')?.value)||'미수정리';
   for(const def of AR_BOX_DEFS){const rows=arFilteredBoxRows(def.key);XLSX.utils.book_append_sheet(wb,arCompactSheetFromRows(rows,def),def.title.slice(0,31));}
   XLSX.writeFile(wb,`미수정리_전체_${date}.xlsx`,{cellStyles:true});
+};
+
+
+/* ===== v4.53: 입금요일 직접수정 + 미수표 부분갱신 + 탭별 지연로딩 =====
+   주의: 기존 미수 자동정리/잔액 계산식은 변경하지 않는다.
+   - 입금요일은 거래처 지속설정으로 저장하고 현재 표에서도 즉시 박스 이동
+   - 미수표 한 칸 수정 시 전체 표를 다시 만들지 않고 필요한 셀/박스만 갱신
+   - 로그인 시 AR/세금계산서/작업기록 대용량 자료는 해당 탭을 열 때 처음 불러옴
+*/
+
+function arCanonicalPaymentDayV453(value){
+  const t=norm(value||'');
+  if(!t)return '';
+  if(/요일답장필요/.test(t))return '요일답장필요';
+  if(/당일/.test(t))return '당일';
+  if(/월/.test(t))return '월요일';
+  if(/화/.test(t))return '화요일';
+  if(/수/.test(t))return '수요일';
+  if(/목/.test(t))return '목요일';
+  if(/금/.test(t))return '금요일';
+  if(/토/.test(t))return '토요일';
+  if(/일/.test(t))return '일요일';
+  return t;
+}
+function arPaymentDaySelectHtmlV453(r){
+  const cur=arCanonicalPaymentDayV453(r?.paymentDay||'');
+  const base=['','당일','월요일','화요일','수요일','목요일','금요일','토요일','일요일','요일답장필요'];
+  const opts=cur&&!base.includes(cur)?['',cur,...base.slice(1)]:base;
+  const labels={'':'미지정','요일답장필요':'요일 확인필요'};
+  return `<select class="arPaymentDaySelect" title="입금요일을 수정하면 거래처 설정에 저장되고 해당 박스로 바로 이동합니다." onchange="arEditPaymentDay('${escAttr(r.code)}',this.value)">${opts.map(v=>`<option value="${escAttr(v)}"${v===cur?' selected':''}>${esc(labels[v]||v)}</option>`).join('')}</select>`;
+}
+const _arCellHtml453=arCellHtml;
+arCellHtml=function(r,key,boxKey){
+  if(key==='paymentDay')return arPaymentDaySelectHtmlV453(r);
+  return _arCellHtml453(r,key,boxKey);
+};
+
+// 저장된 거래처 입금요일 설정은 잔액파일 표시값보다 '사용자 수정값'으로 우선 표시한다.
+// 계산식은 바꾸지 않고, 화면/분류용 paymentDay만 덮어쓴다.
+const _refreshArWeekPayments453=refreshArWeekPayments;
+refreshArWeekPayments=function(){
+  _refreshArWeekPayments453();
+  for(const r of (arState.weekRows||[])){
+    const setting=arState.customerSettings.get(norm(r.code))||{};
+    if(Object.prototype.hasOwnProperty.call(setting,'paymentDay')){
+      r.paymentDay=arCanonicalPaymentDayV453(setting.paymentDay);
+    }
+  }
+};
+
+function arGroupKeyForCodeV453(code,groups=null){
+  code=norm(code);groups=groups||arGroupRows();
+  for(const def of AR_BOX_DEFS){
+    if((groups[def.key]||[]).some(r=>norm(r.code)===code))return def.key;
+  }
+  return '';
+}
+function arReplaceOneBoxV453(boxKey,groups){
+  if(!boxKey)return false;
+  const def=AR_BOX_DEFS.find(x=>x.key===boxKey);
+  const old=document.querySelector(`details[data-ar-box="${boxKey}"]`);
+  if(!def||!old)return false;
+  const holder=document.createElement('div');
+  holder.innerHTML=arBoxHtml(def,(groups||arGroupRows())[boxKey]||[]);
+  const fresh=holder.firstElementChild;
+  if(!fresh)return false;
+  old.replaceWith(fresh);
+  return true;
+}
+function arRefreshBoxesV453(keys,view=null){
+  const unique=[...new Set((keys||[]).filter(Boolean))];
+  if(!unique.length)return;
+  const groups=arGroupRows();
+  let ok=true;
+  for(const key of unique)if(!arReplaceOneBoxV453(key,groups))ok=false;
+  if(!ok)renderArResultTable();
+  renderArSummary();
+  if(typeof arUpdateHiddenColumnsButton==='function')arUpdateHiddenColumnsButton();
+  if(view)arRestoreViewPosition(view);
+}
+function arVisibleRowsByCodeV453(code){
+  code=norm(code);
+  return [...document.querySelectorAll('tr[data-ar-code]')].filter(tr=>norm(tr.dataset.arCode)===code);
+}
+function arPatchRowCellsV453(code,keys){
+  const r=arWeekRowByCode(code);if(!r)return false;
+  const trs=arVisibleRowsByCodeV453(code);if(!trs.length)return false;
+  for(const tr of trs){
+    const boxKey=tr.closest('details[data-ar-box]')?.dataset?.arBox||'';
+    for(const key of keys||[]){
+      const td=[...tr.querySelectorAll('td[data-ar-col]')].find(x=>x.dataset.arCol===key);
+      if(td)td.innerHTML=arCellHtml(r,key,boxKey);
+    }
+    tr.classList.toggle('arShipBlocked',r.action?.shipStatus==='X');
+    tr.classList.toggle('arPaymentResolved',arIsResolved(r));
+  }
+  return true;
+}
+
+// 입금요일 수정: 금액/미수 계산을 다시 돌리지 않고 paymentDay만 바꾼 뒤
+// 출발/도착 박스만 다시 그린다.
+window.arEditPaymentDay=async function(code,value){
+  try{
+    code=norm(code);if(!code)return;
+    const view=arCaptureViewPosition();
+    const beforeGroups=arGroupRows(),beforeBox=arGroupKeyForCodeV453(code,beforeGroups);
+    const v=arCanonicalPaymentDayV453(value);
+    const r=arWeekRowByCode(code);
+    if(r)r.paymentDay=v;
+    await saveArCustomerSetting(code,{paymentDay:v,paymentDayUpdatedAtMs:Date.now()});
+    const afterGroups=arGroupRows(),afterBox=arGroupKeyForCodeV453(code,afterGroups);
+    if(beforeBox||afterBox)arRefreshBoxesV453([beforeBox,afterBox],view);
+    else{renderArResultTable();renderArSummary();arRestoreViewPosition(view)}
+  }catch(e){alert(e.message||e)}
+};
+
+// v4.51의 백그라운드 저장은 유지하되, v4.53에서는 전체 renderArAll()을 없앤다.
+// 메모/마지막입금일/미수시작일/SAMPLE/OX는 해당 셀만,
+// 분류가 바뀌는 액션만 출발/도착 박스만 다시 그린다.
+saveArAction=async function(code,patch){
+  if(!user||!arState.activeWeek)return;
+  code=norm(code);
+  const view=arCaptureViewPosition();
+  const prev=arState.actions.get(code)||{};
+
+  if(Object.prototype.hasOwnProperty.call(patch,'shipStatus')&&!Object.prototype.hasOwnProperty.call(patch,'shipAutoCarry')){
+    patch={...patch,shipAutoCarry:false,shipCarryFromWeek:null};
+  }
+  if(Object.prototype.hasOwnProperty.call(patch,'reviewStatus')&&!Object.prototype.hasOwnProperty.call(patch,'reviewAutoCarry')){
+    patch={...patch,reviewAutoCarry:false,reviewCarryFromWeek:null};
+  }
+
+  const routingFields=['reviewStatus','reviewedBalance','reviewReturnToList','manualSampleOnly'];
+  const reorderFields=['manualResolved'];
+  const needsRouting=routingFields.some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+  const needsReorder=reorderFields.some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+  const beforeGroups=(needsRouting||needsReorder)?arGroupRows():null;
+  const beforeBox=beforeGroups?arGroupKeyForCodeV453(code,beforeGroups):'';
+
+  const localPatch={...patch};
+  const next={...prev,...localPatch,weekKey:arState.activeWeek,code,updatedAtMs:Date.now()};
+  arState.actions.set(code,next);
+  const row=arWeekRowByCode(code);if(row)row.action=next;
+
+  if(needsRouting){
+    const afterGroups=arGroupRows(),afterBox=arGroupKeyForCodeV453(code,afterGroups);
+    arRefreshBoxesV453([beforeBox,afterBox],view);
+  }else if(needsReorder){
+    arRefreshBoxesV453([beforeBox],view);
+  }else{
+    const cellKeys=[];
+    if(Object.prototype.hasOwnProperty.call(localPatch,'rowMemo'))cellKeys.push('memo');
+    if(Object.prototype.hasOwnProperty.call(localPatch,'manualLastPayment'))cellKeys.push('lastPayment');
+    if(Object.prototype.hasOwnProperty.call(localPatch,'manualOutstanding'))cellKeys.push('outstanding');
+    if(Object.prototype.hasOwnProperty.call(localPatch,'manualSample'))cellKeys.push('sample');
+    if(Object.prototype.hasOwnProperty.call(localPatch,'shipStatus'))cellKeys.push('shipStatus');
+    if(cellKeys.length){
+      if(!arPatchRowCellsV453(code,cellKeys)){
+        const g=arGroupRows(),box=arGroupKeyForCodeV453(code,g);
+        arRefreshBoxesV453([box],view);
+      }
+    }else{
+      const g=arGroupRows(),box=arGroupKeyForCodeV453(code,g);
+      arRefreshBoxesV453([box],view);
+    }
+  }
+
+  if(needsRouting||needsReorder)renderArSummary();
+  arQueueActionWrite(code,{...localPatch,updatedAtMs:next.updatedAtMs});
+  return next;
+};
+
+/* ----- 초기 로그인 로딩 최적화 ----- */
+const v453TabLoadState={
+  sales:false,tax:false,ar:false,rules:false,activity:false,
+  promises:{},shinsangPromise:null
+};
+
+function v453ResetTabLoadState(){
+  v453TabLoadState.sales=false;v453TabLoadState.tax=false;v453TabLoadState.ar=false;
+  v453TabLoadState.rules=false;v453TabLoadState.activity=false;
+  v453TabLoadState.promises={};v453TabLoadState.shinsangPromise=null;
+}
+async function v453LoadShinsangData(){
+  if(v453TabLoadState.shinsangPromise)return v453TabLoadState.shinsangPromise;
+  v453TabLoadState.shinsangPromise=(async()=>{
+    await loadShinsangDepositAliases();
+    await loadShinsangCompareHistory();
+    await loadShinsangCompareWork($('shinsangCompareMonth')?.value||'',{quiet:true});
+  })();
+  try{await v453TabLoadState.shinsangPromise}
+  catch(e){v453TabLoadState.shinsangPromise=null;throw e}
+}
+async function v453LoadTaxData(){
+  await Promise.all([
+    v453LoadShinsangData(),
+    (async()=>{
+      await loadTaxPurchaseMasters();
+      await seedConditionalBizRegExclusionsV307();
+      await loadBizRegDynamicExclusions();
+      await migrateLegacyTaxNotesV326();
+      await seed2026TaxHistory();
+      const migrated=await migrateCurrentSeptemberTaxWorkToAugustV305();
+      const month=$('taxCheckMonth')?.value;
+      if(month)await loadTaxMonth(month);
+      if(migrated&&$('taxScanStatus'))$('taxScanStatus').textContent='기존 2026년 9월 월초작업을 8월 자료로 이동했습니다.';
+    })()
+  ]);
+}
+async function ensureWorkTabDataV453(tab){
+  tab=['sales','tax','ar','rules','activity'].includes(tab)?tab:'sales';
+  if(!user)return;
+  if(v453TabLoadState[tab])return;
+  if(v453TabLoadState.promises[tab])return v453TabLoadState.promises[tab];
+
+  const p=(async()=>{
+    if(tab==='ar')await loadArData();
+    else if(tab==='tax')await v453LoadTaxData();
+    else if(tab==='activity')await loadActivityLogs();
+    else if(tab==='rules'){
+      // 신상마켓 영구매칭 목록만 필요 시 함께 준비
+      if(!v453TabLoadState.shinsangPromise){
+        try{await loadShinsangDepositAliases()}catch(e){console.warn('규칙관리 신상마켓 규칙 지연로딩 실패',e)}
+      }
+      renderRulesDashboard();
+    }
+    v453TabLoadState[tab]=true;
+  })();
+  v453TabLoadState.promises[tab]=p;
+  try{await p}
+  finally{delete v453TabLoadState.promises[tab]}
+}
+const _applyWorkTab453=applyWorkTab;
+applyWorkTab=function(tab,save=true){
+  _applyWorkTab453(tab,save);
+  if(user&&cloud.ready){
+    ensureWorkTabDataV453(tab).catch(e=>{
+      console.warn(`${tab} 탭 지연로딩 실패`,e);
+      setFirebaseSyncStatus(`${tab==='ar'?'미수관리':tab==='tax'?'세금계산서':tab==='activity'?'작업기록':'메뉴'} 자료 불러오기 실패`,'error');
+    });
+  }
+};
+
+// 기존에는 로그인 시 세금계산서/미수/작업기록까지 전부 순차로 읽었다.
+// v4.53은 공통 기준정보 + 기본 매출화면 자료만 먼저 준비하고,
+// AR/세금계산서/작업기록은 탭을 실제로 열 때 한 번만 읽는다.
+loadCloudData=async function(){
+  cloud.ready=false;
+  v453ResetTabLoadState();
+  updateAuthUI();
+  setFirebaseSyncStatus('Firebase 기준정보 불러오는 중…','loading');
+  $('statusBox').innerHTML='<p>Firebase 기준정보를 불러오는 중입니다...</p>';
+
+  const [is,as,cas,vs,cm]=await Promise.all([
+    userCol('items').get(),
+    userCol('itemAliases').get(),
+    userCol('customerAliases').get(),
+    userCol('vatRules').get(),
+    loadCustomerMasterFromFirebase()
+  ]);
+
+  cloud.customers=cm.entries||[];
+  cloud.customerMasterMeta=cm.meta||null;
+  cloud.items=is.docs.map(d=>d.data());
+  cloud.aliases=new Map(as.docs.map(d=>[norm(d.data().alias),d.data()]));
+  renderItemRuleManager();
+  cloud.customerAliases=new Map(cas.docs.map(d=>[norm(d.data().alias),d.data()]));
+  cloud.vatRules=new Map(vs.docs.map(d=>[norm(d.data().customer),d.data().mode]));
+  rebuildCloudMaps();
+  renderRulesDashboard();
+  updateMasterStats();
+  updateAuthUI();
+
+  await loadRemoteMenuPrefs();
+
+  // 기본 매출 화면에서 바로 쓰는 자료는 서로 독립적이므로 병렬 로딩
+  await Promise.all([
+    (async()=>{await migrateLocalJobsToFirebase();await refreshJobCache()})(),
+    loadGeneralLedgerData(),
+    loadCashCloseHistory(),
+    loadMonthlySalesCompareHistory()
+  ]);
+  v453TabLoadState.sales=true;
+
+  cloud.ready=true;
+  updateAuthUI();
+  $('statusBox').innerHTML=`<p class="ok">✓ Firebase 기준정보 동기화 완료: 거래처 ${cloud.customers.length.toLocaleString()}개 · 품목 ${cloud.items.length.toLocaleString()}개 · 수동매칭 ${cloud.aliases.size.toLocaleString()}개</p>`;
+  const now=new Date();
+  setFirebaseSyncStatus(`✓ 기본 데이터 준비 완료 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')} · 탭별 자료는 열 때 불러옴`,'ok');
+
+  // 현재 열려 있는 탭의 추가 데이터는 화면 준비를 막지 않고 뒤에서 불러온다.
+  if(activeWorkTab!=='sales'){
+    ensureWorkTabDataV453(activeWorkTab).catch(e=>console.warn('현재 탭 지연로딩 실패',e));
+  }
+  loadLatestDataSaveStatus().catch(e=>console.warn('수동저장 상태 불러오기 실패',e));
 };
 
 setupArUI();
