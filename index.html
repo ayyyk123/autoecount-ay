@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.55</title>
+<title>아도라블 매출 자동화 v4.56</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -742,7 +742,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.55 · 거래처 수동매칭 최신코드 검증 · 마지막입금일 직접입력 · 미수표 부분갱신</div>
+      <div class="badge">v4.56 · 거래처 수기코드 매칭 복원 · 오래된 코드 자동사용 방지 · 미수표 부분갱신</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1883,10 +1883,16 @@ function resolveSavedCustomerAliasTarget(maps,alias){
     if(j.ok)return {...j,via:'customerAliasLatestName'};
   }
 
-  // 직접 저장코드는 '오늘 기준 최신 거래처리스트에 실제 존재할 때만' 사용한다.
   const manual=norm(alias.manualCode||'');
   if(manual&&customerByLatestCode(manual)){
     return {ok:true,value:manual,via:'customerManualCodeValidated'};
+  }
+
+  // v4.56: 사용자가 '최신 거래처리스트에 없어도 이 코드로 쓰겠다'고
+  // 명시적으로 다시 저장한 수기코드는 허용한다.
+  // 예전 규칙 중 단순히 오래되어 사라진 코드는 이 플래그가 없으므로 자동사용되지 않는다.
+  if(manual&&alias.allowMissingCode===true){
+    return {ok:true,value:manual,via:'customerManualCodeExplicit'};
   }
   return null;
 }
@@ -1905,13 +1911,13 @@ function resolveCustomer(maps,name){
   if(e.ok)return {...e,via:alias?'customerAliasFallbackLatest':'ecount'};
   if(j.type==='ambiguous')return j;if(e.type==='ambiguous')return e;
 
-  if(alias?.manualCode&&!customerByLatestCode(alias.manualCode)){
+  if(alias?.manualCode&&!customerByLatestCode(alias.manualCode)&&alias.allowMissingCode!==true){
     return {
       ok:false,
       type:'missing',
       via:'staleCustomerAlias',
       staleCode:norm(alias.manualCode),
-      detail:`저장된 수동매칭 코드 ${norm(alias.manualCode)}은(는) 최신 거래처리스트에 없습니다.`
+      detail:`저장된 수동매칭 코드 ${norm(alias.manualCode)}은(는) 최신 거래처리스트에 없습니다. 필요하면 검수창에서 같은 코드를 직접 다시 입력해 수기코드로 허용할 수 있습니다.`
     };
   }
   return {ok:false,type:'missing'};
@@ -1947,8 +1953,13 @@ function customerRuleRows(){
       const code=saved?.ok?norm(saved.value):'';
       const target=ruleCustomerByCode(code);
       let note=custom.selectedFromAmbiguous?'중복 후보에서 선택 저장':'';
-      if(staleCode&&code)note=`저장코드 ${staleCode}는 최신 목록에 없음 · 현재 최신코드 ${code} 사용`;
-      else if(staleCode&&!code)note=`⚠ 저장코드 ${staleCode}는 최신 거래처리스트에 없음 · 변환 시 사용하지 않음`;
+      if(staleCode&&custom.allowMissingCode===true){
+        note=`수기코드 ${staleCode} · 최신 거래처리스트에 없어도 사용자 지정으로 사용`;
+      }else if(staleCode&&code){
+        note=`저장코드 ${staleCode}는 최신 목록에 없음 · 현재 최신코드 ${code} 사용`;
+      }else if(staleCode&&!code){
+        note=`⚠ 저장코드 ${staleCode}는 최신 거래처리스트에 없음 · 자동사용 안 함 (필요 시 다시 수기저장)`;
+      }
       rows.push({key,source:'user',code:code||'',name:target?.name||custom.targetName||'',jangki:target?.jangkiName||custom.targetJangkiName||'',note});continue;
     }
     const resolved=j.ok?j:e.ok?e:null;
@@ -2010,7 +2021,25 @@ function renderShinsangRules(){
 }
 function renderRulesDashboard(){renderRulesSummary();renderCustomerRules();renderItemRules();renderVatRules();renderShinsangRules()}
 function setRuleStatus(id,msg,kind=''){const el=$(id);if(!el)return;el.className='ruleStatus '+kind;el.innerHTML=msg}
-async function saveCustomerRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesCustomerAlias').value),q=norm($('rulesCustomerTarget').value);if(!alias||!q)throw new Error('원본 거래처명과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);if(!t)throw new Error('최신 거래처리스트에서 연결할 거래처를 찾지 못했습니다. 현재 리스트에 존재하는 거래처코드/거래처명을 선택해 주세요.');const data={alias,targetName:t.name||'',targetJangkiName:t.jangkiName||'',manualCode:t.code||'',disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:false});cloud.customerAliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesCustomerStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(t.code||'')} ${esc(t.name||'')}</b> 저장완료 · 최신 거래처리스트 검증 적용`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesCustomerStatus',esc(e.message||e),'bad')}}
+async function saveCustomerRuleFromManager(){try{
+  if(!user)throw new Error('로그인 후 저장해 주세요.');
+  const alias=norm($('rulesCustomerAlias').value),q=norm($('rulesCustomerTarget').value);
+  if(!alias||!q)throw new Error('원본 거래처명과 연결할 거래처를 모두 입력해 주세요.');
+  const t=ruleFindCustomer(q);
+  let data,msg;
+  if(t){
+    data={alias,targetName:t.name||'',targetJangkiName:t.jangkiName||'',manualCode:t.code||'',allowMissingCode:false,manualCodeExplicit:false,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    msg=`✓ <b>${esc(alias)}</b> → <b>${esc(t.code||'')} ${esc(t.name||'')}</b> 저장완료 · 최신 거래처리스트 연동`;
+  }else{
+    if(!/^[0-9][0-9-]*$/.test(q))throw new Error('최신 거래처리스트에서 찾지 못했습니다. 목록에 없는 거래처는 거래처코드를 숫자로 직접 입력해 주세요.');
+    data={alias,targetName:'',targetJangkiName:'',manualCode:q,allowMissingCode:true,manualCodeExplicit:true,disabled:false,source:'rulesManagerManualCode',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    msg=`✓ <b>${esc(alias)}</b> → 수기 거래처코드 <b>${esc(q)}</b> 저장완료 · 최신 거래처리스트에 없어도 사용`;
+  }
+  await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:false});
+  cloud.customerAliases.set(alias,{...data,updatedAt:null});
+  setRuleStatus('rulesCustomerStatus',msg,'ok');
+  renderRulesDashboard();
+}catch(e){setRuleStatus('rulesCustomerStatus',esc(e.message||e),'bad')}}
 async function saveItemRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const alias=norm($('rulesItemAlias').value),q=norm($('rulesItemTarget').value);if(!alias||!q)throw new Error('원본 품목명과 연결할 품목을 모두 입력해 주세요.');const t=ruleFindItem(q),code=t?.code||q,data={alias,itemCode:code,itemName:t?.name||'(수동 지정 코드)',manualCode:!t,disabled:false,source:'rulesManager',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('itemAliases').doc(safeId(alias)).set(data,{merge:false});cloud.aliases.set(alias,{...data,updatedAt:null});setRuleStatus('rulesItemStatus',`✓ <b>${esc(alias)}</b> → <b>${esc(code)} ${esc(t?.name||'')}</b> 저장완료`,'ok');updateMasterStats();renderRulesDashboard()}catch(e){setRuleStatus('rulesItemStatus',esc(e.message||e),'bad')}}
 async function saveVatRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const q=norm($('rulesVatCustomer').value),mode=$('rulesVatMode').value;if(!q)throw new Error('거래처를 입력해 주세요.');let key=q,data;if(q==='신상마켓-*'){key='__shinsang_default__';data={customer:key,name:'신상마켓-*',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}else{const t=ruleFindCustomer(q);key=norm(t?.jangkiName)||norm(t?.name)||q;data={customer:key,code:t?.code||'',name:t?.name||q,jangkiName:t?.jangkiName||'',mode,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}await userCol('vatRules').doc(safeId(key)).set(data,{merge:true});cloud.vatRules.set(key,mode);setRuleStatus('rulesVatStatus',`✓ <b>${esc(q)}</b> · ${esc(vatModeText(mode))} 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesVatStatus',esc(e.message||e),'bad')}}
 async function saveShinsangRuleFromManager(){try{if(!user)throw new Error('로그인 후 저장해 주세요.');const raw=norm($('rulesShinsangAlias').value),q=norm($('rulesShinsangTarget').value);if(!raw||!q)throw new Error('입금 기재내용과 연결할 거래처를 모두 입력해 주세요.');const t=ruleFindCustomer(q);if(!t)throw new Error('거래처 기준정보에서 연결할 거래처를 찾지 못했습니다.');const aliasKey=shinsangCompact(raw),data={aliasKey,description:raw,code:t.code||'',name:t.name||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};await userCol('shinsangDepositAliases').doc(safeId(aliasKey)).set(data,{merge:false});shinsangDepositAliases.set(aliasKey,{...data,updatedAt:null});setRuleStatus('rulesShinsangStatus',`✓ <b>${esc(raw)}</b> → <b>${esc(t.code)} ${esc(t.name)}</b> 저장완료`,'ok');renderRulesDashboard()}catch(e){setRuleStatus('rulesShinsangStatus',esc(e.message||e),'bad')}}
@@ -2161,7 +2190,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.55',
+    appVersion:'v4.56',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2396,7 +2425,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.55'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.56'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -3664,11 +3693,28 @@ async function saveCustomerAlias(i,alias){
         targetName:target.name,
         targetJangkiName:target.jangkiName||'',
         manualCode:target.code||'',
+        allowMissingCode:false,
+        manualCodeExplicit:false,
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       };
-      message=`<b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 다음 변환에서도 최신 거래처리스트를 다시 확인해 유효한 코드만 사용합니다.`;
+      message=`<b>${esc(alias)}</b> → <b>${esc(target.name)}</b> 거래처 매칭을 저장했습니다. 다음 변환에서도 최신 거래처리스트의 현재 코드를 우선 확인합니다.`;
     }else{
-      throw new Error('최신 거래처리스트에서 해당 거래처코드/거래처명을 찾지 못했습니다. 최신 리스트에 존재하는 거래처를 선택해 주세요.');
+      // 원래 기능 복원: 최신 거래처목록에 없는 코드라도 사용자가 직접 입력하면 영구매칭 가능.
+      // 거래처명 오타를 코드로 잘못 저장하지 않도록 숫자/하이픈 형태만 직접코드로 허용.
+      if(!/^[0-9][0-9-]*$/.test(val)){
+        throw new Error('최신 거래처리스트에서 찾지 못했습니다. 목록에 없는 거래처를 수기로 매칭하려면 거래처코드를 숫자로 직접 입력해 주세요.');
+      }
+      data={
+        alias:norm(alias),
+        targetName:'',
+        targetJangkiName:'',
+        manualCode:val,
+        allowMissingCode:true,
+        manualCodeExplicit:true,
+        source:'explicitManualCode',
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      message=`<b>${esc(alias)}</b> → 거래처코드 <b>${esc(val)}</b>로 수기매칭했습니다. 이 코드는 최신 거래처리스트에 없어도 사용자가 직접 지정한 코드로 계속 변환됩니다.`;
     }
 
     await userCol('customerAliases').doc(safeId(alias)).set(data,{merge:true});
@@ -3693,6 +3739,8 @@ async function saveCustomerDuplicateAlias(groupIndex){
       targetName:target.name||'',
       targetJangkiName:target.jangkiName||'',
       manualCode:target.code||val,
+      allowMissingCode:false,
+      manualCodeExplicit:false,
       selectedFromAmbiguous:true,
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     };
