@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.57</title>
+<title>아도라블 매출 자동화 v4.58</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -742,7 +742,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.57 · 월마감 시제차이 반영 · 거래처 수기코드 매칭 복원 · 미수표 부분갱신</div>
+      <div class="badge">v4.58 · 월마감 최종엑셀 지정양식 적용 · 시제차이 반영 · 수기코드 매칭</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -2191,7 +2191,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.57',
+    appVersion:'v4.58',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2426,7 +2426,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.57'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.58'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -5150,33 +5150,246 @@ window.cashCloseShowVendorMonth=function(type,name,month){const doc=(cashCloseSt
 function cashCloseStyleCell(ws,addr,style){if(ws[addr])ws[addr].s={...(ws[addr].s||{}),...style}}
 function cashCloseSetRangeBorder(ws,r1,c1,r2,c2){const border={style:'thin',color:{rgb:'FFB7B7B7'}};for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++){const a=XLSX.utils.encode_cell({r,c});if(ws[a])ws[a].s={...(ws[a].s||{}),border:{top:border,bottom:border,left:border,right:border}}}}
 function buildCashCloseFinalWorkbook(){
-  const month=$('cashCloseMonth')?.value||'',m=/^(\d{4})-(\d{2})$/.exec(month);if(!m)throw new Error('대상월을 먼저 선택해 주세요.');
-  const year=Number(m[1]),mon=Number(m[2]),monText=`${mon}월`,rows=(cashCloseState.collectionRows||[]).filter(r=>norm(r.name||r.code)&&Number.isFinite(Number(r.amount))),collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)?Number(cashCloseState.collectionTotalOverride):rows.reduce((s,r)=>s+Number(r.amount||0),0),bank=num($('bankDepositTotal')?.value),cashUse=Number(cashCloseState.cashPurchaseTotal||0)+Number(cashCloseState.miscCashTotal||0),floatDelta=num($('cashFloatDelta')?.value),bankPurchase=Number(cashCloseState.bankPurchaseTotal||0),adjRows=cashCloseState.bankAdjustments||[],adj=cashCloseAdjustNet(),calc=bank+cashUse+floatDelta+adj,diff=collectionTotal-calc;
-  const blockCount=3,blockRows=Math.max(1,Math.ceil(rows.length/blockCount)),summaryStart=blockRows+6,adjStart=summaryStart+9,aoa=Array.from({length:Math.max(adjStart+adjRows.length+5,blockRows+21)},()=>Array(9).fill(null));
-  aoa[0][0]=`${monText} 현금`;
-  for(let b=0;b<3;b++){const c=b*3;aoa[1][c]='순번';aoa[1][c+1]='거래처';aoa[1][c+2]='차변';for(let j=0;j<blockRows;j++){const idx=b*blockRows+j;if(idx>=rows.length)break;const r=rows[idx];aoa[j+2][c]=idx+1;aoa[j+2][c+1]=r.name||r.code;aoa[j+2][c+2]=Number(r.amount||0)}}
-  aoa[summaryStart][4]=`${monText} 현금입금액`;aoa[summaryStart][5]=bank;
-  aoa[summaryStart+1][3]='+';aoa[summaryStart+1][4]=`${monText} 현금사용액`;aoa[summaryStart+1][5]=cashUse;
-  aoa[summaryStart+2][3]='+';aoa[summaryStart+2][4]='월초·월말 시제차이';aoa[summaryStart+2][5]=floatDelta;
-  aoa[summaryStart+3][4]='통장상계 순조정';aoa[summaryStart+3][5]=adj;
-  aoa[summaryStart+4][4]='계산 합계';aoa[summaryStart+4][5]=calc;
-  aoa[summaryStart+5][4]='월 현금수금';aoa[summaryStart+5][5]=collectionTotal;
-  aoa[summaryStart+6][4]='차액';aoa[summaryStart+6][5]=diff;
-  aoa[summaryStart][7]='계좌이체 사입비';aoa[summaryStart][8]=bankPurchase;
-  aoa[adjStart][4]='통장 입출금 상계';
-  aoa[adjStart+1][4]='구분';aoa[adjStart+1][5]='거래처';aoa[adjStart+1][6]='금액';aoa[adjStart+1][7]='일자';aoa[adjStart+1][8]='메모';
-  adjRows.forEach((r,i)=>{const rr=adjStart+2+i;aoa[rr][4]=r.type==='out'?'통장출금':'통장입금';aoa[rr][5]=r.customer;aoa[rr][6]=(r.type==='out'?1:-1)*Number(r.amount||0);aoa[rr][7]=cashCloseDateDisplay(r.date);aoa[rr][8]=r.memo||''});
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}}];ws['!cols']=[{wch:6},{wch:24},{wch:13},{wch:6},{wch:24},{wch:13},{wch:13},{wch:18},{wch:14}];ws['!rows']=[{hpt:25}];
-  const title={fill:{fgColor:{rgb:'FFF2F2F2'}},font:{bold:true,sz:16},alignment:{horizontal:'center',vertical:'center'}};cashCloseStyleCell(ws,'A1',title);
-  const headStyle={fill:{fgColor:{rgb:'FFEDEDED'}},font:{bold:true},alignment:{horizontal:'center',vertical:'center'}};
-  for(let b=0;b<3;b++)for(let c=b*3;c<b*3+3;c++)cashCloseStyleCell(ws,XLSX.utils.encode_cell({r:1,c}),headStyle);
-  const moneyFmt='#,##0';for(let r=2;r<2+blockRows;r++)for(const c of [2,5,8]){const a=XLSX.utils.encode_cell({r,c});if(ws[a])ws[a].z=moneyFmt}
-  for(let r=summaryStart;r<=summaryStart+6;r++){for(let c=4;c<=5;c++)cashCloseStyleCell(ws,XLSX.utils.encode_cell({r,c}),r===summaryStart+6?{fill:{fgColor:{rgb:diff===0?'FFE2F0D9':'FFFFE2E2'}},font:{bold:true}}:{font:{bold:true}});const a=XLSX.utils.encode_cell({r,c:5});if(ws[a])ws[a].z=moneyFmt}
-  for(let c=7;c<=8;c++)cashCloseStyleCell(ws,XLSX.utils.encode_cell({r:summaryStart,c}),{fill:{fgColor:{rgb:'FFDDEBF7'}},font:{bold:true}});if(ws[XLSX.utils.encode_cell({r:summaryStart,c:8})])ws[XLSX.utils.encode_cell({r:summaryStart,c:8})].z=moneyFmt;
-  cashCloseStyleCell(ws,XLSX.utils.encode_cell({r:adjStart,c:4}),{fill:{fgColor:{rgb:'FFFCE4D6'}},font:{bold:true}});for(let c=4;c<=8;c++)cashCloseStyleCell(ws,XLSX.utils.encode_cell({r:adjStart+1,c}),headStyle);for(let i=0;i<adjRows.length;i++){const a=XLSX.utils.encode_cell({r:adjStart+2+i,c:6});if(ws[a])ws[a].z=moneyFmt}
-  cashCloseSetRangeBorder(ws,1,0,Math.max(1,1+blockRows),8);cashCloseSetRangeBorder(ws,summaryStart,4,summaryStart+6,5);if(adjRows.length||true)cashCloseSetRangeBorder(ws,adjStart+1,4,adjStart+1+Math.max(1,adjRows.length),8);
-  ws['!freeze']={xSplit:0,ySplit:2,topLeftCell:'A3',activePane:'bottomLeft',state:'frozen'};
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,`${monText}_${year}`.slice(0,31));return wb;
+  const month=$('cashCloseMonth')?.value||'',m=/^(\d{4})-(\d{2})$/.exec(month);
+  if(!m)throw new Error('대상월을 먼저 선택해 주세요.');
+
+  const year=Number(m[1]),mon=Number(m[2]),monText=`${mon}월`;
+  const rows=(cashCloseState.collectionRows||[])
+    .filter(r=>norm(r.name||r.code)&&Number.isFinite(Number(r.amount)));
+
+  const collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)
+    ?Number(cashCloseState.collectionTotalOverride)
+    :rows.reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+  const bank=num($('bankDepositTotal')?.value);
+  const cashUse=Number(cashCloseState.cashPurchaseTotal||0)+Number(cashCloseState.miscCashTotal||0);
+  const floatDelta=num($('cashFloatDelta')?.value);
+  const bankPurchase=Number(cashCloseState.bankPurchaseTotal||0);
+  const adjRows=cashCloseState.bankAdjustments||[];
+  const adj=cashCloseAdjustNet();
+  const calc=bank+cashUse+floatDelta+adj;
+  const diff=collectionTotal-calc;
+
+  // 지정 최종양식은 기본 77행. 하단 상계내역이 길면 필요한 만큼만 연장.
+  const minRows=77;
+  const detailStart=61; // 0-based = Excel 62행
+  const detailRows=Math.max(0,adjRows.length);
+  const aoa=Array.from(
+    {length:Math.max(minRows,detailStart+3+detailRows)},
+    ()=>Array(9).fill(null)
+  );
+
+  // ===== 상단 거래처별 월 현금수금 =====
+  aoa[0][0]=`${monText} 현금`;                // A1:C1 병합
+  aoa[1][1]='거래처';                         // B2
+  aoa[1][2]='차변';                           // C2
+  aoa[2][1]='합계';                           // B3
+  aoa[2][2]=collectionTotal;                  // C3
+
+  // 사용자 최종양식과 동일한 고정 분할
+  // 1~52 : A4:C55 / 53~106 : D2:F55 / 107~160 : G2:I55
+  rows.forEach((r,idx)=>{
+    let rr=0,c=0;
+    if(idx<52){
+      rr=3+idx;c=0;
+    }else if(idx<106){
+      rr=1+(idx-52);c=3;
+    }else{
+      rr=1+(idx-106);c=6;
+    }
+    // 지정양식의 3개 블록 최대 수용량(160건)을 넘는 경우 아래에서 별도 오류.
+    if(rr>54)return;
+    aoa[rr][c]=idx+1;
+    aoa[rr][c+1]=r.name||r.code;
+    aoa[rr][c+2]=Number(r.amount||0);
+  });
+  if(rows.length>160)throw new Error('최종양식은 거래처 160곳까지 한 장에 표시할 수 있습니다.');
+
+  // ===== 정산 합계: 사용자가 준 최종양식과 동일한 위치 =====
+  // F58:G60 위치는 움직이지 않는다.
+  aoa[57][5]=`${monText} 현금입금액`;          // F58
+  aoa[57][6]=bank;                            // G58
+  aoa[58][3]='+';                             // D59
+  aoa[58][5]=`${monText} 현금사용액`;          // F59
+  aoa[58][6]=cashUse;                         // G59
+  aoa[59][6]=calc;                            // G60 최종 계산합계
+
+  // v4.57 이후 추가된 항목은 합계 위치를 밀지 않고 우측 빈칸에 표시.
+  if(floatDelta!==0){
+    aoa[57][7]='시제차이';                    // H58
+    aoa[57][8]=floatDelta;                    // I58
+  }
+  if(adj!==0){
+    aoa[58][7]='통장상계';                    // H59
+    aoa[58][8]=adj;                           // I59
+  }
+  if(bankPurchase!==0){
+    aoa[59][7]='계좌이체 사입비';             // H60
+    aoa[59][8]=bankPurchase;                  // I60
+  }
+  if(diff!==0){
+    aoa[60][7]='차액';                        // H61
+    aoa[60][8]=diff;                          // I61
+  }
+
+  // ===== 하단 상세: 양식의 시작 위치(E62:I)를 유지 =====
+  aoa[61][4]='통장 입출금 상계';              // E62
+  aoa[62][4]='구분';                          // E63
+  aoa[62][5]='거래처';                        // F63
+  aoa[62][6]='금액';                          // G63
+  aoa[62][7]='일자';                          // H63
+  aoa[62][8]='메모';                          // I63
+  adjRows.forEach((r,i)=>{
+    const rr=63+i;
+    aoa[rr][4]=r.type==='out'?'통장출금':'통장입금';
+    aoa[rr][5]=r.customer;
+    aoa[rr][6]=(r.type==='out'?1:-1)*Number(r.amount||0);
+    aoa[rr][7]=cashCloseDateDisplay(r.date);
+    aoa[rr][8]=r.memo||'';
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+
+  // ===== 사용자가 준 엑셀최종양식의 크기/위치 =====
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:2}}]; // A1:C1
+  ws['!cols']=[
+    {wch:3.25},   // A
+    {wch:19.25},  // B
+    {wch:10.25},  // C
+    {wch:4.125},  // D
+    {wch:21.125}, // E
+    {wch:13},     // F
+    {wch:11.625}, // G
+    {wch:11.75},  // H
+    {wch:11.375}  // I
+  ];
+  ws['!rows']=Array.from({length:aoa.length},()=>({hpt:15.95}));
+
+  const thinBlack={style:'thin',color:{rgb:'FF000000'}};
+  const allBlack={top:thinBlack,bottom:thinBlack,left:thinBlack,right:thinBlack};
+  const bottomBlack={bottom:thinBlack};
+  const baseFont={name:'맑은 고딕',sz:10,color:{rgb:'FF000000'}};
+  const center={horizontal:'center',vertical:'center'};
+  const left={horizontal:'left',vertical:'center'};
+  const right={horizontal:'right',vertical:'center'};
+  const moneyFmt='#,##0';
+
+  // 제목 A1:C1
+  cashCloseStyleCell(ws,'A1',{
+    font:{name:'맑은 고딕',sz:11,bold:true,color:{rgb:'FF000000'}},
+    alignment:center
+  });
+
+  // B2:C2 헤더 + B3:C3 합계
+  for(const a of ['B2','C2','B3']){
+    cashCloseStyleCell(ws,a,{font:{...baseFont,bold:true},border:allBlack,alignment:center});
+  }
+  cashCloseStyleCell(ws,'C3',{font:{...baseFont,bold:true},border:allBlack,alignment:right});
+  if(ws['C3'])ws['C3'].z=moneyFmt;
+
+  // 상단 3개 거래처 블록 스타일.
+  // 실제 값이 있는 셀까지만 선을 그어 원본양식처럼 빈 영역은 비워 둔다.
+  const styleVendorRow=(rr,c)=>{
+    const a1=XLSX.utils.encode_cell({r:rr,c});
+    const a2=XLSX.utils.encode_cell({r:rr,c:c+1});
+    const a3=XLSX.utils.encode_cell({r:rr,c:c+2});
+    if(ws[a1])cashCloseStyleCell(ws,a1,{font:baseFont,border:allBlack,alignment:{vertical:'center'}});
+    if(ws[a2])cashCloseStyleCell(ws,a2,{font:baseFont,border:allBlack,alignment:left});
+    if(ws[a3]){cashCloseStyleCell(ws,a3,{font:baseFont,border:allBlack,alignment:right});ws[a3].z=moneyFmt}
+  };
+  rows.forEach((r,idx)=>{
+    let rr=0,c=0;
+    if(idx<52){rr=3+idx;c=0}
+    else if(idx<106){rr=1+(idx-52);c=3}
+    else{rr=1+(idx-106);c=6}
+    if(rr<=54)styleVendorRow(rr,c);
+  });
+
+  // 원본양식은 D/E/F, G/H/I 블록에 별도 머리글이 없다.
+  // 따라서 해당 블록 첫 행도 일반 데이터 스타일만 적용된다.
+
+  // ===== F58:G60 합계 위치/모양 =====
+  for(const a of ['F58','G58']){
+    cashCloseStyleCell(ws,a,{font:baseFont,alignment:a==='F58'?center:{vertical:'center'}});
+  }
+  if(ws['G58'])ws['G58'].z=moneyFmt;
+
+  for(const a of ['D59','E59','F59','G59']){
+    if(ws[a])cashCloseStyleCell(ws,a,{font:baseFont,border:bottomBlack,alignment:a==='F59'?center:(a==='D59'?right:{vertical:'center'})});
+  }
+  if(ws['G59'])ws['G59'].z=moneyFmt;
+
+  if(ws['G60']){
+    cashCloseStyleCell(ws,'G60',{
+      fill:{fgColor:{rgb:'FFDDEBF7'}},
+      font:{...baseFont,bold:true},
+      alignment:{vertical:'center'}
+    });
+    ws['G60'].z=moneyFmt;
+  }
+
+  // 우측 보조항목은 합계 위치를 건드리지 않고 작은 정보로만 표시.
+  for(const rr of [57,58,59,60]){
+    const label=XLSX.utils.encode_cell({r:rr,c:7});
+    const val=XLSX.utils.encode_cell({r:rr,c:8});
+    if(ws[label])cashCloseStyleCell(ws,label,{font:{...baseFont,sz:9},alignment:right});
+    if(ws[val]){
+      cashCloseStyleCell(ws,val,{font:{...baseFont,sz:9,bold:rr===60&&diff!==0},alignment:right});
+      if(typeof ws[val].v==='number')ws[val].z=moneyFmt;
+    }
+  }
+
+  // ===== 하단 E62:I 상세표 =====
+  // 시작 위치와 행높이는 원본 최종양식과 동일하게 유지하되
+  // 현재 프로그램의 통장 입출금 상계 기능은 그대로 보존한다.
+  for(let c=4;c<=8;c++){
+    const a=XLSX.utils.encode_cell({r:61,c});
+    // 제목 행을 원본처럼 얇은 검정선으로 한 줄 박스 처리
+    if(!ws[a])ws[a]={t:'s',v:''};
+    cashCloseStyleCell(ws,a,{font:{...baseFont,bold:c===4},border:allBlack,alignment:center});
+  }
+  for(let c=4;c<=8;c++){
+    const a=XLSX.utils.encode_cell({r:62,c});
+    if(!ws[a])ws[a]={t:'s',v:''};
+    cashCloseStyleCell(ws,a,{font:{...baseFont,bold:true},border:allBlack,alignment:center});
+  }
+  for(let i=0;i<Math.max(1,adjRows.length);i++){
+    const rr=63+i;
+    for(let c=4;c<=8;c++){
+      const a=XLSX.utils.encode_cell({r:rr,c});
+      if(!ws[a])ws[a]={t:'s',v:''};
+      cashCloseStyleCell(ws,a,{
+        font:baseFont,
+        border:allBlack,
+        alignment:c===5?left:(c===6?right:center)
+      });
+      if(c===6&&ws[a]&&typeof ws[a].v==='number')ws[a].z=moneyFmt;
+    }
+  }
+
+  // 원본양식과 같은 시트 시작 화면/인쇄 범위 성격
+  ws['!freeze']=undefined;
+  ws['!margins']={
+    left:0,right:0,top:0.1968503937,bottom:0,
+    header:0.3149606299,footer:0.3149606299
+  };
+  ws['!pageSetup']={paperSize:9,scale:70,orientation:'portrait'};
+
+  const wb=XLSX.utils.book_new();
+  const sheetName=`${monText}_${year}`.slice(0,31);
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+
+  // 사용자 최종양식의 인쇄영역 A1:I69를 기본으로 유지.
+  // 상계 상세가 69행을 넘는 경우에만 필요한 만큼 아래로 늘림.
+  const printEnd=Math.max(69,63+Math.max(1,adjRows.length));
+  wb.Workbook=wb.Workbook||{};
+  wb.Workbook.Names=[{
+    Name:'_xlnm.Print_Area',
+    Sheet:0,
+    Ref:`'${sheetName.replace(/'/g,"''")}'!$A$1:$I$${printEnd}`
+  }];
+
+  return wb;
 }
 function downloadCashCloseFinalExcel(){try{const m=$('cashCloseMonth')?.value||'';if(!(cashCloseState.collectionRows||[]).length&&cashCloseState.collectionTotalOverride==null)throw new Error('거래처별 월 현금수금 엑셀을 먼저 넣어 주세요.');recalcCashClose();const wb=buildCashCloseFinalWorkbook(),tag=m.replace('-','');XLSX.writeFile(wb,`매장현금_월마감_최종_${tag}.xlsx`,{cellStyles:true})}catch(e){alert(e.message||e)}}
 
