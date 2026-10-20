@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.59</title>
+<title>아도라블 매출 자동화 v4.60</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -716,6 +716,15 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%0A%20%20%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2730%27%20fill%3D%27black%27/%3E%0A%20%20%3Ctext%20x%3D%2732%27%20y%3D%2741%27%20text-anchor%3D%27middle%27%20font-family%3D%27Arial%2C%20Helvetica%2C%20sans-serif%27%20font-size%3D%2734%27%20font-weight%3D%27700%27%20fill%3D%27white%27%3EA%3C/text%3E%0A%3C/svg%3E">
 <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%0A%20%20%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2730%27%20fill%3D%27black%27/%3E%0A%20%20%3Ctext%20x%3D%2732%27%20y%3D%2741%27%20text-anchor%3D%27middle%27%20font-family%3D%27Arial%2C%20Helvetica%2C%20sans-serif%27%20font-size%3D%2734%27%20font-weight%3D%27700%27%20fill%3D%27white%27%3EA%3C/text%3E%0A%3C/svg%3E">
 <!-- custom-favicon-end -->
+
+<style id="arV460Styles">
+/* v4.60: 오늘 자료동기화로 새로 미수해소된 행을 파란 글씨로 구분 */
+tr.arSyncResolvedTodayV460 > td{color:#2563eb !important;}
+tr.arSyncResolvedTodayV460 > td b,
+tr.arSyncResolvedTodayV460 > td .small,
+tr.arSyncResolvedTodayV460 > td label,
+tr.arSyncResolvedTodayV460 > td .arInlineCell{color:#2563eb !important;}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -742,7 +751,7 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.59 · 10/19부터 미수 단순반영 규칙 · 월마감 지정양식 · 수기코드 매칭</div>
+      <div class="badge">v4.60 · 미수 입금해소 유지/오늘 동기화 파란표시 · 10/19부터 단순반영 규칙 · 월마감 지정양식</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -2191,7 +2200,7 @@ async function collectOperationalBackupPackage(reason='manual'){
   const core={
     schemaVersion:1,
     app:'autoecount-ay',
-    appVersion:'v4.59',
+    appVersion:'v4.60',
     createdAtIso:new Date().toISOString(),
     createdAtMs:Date.now(),
     reason,
@@ -2426,7 +2435,7 @@ function scheduleAutoSaveMarker(ms){
     if(!user||!originalFirestoreDocSet)return;
     try{
       const ref=db.collection('users').doc(user.uid).collection('settings').doc(AUTO_SAVE_STATUS_DOC);
-      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.59'},{merge:true});
+      await originalFirestoreDocSet.call(ref,{savedAtMs:stamp,savedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:'v4.60'},{merge:true});
     }catch(e){console.warn('최근 자동저장 시각 기록 실패',e)}
   },1200);
 }
@@ -14263,7 +14272,7 @@ const _saveArWeekBase459=saveArWeekBase;
 saveArWeekBase=async function(runDate,cutoff,rows,periodText='',mode='weekly'){
   const simple=arUseSimpleRuleDateV459(runDate,mode);if(simple)for(const r of rows||[]){r.simpleWeeklyV459=true;if(typeof r.v459TrackingEligible!=='boolean')r.v459TrackingEligible=false}
   await _saveArWeekBase459(runDate,cutoff,rows,periodText,mode);
-  if(simple&&user){const patch={simpleWeeklyV459:true,rulesVersion:'v4.59',rulesStartedAt:'2026-10-19',salesApplyIntervals:[],updatedAtMs:Date.now()};await userCol('arWeeks').doc(safeId(runDate)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});arState.weekMeta={...(arState.weekMeta||{}),...patch};const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(runDate));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],...patch};refreshArWeekPayments();renderArAll()}
+  if(simple&&user){const patch={simpleWeeklyV459:true,rulesVersion:'v4.60',rulesStartedAt:'2026-10-19',salesApplyIntervals:[],updatedAtMs:Date.now()};await userCol('arWeeks').doc(safeId(runDate)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});arState.weekMeta={...(arState.weekMeta||{}),...patch};const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(runDate));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],...patch};refreshArWeekPayments();renderArAll()}
 };
 
 syncArHistoryFromSelected=async function(salesFiles,paymentFiles){
@@ -14275,7 +14284,7 @@ syncArHistoryFromSelected=async function(salesFiles,paymentFiles){
 async function arV459RegisterSalesIntervals(intervals){
   const meta=arState.weekMeta||{};if(!meta.simpleWeeklyV459||!arState.activeWeek)return {registered:[],historyOnly:intervals||[]};
   const cutoff=ymd(meta.cutoff)||'',registered=[],historyOnly=[];for(const x of intervals||[]){const min=ymd(x.min),max=ymd(x.max);if(!min||!max)continue;if(cutoff&&min<cutoff)historyOnly.push({min,max});else registered.push({min,max})}
-  if(registered.length){const merged=arMergeIntervals([...(meta.salesApplyIntervals||[]),...registered]);arState.weekMeta={...meta,salesApplyIntervals:merged};await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({salesApplyIntervals:merged,rulesVersion:'v4.59',updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],salesApplyIntervals:merged,rulesVersion:'v4.59'}}
+  if(registered.length){const merged=arMergeIntervals([...(meta.salesApplyIntervals||[]),...registered]);arState.weekMeta={...meta,salesApplyIntervals:merged};await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({salesApplyIntervals:merged,rulesVersion:'v4.60',updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],salesApplyIntervals:merged,rulesVersion:'v4.60'}}
   return {registered,historyOnly};
 }
 
@@ -14304,7 +14313,7 @@ const _arExportRowObject459=arExportRowObject;
 arExportRowObject=function(r){const o=_arExportRowObject459(r);if(arIsSimpleRowV459(r)){o.periodSales=arDisplaySalesV459(r);o.periodReceipts=arDisplayReceipts(r);o.baseBalance=arDisplayCurrentBalance(r);o.adjustedBalance=arEffectiveBalance(r)}return o};
 
 const _runArMonday459=runArMonday;
-runArMonday=async function(){const runDate=arIsoToYmd($('arRunDate')?.value||'');await _runArMonday459();const d=arDateObj(runDate);if(runDate>=AR_SIMPLE_RULE_START_V459&&d&&d.getDay()===1&&$('arRunStatus')){const eligible=(arState.weekRows||[]).filter(r=>arIsSimpleRowV459(r)&&r.v459TrackingEligible===true).length;$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} v4.59 주간정리 완료 · 잔액파일을 기준잔액으로 고정 · 당일 입금 반영 후 관리대상 ${eligible.toLocaleString()}곳 · 이후 판매/반품은 입금요일 지정 거래처만, 입금은 전체 관리대상에 반영합니다.`}};
+runArMonday=async function(){const runDate=arIsoToYmd($('arRunDate')?.value||'');await _runArMonday459();const d=arDateObj(runDate);if(runDate>=AR_SIMPLE_RULE_START_V459&&d&&d.getDay()===1&&$('arRunStatus')){const eligible=(arState.weekRows||[]).filter(r=>arIsSimpleRowV459(r)&&r.v459TrackingEligible===true).length;$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} v4.60 주간정리 완료 · 잔액파일을 기준잔액으로 고정 · 당일 입금 반영 후 관리대상 ${eligible.toLocaleString()}곳 · 이후 판매/반품은 입금요일 지정 거래처만, 입금은 전체 관리대상에 반영합니다.`}};
 
 
 // 입금요일을 새로 지정/해제하면 v4.59 판매반영 대상 여부도 즉시 다시 계산한다.
@@ -14321,7 +14330,146 @@ window.arEditPaymentDay=async function(code,value){
 
 const _setupArUI459=setupArUI;
 setupArUI=function(){
-  _setupArUI459();const btn=$('arSyncHistoryBtn');if(btn)btn.onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');const result=await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments),reg=await arV459RegisterSalesIntervals(result.salesIntervals||[]);refreshArWeekPayments();renderArAll();if(arState.weekMeta?.simpleWeeklyV459){const bits=[];if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);if(reg.registered.length)bits.push(`판매/반품 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 입금요일 지정 거래처만 반영`);if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);$('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'')}else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.59 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
+  _setupArUI459();const btn=$('arSyncHistoryBtn');if(btn)btn.onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');const result=await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments),reg=await arV459RegisterSalesIntervals(result.salesIntervals||[]);refreshArWeekPayments();renderArAll();if(arState.weekMeta?.simpleWeeklyV459){const bits=[];if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);if(reg.registered.length)bits.push(`판매/반품 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 입금요일 지정 거래처만 반영`);if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);$('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'')}else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.60 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
+};
+
+
+/* ===== v4.60 미수관리: 해소행 유지 + 오늘 동기화 표시 =====
+   - v4.59 계산규칙은 그대로 유지한다.
+   - 기준일 이후 입금/반품으로 0원 또는 마이너스가 된 거래처를 소액박스로 보내지 않고
+     원래 자동정리 박스에 남긴 뒤 기존 '해소행 맨 아래' 정렬을 그대로 적용한다.
+   - 자료 동기화 직전에는 미해소였고 동기화 직후 자동해소된 거래처 코드를 주차 메타에 저장한다.
+   - 같은 날에는 해당 행을 파란 글씨로 표시하며, 다음 날짜에는 파란 표시는 자동 해제된다.
+*/
+function arV460LocalToday(){
+  const d=new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function arV460SyncResolvedCodes(){
+  const m=arState.weekMeta||{};
+  if(String(m.syncResolvedDateV460||'')!==arV460LocalToday())return new Set();
+  return new Set((Array.isArray(m.syncResolvedCodesV460)?m.syncResolvedCodesV460:[]).map(norm).filter(Boolean));
+}
+function arV460ResolvedToday(r){
+  return !!(r&&arIsSimpleRowV459(r)&&r.runDateResolved===true&&arV460SyncResolvedCodes().has(norm(r.code)));
+}
+function arV460OriginBalance(r){
+  const n=Number(r?.v459StartBalanceAfterMondayPayment);
+  if(Number.isFinite(n))return Math.round(n);
+  return Math.round(Number(r?.baseBalance||0));
+}
+function arV460BaseSampleOnly(r){
+  if(typeof arManualSampleOnly==='function'&&arManualSampleOnly(r))return true;
+  const base=Math.max(0,arV460OriginBalance(r)),m=r?.sampleMatch;
+  return !!(m&&Number(m.generalAmount||0)<=0&&Number(m.amount||0)>=Math.max(0,base-1));
+}
+function arV460OriginBox(r){
+  const base=arV460OriginBalance(r);
+  if(base>0&&base<600)return 'low';
+  if(arHasScheduledPaymentDay(r.paymentDay))return 'scheduled';
+  if(arIsShinsangRow(r))return 'shinsang';
+  const sampleOnly=arV460BaseSampleOnly(r);
+  if(r.location==='nampyeonghwa')return sampleOnly?'nampyeonghwaSample':'nampyeonghwa';
+  return sampleOnly?'warehouseSample':'warehouse';
+}
+
+const _arGroupRows460=arGroupRows;
+arGroupRows=function(){
+  const groups=_arGroupRows460();
+  if(!arState.weekMeta?.simpleWeeklyV459)return groups;
+  const managedKeys=['warehouse','warehouseSample','scheduled','nampyeonghwa','nampyeonghwaSample','shinsang','low'];
+  const resolved=(arState.weekRows||[]).filter(r=>{
+    if(!arIsSimpleRowV459(r)||r.v459TrackingEligible!==true||r.runDateResolved!==true)return false;
+    r.action=arState.actions.get(norm(r.code))||r.action||{};
+    if(arUncollectibleMatches(r))return false;
+    if(arReviewRouteToBox(r))return false;
+    return arV460OriginBalance(r)>0;
+  });
+  if(!resolved.length)return groups;
+  const codes=new Set(resolved.map(r=>norm(r.code)));
+  for(const key of managedKeys){
+    if(Array.isArray(groups[key]))groups[key]=groups[key].filter(r=>!codes.has(norm(r.code)));
+  }
+  for(const r of resolved){
+    const dest=arV460OriginBox(r);
+    if(!Array.isArray(groups[dest]))groups[dest]=[];
+    groups[dest].push(r);
+  }
+  for(const key of managedKeys){
+    if(Array.isArray(groups[key]))groups[key].sort((a,b)=>Math.abs(Number(arEffectiveBalance(b)))-Math.abs(Number(arEffectiveBalance(a)))||String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  }
+  return groups;
+};
+
+const _arResolutionPlain460=arResolutionPlain;
+arResolutionPlain=function(r){
+  if(arIsSimpleRowV459(r)&&!arHasManualResolution(r)&&r?.runDateResolved){
+    const cause=arResolutionCause(r);
+    if(cause==='입금')return '입금해소';
+    if(cause==='반품')return '반품해소';
+    if(cause==='입금+반품')return '입금+반품해소';
+  }
+  return _arResolutionPlain460(r);
+};
+const _arResolutionCell460=arResolutionCell;
+arResolutionCell=function(r){
+  let html=_arResolutionCell460(r);
+  if(arIsSimpleRowV459(r)&&!arHasManualResolution(r)&&r?.runDateResolved){
+    const cause=arResolutionCause(r),label=cause==='입금'?'입금해소':cause==='반품'?'반품해소':cause==='입금+반품'?'입금+반품해소':'해소';
+    html=html.replace('>해소</label>',`>${label}</label>`);
+  }
+  return html;
+};
+
+// 최종 표 렌더링에 '오늘 동기화로 새로 해소' 행 클래스 추가
+arRowsTable=function(rows,boxKey){
+  const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터/검색에 해당하는 거래처가 없습니다.</div>';const order=arVisibleColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
+  const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),syncToday=arV460ResolvedToday(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':'',syncToday?'arSyncResolvedTodayV460':''].filter(Boolean).join(' ');return `<tr data-ar-code="${escAttr(r.code)}" class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+};
+
+async function arV460SaveSyncResolvedCodes(codes){
+  if(!user||!arState.activeWeek||!arState.weekMeta?.simpleWeeklyV459)return;
+  const today=arV460LocalToday(),meta=arState.weekMeta||{},prev=String(meta.syncResolvedDateV460||'')===today&&Array.isArray(meta.syncResolvedCodesV460)?meta.syncResolvedCodesV460:[];
+  const merged=[...new Set([...prev,...(codes||[])].map(norm).filter(Boolean))];
+  const patch={syncResolvedDateV460:today,syncResolvedCodesV460:merged,rulesVersion:'v4.60',updatedAtMs:Date.now()};
+  await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  arState.weekMeta={...meta,...patch};
+  const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));
+  if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],...patch};
+}
+
+// v4.59 동기화 규칙은 유지하고, 동기화 전/후 상태를 비교해 '오늘 새로 해소'만 기록한다.
+const _setupArUI460=setupArUI;
+setupArUI=function(){
+  _setupArUI460();
+  const btn=$('arSyncHistoryBtn');
+  if(btn)btn.onclick=async()=>{
+    try{
+      arSetLoading(true,'판매·입금 자료 동기화 중…');
+      refreshArWeekPayments();
+      const before=new Map((arState.weekRows||[]).filter(r=>arIsSimpleRowV459(r)).map(r=>[norm(r.code),{resolved:!!r.runDateResolved,balance:Number(arDisplayCurrentBalance(r)||0)}]));
+      const result=await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments),reg=await arV459RegisterSalesIntervals(result.salesIntervals||[]);
+      refreshArWeekPayments();
+      const newlyResolved=[];
+      for(const r of arState.weekRows||[]){
+        if(!arIsSimpleRowV459(r))continue;
+        const b=before.get(norm(r.code));if(!b)continue;
+        const nowBalance=Number(arDisplayCurrentBalance(r)||0);
+        if(!b.resolved&&r.runDateResolved===true&&nowBalance<=0)newlyResolved.push(norm(r.code));
+      }
+      await arV460SaveSyncResolvedCodes(newlyResolved);
+      renderArAll();
+      if(arState.weekMeta?.simpleWeeklyV459){
+        const bits=[];
+        if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);
+        if(reg.registered.length)bits.push(`판매/반품 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 입금요일 지정 거래처만 반영`);
+        if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);
+        if(newlyResolved.length)bits.push(`오늘 새로 해소 ${newlyResolved.length.toLocaleString()}곳 · 원래 목록 하단 유지/파란표시`);
+        $('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'');
+      }else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.60 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.';
+    }catch(e){alert(e.message||e)}finally{arSetLoading(false)}
+  };
 };
 
 setupArUI();
