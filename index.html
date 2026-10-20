@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.60</title>
+<title>아도라블 매출 자동화 v4.61</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -718,12 +718,12 @@ window.CASH_RECEIPT_TEMPLATE_B64 = "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG
 <!-- custom-favicon-end -->
 
 <style id="arV460Styles">
-/* v4.60: 오늘 자료동기화로 새로 미수해소된 행을 파란 글씨로 구분 */
-tr.arSyncResolvedTodayV460 > td{color:#2563eb !important;}
-tr.arSyncResolvedTodayV460 > td b,
-tr.arSyncResolvedTodayV460 > td .small,
-tr.arSyncResolvedTodayV460 > td label,
-tr.arSyncResolvedTodayV460 > td .arInlineCell{color:#2563eb !important;}
+/* v4.61: 오늘 자료동기화로 새로 미수해소된 행은 파란 글씨. 단, 출고X는 기존 빨간색을 최우선 유지 */
+tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td{color:#2563eb !important;}
+tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td b,
+tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .small,
+tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td label,
+tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .arInlineCell{color:#2563eb !important;}
 </style>
 </head>
 <body>
@@ -751,7 +751,7 @@ tr.arSyncResolvedTodayV460 > td .arInlineCell{color:#2563eb !important;}
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.60 · 미수 입금해소 유지/오늘 동기화 파란표시 · 10/19부터 단순반영 규칙 · 월마감 지정양식</div>
+      <div class="badge">v4.61 · 출고X 빨간색 우선 · 미수 입금해소 유지/오늘 동기화 파란표시 · 10/19부터 단순반영 규칙 · 월마감 지정양식</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -14272,7 +14272,7 @@ const _saveArWeekBase459=saveArWeekBase;
 saveArWeekBase=async function(runDate,cutoff,rows,periodText='',mode='weekly'){
   const simple=arUseSimpleRuleDateV459(runDate,mode);if(simple)for(const r of rows||[]){r.simpleWeeklyV459=true;if(typeof r.v459TrackingEligible!=='boolean')r.v459TrackingEligible=false}
   await _saveArWeekBase459(runDate,cutoff,rows,periodText,mode);
-  if(simple&&user){const patch={simpleWeeklyV459:true,rulesVersion:'v4.60',rulesStartedAt:'2026-10-19',salesApplyIntervals:[],updatedAtMs:Date.now()};await userCol('arWeeks').doc(safeId(runDate)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});arState.weekMeta={...(arState.weekMeta||{}),...patch};const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(runDate));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],...patch};refreshArWeekPayments();renderArAll()}
+  if(simple&&user){const patch={simpleWeeklyV459:true,rulesVersion:'v4.61',rulesStartedAt:'2026-10-19',salesApplyIntervals:[],updatedAtMs:Date.now()};await userCol('arWeeks').doc(safeId(runDate)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});arState.weekMeta={...(arState.weekMeta||{}),...patch};const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(runDate));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],...patch};refreshArWeekPayments();renderArAll()}
 };
 
 syncArHistoryFromSelected=async function(salesFiles,paymentFiles){
@@ -14284,7 +14284,7 @@ syncArHistoryFromSelected=async function(salesFiles,paymentFiles){
 async function arV459RegisterSalesIntervals(intervals){
   const meta=arState.weekMeta||{};if(!meta.simpleWeeklyV459||!arState.activeWeek)return {registered:[],historyOnly:intervals||[]};
   const cutoff=ymd(meta.cutoff)||'',registered=[],historyOnly=[];for(const x of intervals||[]){const min=ymd(x.min),max=ymd(x.max);if(!min||!max)continue;if(cutoff&&min<cutoff)historyOnly.push({min,max});else registered.push({min,max})}
-  if(registered.length){const merged=arMergeIntervals([...(meta.salesApplyIntervals||[]),...registered]);arState.weekMeta={...meta,salesApplyIntervals:merged};await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({salesApplyIntervals:merged,rulesVersion:'v4.60',updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],salesApplyIntervals:merged,rulesVersion:'v4.60'}}
+  if(registered.length){const merged=arMergeIntervals([...(meta.salesApplyIntervals||[]),...registered]);arState.weekMeta={...meta,salesApplyIntervals:merged};await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({salesApplyIntervals:merged,rulesVersion:'v4.61',updatedAtMs:Date.now(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));if(idx>=0)arState.weeks[idx]={...arState.weeks[idx],salesApplyIntervals:merged,rulesVersion:'v4.61'}}
   return {registered,historyOnly};
 }
 
@@ -14425,14 +14425,14 @@ arResolutionCell=function(r){
 arRowsTable=function(rows,boxKey){
   const filtered=arRowsForBox(boxKey);if(!filtered.length)return '<div class="jobEmpty">현재 필터/검색에 해당하는 거래처가 없습니다.</div>';const order=arVisibleColumnOrder(),tw=arTableWidth(),cols=order.map(key=>`<col data-ar-col="${escAttr(key)}" style="width:${arColumnWidth(key)}px">`).join('');
   const head=`<table class="arDataTable" style="width:${tw}px;min-width:${tw}px"><colgroup>${cols}</colgroup><thead><tr>${arHeaderHtml(boxKey)}</tr></thead><tbody>`;
-  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),syncToday=arV460ResolvedToday(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':'',syncToday?'arSyncResolvedTodayV460':''].filter(Boolean).join(' ');return `<tr data-ar-code="${escAttr(r.code)}" class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
+  const body=filtered.map(r=>{const blocked=r.action?.shipStatus==='X',resolved=arIsResolved(r),syncToday=arV460ResolvedToday(r),rowCls=[blocked?'arShipBlocked':'',resolved?'arPaymentResolved':'',syncToday&&!blocked?'arSyncResolvedTodayV460':''].filter(Boolean).join(' ');return `<tr data-ar-code="${escAttr(r.code)}" class="${rowCls}">${order.map(key=>`<td data-ar-col="${escAttr(key)}">${arCellHtml(r,key,boxKey)}</td>`).join('')}</tr>`}).join('');return head+body+'</tbody></table>';
 };
 
 async function arV460SaveSyncResolvedCodes(codes){
   if(!user||!arState.activeWeek||!arState.weekMeta?.simpleWeeklyV459)return;
   const today=arV460LocalToday(),meta=arState.weekMeta||{},prev=String(meta.syncResolvedDateV460||'')===today&&Array.isArray(meta.syncResolvedCodesV460)?meta.syncResolvedCodesV460:[];
   const merged=[...new Set([...prev,...(codes||[])].map(norm).filter(Boolean))];
-  const patch={syncResolvedDateV460:today,syncResolvedCodesV460:merged,rulesVersion:'v4.60',updatedAtMs:Date.now()};
+  const patch={syncResolvedDateV460:today,syncResolvedCodesV460:merged,rulesVersion:'v4.61',updatedAtMs:Date.now()};
   await userCol('arWeeks').doc(safeId(arState.activeWeek)).set({...patch,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
   arState.weekMeta={...meta,...patch};
   const idx=(arState.weeks||[]).findIndex(x=>String(x.weekKey||'')===String(arState.activeWeek));
