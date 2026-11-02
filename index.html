@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.61</title>
+<title>아도라블 매출 자동화 v4.64</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -751,7 +751,7 @@ tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .arInlineCell{color:#2563eb 
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.61 · 출고X 빨간색 우선 · 미수 입금해소 유지/오늘 동기화 파란표시 · 10/19부터 단순반영 규칙 · 월마감 지정양식</div>
+      <div class="badge">v4.64 · 반품 전액 다음판매 상계 선택 · 홈택스 실제 승인금액 반영 · 이번 불러오기 날짜만 적요 엑셀 · 출고X 빨간색 우선</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -1147,7 +1147,7 @@ tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .arInlineCell{color:#2563eb 
       </div>
       <div class="moduleToolbar">
         <button id="downloadGeneralReceiptBtn" class="btn" type="button">일반- 현금영수증 발급 엑셀 다운로드</button>
-        <button id="downloadGeneralMemoBtn" class="btn light" type="button">적요 반영목록 엑셀</button>
+        <button id="downloadGeneralMemoBtn" class="btn light" type="button">적요 반영목록 엑셀 (이번 불러오기)</button>
         <label class="filePickLabel">홈택스 발급결과 엑셀 불러오기<input id="hometaxResultFile" type="file" accept=".xlsx,.xls"></label>
         <span id="hometaxImportStatus" class="small"></span>
       </div>
@@ -4237,7 +4237,7 @@ function openingCarryDetailHtml(o){
 }
 function consumedGeneralIds(){const s=new Set();for(const a of generalActions||[])for(const id of a.entryIds||[])s.add(id);return s}
 function cancellationUsedForIssue(issueId){let n=0;for(const a of generalActions||[]){if(a.type==='cancel'&&a.status==='cancelled')for(const t of a.targets||[])if(t.actionId===issueId)n+=Number(t.amount||0);}return n}
-function remainingForApproval(a){return Math.max(0,Number(a.amount||0)-cancellationUsedForIssue(a.id))}
+function remainingForApproval(a){return Math.max(0,generalIssuedAmount(a)-cancellationUsedForIssue(a.id))}
 function recommendCancelTargets(cust,amount,custCode=''){let left=amount,targets=[],key=generalCustomerKey(cust,custCode);const issues=(generalActions||[]).filter(a=>generalCustomerKey(a)===key&&(a.type==='issue'||a.type==='legacyIssue')&&a.status==='issued'&&a.approvalNo).sort((a,b)=>String(b.issueDate||'').localeCompare(String(a.issueDate||''))||Number(b.createdAtMs||0)-Number(a.createdAtMs||0));for(const a of issues){const rem=remainingForApproval(a);if(rem<=0)continue;const take=Math.min(rem,left);targets.push({actionId:a.id,approvalNo:a.approvalNo,issueDate:a.issueDate,amount:take});left-=take;if(left<=0)break;}return {targets,shortfall:left}}
 function recommendCancelTargetsReserved(cust,amount,reserved,custCode=''){
   let left=amount,targets=[],key=generalCustomerKey(cust,custCode);
@@ -4615,24 +4615,32 @@ window.carryGeneralReturn=async function(id){
   try{
     const a=(generalActions||[]).find(x=>x.id===id);
     if(!a||a.type!=='cancel'||a.status!=='pending')throw new Error('반품잔액으로 전환할 취소대상을 찾지 못했습니다.');
-    if((a.targets||[]).length)throw new Error('과거 발행건이 연결된 반품은 반품잔액 이월로 전환할 수 없습니다. 연결된 과거 발행건을 취소해 주세요.');
     const amount=Math.abs(Number(a.amount||0));if(!(amount>0))throw new Error('반품금액을 확인해 주세요.');
     const entry=generalActionEntries(a)[0]||{},basisDate=String(entry.date||a.saleDate||a.cutoffDate||generalStartDate),cust=a.cust||entry.cust||'',custCode=a.custCode||entry.custCode||'';
-    if(!confirm(`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 과거 현금영수증 발행이 없는 반품잔액으로 이월할까요?\n\n이 반품은 취소대상에서 빠지고, 다음 판매가 생기면 자동으로 먼저 상계됩니다.`))return;
+    const oldTargets=(a.targets||[]).map(t=>({...t}));
+    const targetTotal=oldTargets.reduce((sum,t)=>sum+Math.abs(Number(t.amount||0)),0);
+    const targetLines=oldTargets.length?oldTargets.map(t=>`${t.issueDate?formatDisplayDate(t.issueDate):'-'} 발행 · 승인 ${t.approvalNo||'-'} · ${Math.abs(Number(t.amount||0)).toLocaleString('ko-KR')}원`).join('\n'):'';
+    const confirmText=oldTargets.length
+      ?`${cust} 반품 ${amount.toLocaleString('ko-KR')}원 전액을 다음 판매에서 상계하도록 이월할까요?\n\n[취소하지 않을 기존 승인건]\n${targetLines}\n\n기존 승인건 ${targetTotal.toLocaleString('ko-KR')}원은 홈택스에서 취소하지 않습니다.\n반품 ${amount.toLocaleString('ko-KR')}원 전체가 이월잔액이 되고, 다음 판매가 생기면 자동으로 먼저 상계됩니다.`
+      :`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 반품잔액으로 이월할까요?\n\n이 반품은 취소대상에서 빠지고, 다음 판매가 생기면 자동으로 먼저 상계됩니다.`;
+    if(!confirm(confirmText))return;
     const key=generalCustomerKey(cust,custCode),existing=(generalOpenings||[]).find(x=>generalCustomerKey(x)===key),rebased=generalReturnCarryRebase(existing,amount,basisDate),now=Date.now();
-    const openingId=existing?.id||safeId(custCode?`CODE_${custCode}`:cust),history=[...(existing?.history||[]),{basisDate:rebased.basisDate,amount:rebased.amount,changedAtMs:now,reason:'return-carry',returnDate:basisDate,returnAmount:-amount}].slice(-30);
+    const openingId=existing?.id||safeId(custCode?`CODE_${custCode}`:cust),history=[...(existing?.history||[]),{basisDate:rebased.basisDate,amount:rebased.amount,changedAtMs:now,reason:oldTargets.length?'return-carry-skip-cancel':'return-carry',returnDate:basisDate,returnAmount:-amount,skippedCancelAmount:targetTotal}].slice(-30);
     const batch=db.batch();
     batch.set(userCol('generalOpeningBalances').doc(openingId),{
       cust,custCode,custCodeSource:a.custCodeSource||entry.custCodeSource||existing?.custCodeSource||'resolved',amount:rebased.amount,basisDate:rebased.basisDate,history,version:now,processedAmount:0,processedAtMs:0,returnCarryUpdatedAtMs:now,updatedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     },{merge:true});
     batch.set(userCol('generalReceiptActions').doc(id),{
-      type:'returnCarry',status:'carried',targets:[],shortfall:0,carryOpeningId:openingId,carryDate:basisDate,carryAmount:amount,carryBalanceBefore:rebased.current,carryBalanceAfter:rebased.target,carriedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      type:'returnCarry',status:'carried',targets:[],shortfall:0,
+      carrySkippedCancelTargets:oldTargets,carrySkippedCancelAmount:targetTotal,carryMode:oldTargets.length?'full-return-carry-no-cancel':'return-carry-no-prior-issue',
+      carryOpeningId:openingId,carryDate:basisDate,carryAmount:amount,carryBalanceBefore:rebased.current,carryBalanceAfter:rebased.target,carriedAtMs:now,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     },{merge:true});
     await batch.commit();
     await loadGeneralLedgerData();
     await createGeneralSettlements({silent:true,reason:'return-carry'});
-    await safeLogActivity('현금영수증','반품잔액 이월',`${cust} · -${amount.toLocaleString('ko-KR')}원`,`반품일 ${ymdToInput(basisDate)} · 과거 발행건 없음 · 이월잔액 ${rebased.current.toLocaleString('ko-KR')}원 → ${rebased.target.toLocaleString('ko-KR')}원`);
-    alert(`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 반품잔액으로 이월했습니다.\n현재 이월잔액: ${rebased.target.toLocaleString('ko-KR')}원\n다음 판매와 자동으로 상계됩니다.`);
+    const reason=oldTargets.length?`과거 승인 ${targetTotal.toLocaleString('ko-KR')}원 취소 안 함 · 반품 전액 다음판매 상계`:'과거 발행건 없음';
+    await safeLogActivity('현금영수증','반품잔액 이월',`${cust} · -${amount.toLocaleString('ko-KR')}원`,`반품일 ${ymdToInput(basisDate)} · ${reason} · 이월잔액 ${rebased.current.toLocaleString('ko-KR')}원 → ${rebased.target.toLocaleString('ko-KR')}원`);
+    alert(`${cust} 반품 ${amount.toLocaleString('ko-KR')}원을 전액 이월했습니다.\n${oldTargets.length?`기존 승인건 ${targetTotal.toLocaleString('ko-KR')}원은 취소하지 않습니다.\n`:''}현재 이월잔액: ${rebased.target.toLocaleString('ko-KR')}원\n다음 판매와 자동으로 상계됩니다.`);
   }catch(e){alert(e.message||e)}
 }
 window.revertGeneralRequest=async function(id){
@@ -4694,22 +4702,41 @@ function generalActionMemoText(a){
   if(a?.type==='cancel'&&a.status==='cancelled'&&a.cancelDate)return `${a.cancelDate}/자진발급취소`;
   return '-';
 }
+// v4.64: 과거 승인건이 연결된 반품도 사용자가 전체 금액을 취소 없이 이월해 다음 판매와 상계할 수 있다.
+// v4.63: 발급완료 건은 홈택스 결과의 실제 승인금액을 최우선으로 사용한다.
+// 예: 판매 50,000 - 반품상계 20,000 = 실제 발급 30,000 이면 30,000원으로 표시/다운로드.
+function generalIssuedAmount(a){
+  const actual=Number(a?.hometaxIssuedAmount);
+  if(a?.type==='issue'&&a?.status==='issued'&&Number.isFinite(actual)&&actual>0)return Math.abs(actual);
+  return Math.abs(Number(a?.amount||0));
+}
 function downloadGeneralMemoChecklist(){
   try{
-    const rows=[];
+    // v4.63: 전체 누적 이력이 아니라, 가장 최근에 불러온 홈택스 발급결과 엑셀에
+    // 실제로 들어 있던 처리일(발급일/취소일)만 적요 반영목록으로 내려받는다.
+    const importDates=[...new Set((hometaxLastImportStats?.dates||[]).map(ymd).filter(Boolean))].sort();
+    if(!importDates.length)throw new Error('먼저 홈택스 발급결과 엑셀을 불러와 주세요. 이번에 불러온 파일의 날짜만 적요 엑셀로 받을 수 있습니다.');
+    const dateSet=new Set(importDates),rows=[];
     for(const a of (generalActions||[])){
       const memo=generalActionMemoText(a);
       if(memo==='-')continue;
+      const processDate=ymd(a.type==='issue'?a.issueDate:a.cancelDate);
+      if(!processDate||!dateSet.has(processDate))continue;
       for(const r of generalActionEntries(a)){
         if(r.opening)continue;
-        rows.push([r.date||'',Number(r.no||0),a.cust||'',Number(r.amount||0),a.type==='issue'?(issueInfoForAction(a).issueMethod==='mobile'?'휴대폰발급':'자진발급'):'자진발급취소',a.issueDate||a.cancelDate||'',memo,r.sourceJobId||'']);
+        const actualProcessAmount=a.type==='issue'?generalIssuedAmount(a):Math.abs(Number(a.amount||0));
+        rows.push([r.date||'',Number(r.no||0),a.cust||'',actualProcessAmount,a.type==='issue'?(issueInfoForAction(a).issueMethod==='mobile'?'휴대폰발급':'자진발급'):'자진발급취소',processDate,memo,r.sourceJobId||'']);
       }
     }
-    if(!rows.length)throw new Error('발급/취소 완료되어 적요를 반영할 거래가 없습니다.');
+    if(!rows.length)throw new Error(`이번 홈택스 파일 날짜(${importDates.map(formatDisplayDate).join(', ')})에 발급/취소 완료되어 적요를 반영할 거래가 없습니다.`);
+    rows.sort((x,y)=>String(x[5]||'').localeCompare(String(y[5]||''))||String(x[0]||'').localeCompare(String(y[0]||''))||Number(x[1]||0)-Number(y[1]||0));
     const wb=XLSX.utils.book_new();
-    const ws=XLSX.utils.aoa_to_sheet([['판매일','No.','거래처','판매금액','처리구분','처리일','반영할 적요','원본작업ID'],...rows]);
+    const ws=XLSX.utils.aoa_to_sheet([['판매일','No.','거래처','실제 처리금액','처리구분','처리일','반영할 적요','원본작업ID'],...rows]);
+    ws['!cols']=[{wch:12},{wch:10},{wch:24},{wch:14},{wch:16},{wch:12},{wch:28},{wch:22}];
+    if(rows.length)ws['!autofilter']={ref:`A1:H${rows.length+1}`};
     XLSX.utils.book_append_sheet(wb,ws,'적요반영목록');
-    XLSX.writeFile(wb,'일반거래처_자진발급_적요반영목록.xlsx',{bookType:'xlsx'});
+    const dateLabel=importDates.length<=4?importDates.join('_'):`${importDates[0]}-${importDates[importDates.length-1]}`;
+    XLSX.writeFile(wb,`일반거래처_자진발급_적요반영목록_${dateLabel}.xlsx`,{bookType:'xlsx'});
   }catch(e){showError(e)}
 }
 
@@ -4738,7 +4765,7 @@ function downloadGeneralIssueListExcel(){
         a.custCode||entry.custCode||'',
         saleNo?Number(saleNo):'',
         Number(a.grossAmount??a.amount??0),
-        Number(a.amount||0),
+        generalIssuedAmount(a),
         info.issueMethod==='mobile'?'휴대폰번호':'자진발급',
         info.issueNumber||'',
         Number(a.openingDeltaApplied||0)!==0?`이월잔액 ${Number(a.openingBalanceBefore||0).toLocaleString('ko-KR')}원 → ${Number(a.openingBalanceAfter||0).toLocaleString('ko-KR')}원 · ${Math.abs(Number(a.openingDeltaApplied||0)).toLocaleString('ko-KR')}원 상계`:'',
@@ -4757,8 +4784,8 @@ function downloadGeneralIssueListExcel(){
         return ['상계처리','상계완료',date?formatDisplayDate(date):'',cust,code,nos,st.posOriginal,amt,'판매·반품 상계','',detail,'','',''];
       }
       if(a.type==='returnCarry'){
-        const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
-        const detail=`과거 발행건 없음 → 반품잔액으로 이월 · ${before.toLocaleString('ko-KR')}원 → ${after.toLocaleString('ko-KR')}원 · 다음 판매와 자동 상계`;
+        const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt)),skipped=Math.abs(Number(a.carrySkippedCancelAmount||0));
+        const detail=skipped>0?`기존 승인건 ${skipped.toLocaleString('ko-KR')}원 취소 안 함 → 반품 ${amt.toLocaleString('ko-KR')}원 전액 이월 · ${before.toLocaleString('ko-KR')}원 → ${after.toLocaleString('ko-KR')}원 · 다음 판매와 자동 상계`:`과거 발행건 없음 → 반품잔액으로 이월 · ${before.toLocaleString('ko-KR')}원 → ${after.toLocaleString('ko-KR')}원 · 다음 판매와 자동 상계`;
         return ['반품잔액 이월','이월완료',(e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'',a.cust||e.cust||'',a.custCode||e.custCode||'',e.no?Number(e.no):'',-amt,-amt,'반품잔액 이월','',detail,'','',''];
       }
       const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
@@ -4854,7 +4881,7 @@ function renderGeneralLedger(){
         :grouped
           ?'<div class="small" style="margin-top:5px">판매건별 발급대상 생성을 다시 눌러주세요.</div>'
           :`<div class="ledgerAction" style="margin-top:5px"><button class="btn light" onclick="requestGeneralIssue('${a.id}')">오늘 발급요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div>`;
-    return `<tr><td>${st}${action}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${Number(a.amount||0).toLocaleString()}원</b>${carryNote}</td><td>${methodText}</td><td><b>${esc(memo)}</b></td></tr>`;
+    return `<tr><td>${st}${action}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>${generalIssuedAmount(a).toLocaleString()}원</b>${carryNote}</td><td>${methodText}</td><td><b>${esc(memo)}</b></td></tr>`;
   }
   function generalIssueSaleDate(a){const entry=generalActionEntries(a)[0]||{};return String(entry.date||a.saleDate||'날짜미확인')}
   window.setAllGeneralIssueDays=function(open){
@@ -4877,8 +4904,9 @@ function renderGeneralLedger(){
       return `<tr><td><span class="statusPill ok">판매·반품 상계</span></td><td>${esc(date?formatDisplayDate(date):'-')}</td><td>${esc(cust)}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${pair}</td><td class="amount">0원</td><td><b>${result}</b><br><span class="small">현금영수증 발급·취소 없음${st.saleRemain>0?' · 잔여 판매금액은 발급대상 계산에 반영':''}</span></td></tr>`;
     }
     if(a.type==='returnCarry'){
-      const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt));
-      return `<tr><td><span class="statusPill ok">반품잔액 이월</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||e.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">-${amt.toLocaleString()}원</td><td><b>과거 발행건 없음 → 다음 판매와 자동 상계</b><br><span class="small">이월잔액 ${before.toLocaleString()} → ${after.toLocaleString()}원</span></td></tr>`;
+      const e=es[0]||{},amt=Math.abs(Number(a.carryAmount||a.amount||0)),before=Number(a.carryBalanceBefore||0),after=Number(a.carryBalanceAfter??(before-amt)),skipped=Math.abs(Number(a.carrySkippedCancelAmount||0));
+      const carryText=skipped>0?`기존 승인건 ${skipped.toLocaleString()}원 취소 안 함 → 반품 전액 다음 판매와 자동 상계`:'과거 발행건 없음 → 다음 판매와 자동 상계';
+      return `<tr><td><span class="statusPill ok">반품잔액 이월</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||e.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">-${amt.toLocaleString()}원</td><td><b>${carryText}</b><br><span class="small">이월잔액 ${before.toLocaleString()} → ${after.toLocaleString()}원</span></td></tr>`;
     }
     const e=es[0]||{},delta=Number(a.openingDeltaApplied||0),before=Number(a.openingBalanceBefore||0),after=Number(a.openingBalanceAfter||0),signed=Number(a.originalAmount??a.netAmount??a.openingDeltaApplied??0);
     return `<tr><td><span class="statusPill ok">이월상계</span></td><td>${esc((e.date||a.saleDate)?formatDisplayDate(e.date||a.saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${e.no?`No.${Number(e.no)}`:'-'}</td><td class="amount">${signed.toLocaleString()}원</td><td>${delta>=0?'판매를 이월잔액에 상계':'반품을 이월잔액에 반영'} · <b>${before.toLocaleString()} → ${after.toLocaleString()}원</b></td></tr>`;
@@ -4889,8 +4917,8 @@ function renderGeneralLedger(){
     const targetHtml=targets.length?targets.map(t=>`<div>${esc(t.issueDate?formatDisplayDate(t.issueDate):'-')} 발행 · 승인 ${esc(t.approvalNo||'-')} · <b>${Number(t.amount||0).toLocaleString()}원 취소</b></div>`).join(''):'';
     const missing=!targets.length?`<span class="cancelMissing">과거 발행건 없음</span><div class="small" style="margin-top:4px">실제로 과거 현금영수증 발행이 있었으면 홈택스에서 찾아 취소하세요. <b>이 거래처의 첫 거래가 반품이라 취소할 과거 발행건 자체가 없다면 ‘반품잔액 이월’을 눌러 다음 판매와 상계</b>하면 됩니다.</div>`:shortfall>0?`${targetHtml}<div class="cancelMissing" style="margin-top:4px">추가 과거 발행건 ${shortfall.toLocaleString()}원 부족</div>`:targetHtml;
     const st=a.status==='cancelled'?'<span class="statusPill ok">취소완료</span>':a.status==='cancel_requested'?'<span class="statusPill warn">취소결과 대기</span>':'<span class="statusPill bad">취소 확인</span>';
-    const carryBtn=!targets.length?`<button class="btn light" onclick="carryGeneralReturn('${a.id}')">반품잔액 이월</button>`:'';
-    const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:a.status==='cancel_requested'?`${missing}<div class="small" style="margin-top:6px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 홈택스 취소요청 완료</b><br>익일 결과 엑셀 자동대조 대기</div><div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기 결과확정</button><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:`${missing}<div class="ledgerAction" style="margin-top:6px">${carryBtn}<button class="btn light" onclick="requestGeneralCancel('${a.id}')">오늘 취소요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div><div class="small" style="margin-top:4px">과거 발행이 있으면 홈택스 취소 후 ‘오늘 취소요청 완료’, 과거 발행 자체가 없는 첫 반품이면 ‘반품잔액 이월’을 사용하세요.</div>`;
+    const carryBtn=a.status==='pending'?`<button class="btn light" onclick="carryGeneralReturn('${a.id}')">${targets.length?'전체 반품잔액 이월':'반품잔액 이월'}</button>`:'';
+    const action=a.status==='cancelled'?`${esc(a.cancelDate||'')} ${a.manualCancel?'/ 수기취소완료':'/ 홈택스 자동대조'}${a.cancelApprovalNo?' / 취소승인 '+esc(a.cancelApprovalNo):''}<br><b>${esc(memo)}</b>`:a.status==='cancel_requested'?`${missing}<div class="small" style="margin-top:6px"><b>${esc(a.requestDate?formatDisplayDate(a.requestDate):'-')} 홈택스 취소요청 완료</b><br>익일 결과 엑셀 자동대조 대기</div><div class="ledgerAction" style="margin-top:6px"><input id="gCancelDate_${safeDomId(a.id)}" type="date" title="실제 취소일"><input id="gCancelApproval_${safeDomId(a.id)}" placeholder="취소 승인번호(선택)"><button class="btn light" onclick="completeManualGeneralCancel('${a.id}')">수기 결과확정</button><button class="btn light" onclick="revertGeneralRequest('${a.id}')">요청표시 취소</button></div>`:`${missing}<div class="ledgerAction" style="margin-top:6px">${carryBtn}<button class="btn light" onclick="requestGeneralCancel('${a.id}')">오늘 취소요청 완료</button><button class="btn light" onclick="undoGeneralAction('${a.id}')">대상취소</button></div><div class="small" style="margin-top:4px">홈택스에서 취소하려면 ‘오늘 취소요청 완료’를 사용하고, 취소하지 않고 반품금액 전액을 다음 판매에서 상계하려면 ‘전체 반품잔액 이월’을 선택하세요.</div>`;
     return `<tr><td>${st}</td><td>${esc(saleDate?formatDisplayDate(saleDate):'-')}</td><td>${esc(a.cust||'')}${a.custCode?`<br><span class="small">코드 ${esc(a.custCode)}</span>`:''}</td><td>${saleNo?`No.${Number(saleNo)}`:'-'}</td><td class="amount"><b>-${Number(a.amount||0).toLocaleString()}원</b></td><td>${a.status==='cancelled'?(targets.length?targetHtml:'수기 확인 완료'):missing}</td><td>${action}</td></tr>`;
   }).join(''):'<tr><td colspan="7" class="small">현재 취소 확인이 필요한 반품 없음</td></tr>';
 
@@ -4899,7 +4927,7 @@ function renderGeneralLedger(){
   box.innerHTML=`<div class="generalActionPanels">
     <div class="generalActionPanel"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h4 style="margin:0">현금영수증 발급 목록</h4><div class="generalIssueGroupActions"><button type="button" class="btn light" onclick="setAllGeneralIssueDays(true)">전체 펼치기</button><button type="button" class="btn light" onclick="setAllGeneralIssueDays(false)">전체 접기</button><button type="button" class="btn light" onclick="downloadGeneralIssueListExcel()">전체 정산목록 엑셀</button></div></div><div class="panelHint">실제로 홈택스에서 발급해야 하는 판매건만 날짜별로 묶어 표시합니다. 오늘 판매일이 있으면 오늘만 기본으로 펼치고, 오늘 내역이 없으면 가장 최근 판매일만 펼칩니다. 홈택스 발급 후에는 ‘오늘 발급요청 완료’를 눌러 결과확인 대기로 바꾸고, 익일 발급결과 엑셀로 최종 발급완료·적요를 확정합니다. <b>‘매출 추가입력 · 발급완료 등록’으로 직접 넣은 수기등록 건은 발급완료 행의 ‘수기등록 삭제’로 프로그램 기록만 삭제할 수 있습니다.</b> 판매·반품 상계건과 취소건은 여기 섞이지 않습니다.</div>${issueGroupsHtml}</div>
     <div class="generalActionPanel offsetPanel"><h4>상계처리 목록</h4><div class="panelHint">이번 발행대상 기간 안에서 날짜가 달라도 같은 거래처의 판매·반품을 서로 상계한 내역과 이월잔액 상계를 보여줍니다. 이 목록은 현금영수증 발급·취소 대상이 아닙니다.</div><table><thead><tr><th>구분</th><th>날짜</th><th>거래처</th><th>연결 장끼</th><th>순금액</th><th>상계결과</th></tr></thead><tbody>${offsetRows}</tbody></table></div>
-    <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>첫 거래가 반품이라 과거 현금영수증 발행건 자체가 없는 경우에는 ‘반품잔액 이월’을 눌러 취소대상에서 제외하고 다음 판매와 자동 상계할 수 있습니다.</b> 과거 발행이 실제로 있었던 반품은 기존처럼 홈택스 취소 후 결과를 확정하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
+    <div class="generalActionPanel cancelPanel"><h4>반품 현금영수증 취소 확인</h4><div class="panelHint">이월잔액으로 상계되지 않은 마이너스 판매만 표시합니다. 프로그램이 기억한 과거 발행건이 있으면 취소할 발행일·승인번호·금액을 안내합니다. <b>과거 발행건이 없어도, 과거 발행건이 일부/전부 연결되어 있어도 ‘전체 반품잔액 이월’을 선택하면 기존 승인건은 취소하지 않고 반품금액 전액을 다음 판매와 자동 상계할 수 있습니다.</b> 홈택스에서 실제 취소할 경우에는 기존처럼 ‘오늘 취소요청 완료’를 사용하세요.</div><table><thead><tr><th>상태</th><th>반품일</th><th>거래처</th><th>장끼 No.</th><th>반품금액</th><th>취소할 과거 발행건</th><th>처리</th></tr></thead><tbody>${cancelRows}</tbody></table>${legacyRows}</div>
   </div>`;
   // 사용자가 날짜 제목을 직접 펼치거나 접은 상태도 다음 재렌더까지 기억한다.
   box.querySelectorAll('details.generalIssueDay[data-issue-day]').forEach(el=>{
@@ -4958,7 +4986,8 @@ function renderHometaxManualMatchPanel(){
 function updateHometaxImportStatus(){
   if(!hometaxLastImportStats)return;
   const pending=(hometaxPendingIssueMatches||[]).filter(x=>x.kind==='duplicate').length,outside=(hometaxPendingIssueMatches||[]).filter(x=>x.kind==='unmatched').length;
-  $('hometaxImportStatus').textContent=`자동대조 ${hometaxLastImportStats.matched}건${hometaxLastImportStats.alreadyProcessed?` · 기존확정 ${hometaxLastImportStats.alreadyProcessed}건`:''} · 취소완료 ${hometaxLastImportStats.autoCancelled}건${pending?` · 중복확인 ${pending}건`:''}${outside?` · 후보없음 ${outside}건`:''}`;
+  const ds=(hometaxLastImportStats.dates||[]).map(formatDisplayDate).join(', ');
+  $('hometaxImportStatus').textContent=`자동대조 ${hometaxLastImportStats.matched}건${hometaxLastImportStats.alreadyProcessed?` · 기존확정 ${hometaxLastImportStats.alreadyProcessed}건`:''} · 취소완료 ${hometaxLastImportStats.autoCancelled}건${pending?` · 중복확인 ${pending}건`:''}${outside?` · 후보없음 ${outside}건`:''}${ds?` · 이번 날짜 ${ds}`:''}`;
 }
 window.confirmHometaxIssueMatch=async function(pendingId){
   try{
@@ -4967,8 +4996,8 @@ window.confirmHometaxIssueMatch=async function(pendingId){
     const action=(generalActions||[]).find(a=>a.id===actionId&&a.type==='issue'&&a.status==='issue_requested');if(!action)throw new Error('선택한 발급대기 건이 이미 처리되었거나 더 이상 존재하지 않습니다.');
     if(Math.abs(Number(action.amount||0)-Number(row.amount||0))>=0.5)throw new Error('선택한 거래처와 홈택스 결과의 금액이 일치하지 않습니다.');
     const info=issueInfoForAction(action),issueDate=row.date||dateInputToYmd(new Date().toISOString().slice(0,10));
-    await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate,approvalNo:row.approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,hometaxManualMatched:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=issueDate;action.approvalNo=row.approvalNo;
+    await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate,approvalNo:row.approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,hometaxIssuedAmount:Math.abs(Number(row.amount||0)),hometaxManualMatched:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=issueDate;action.approvalNo=row.approvalNo;action.hometaxIssuedAmount=Math.abs(Number(row.amount||0));
     hometaxPendingIssueMatches=(hometaxPendingIssueMatches||[]).filter(x=>x.id!==pendingId);
     if(hometaxLastImportStats)hometaxLastImportStats.matched=Number(hometaxLastImportStats.matched||0)+1;
     await loadGeneralLedgerData();applyAllSalesMemos();finishRender();renderHometaxManualMatchPanel();updateHometaxImportStatus();
@@ -4988,11 +5017,23 @@ async function importHometaxResult(file){
       const missing=[!approvalKey?'승인번호':'',!amountKey?'거래금액':''].filter(Boolean).join('/');
       throw new Error(`발급결과 파일에서 ${missing} 열을 찾지 못했습니다. 인식한 열: ${headers.join(', ')}`);
     }
-    let matched=0,unmatched=0,autoCancelled=0,alreadyProcessed=0;hometaxPendingIssueMatches=[];
+    let matched=0,unmatched=0,autoCancelled=0,alreadyProcessed=0;hometaxPendingIssueMatches=[];const importDates=new Set();
     for(let ri=0;ri<rows.length;ri++){
-      const r=rows[ri],approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(!amount){continue;}
-      const approvalAlreadyUsed=approvalNo&&(generalActions||[]).some(a=>(a.type==='issue'&&a.status==='issued'&&norm(a.approvalNo)===approvalNo)||(a.type==='cancel'&&a.status==='cancelled'&&String(a.cancelApprovalNo||'').split(',').map(norm).includes(approvalNo)));
-      if(approvalAlreadyUsed){alreadyProcessed++;continue;}
+      const r=rows[ri],approvalNo=norm(r[approvalKey]),date=excelValueToYmd(r[dateKey])||dateFromFilename(file.name),amount=Math.abs(num(r[amountKey])),memo=norm(r[memoKey]),type=norm(r[typeKey]),orig=norm(r[origKey]);if(date)importDates.add(ymd(date));if(!amount){continue;}
+      const existingIssuedAction=approvalNo?(generalActions||[]).find(a=>a.type==='issue'&&a.status==='issued'&&norm(a.approvalNo)===approvalNo):null;
+      const existingCancelledAction=approvalNo?(generalActions||[]).find(a=>a.type==='cancel'&&a.status==='cancelled'&&String(a.cancelApprovalNo||'').split(',').map(norm).includes(approvalNo)):null;
+      const approvalAlreadyUsed=!!(existingIssuedAction||existingCancelledAction);
+      if(approvalAlreadyUsed){
+        // v4.63: 과거에 이미 확정된 승인번호라도 같은 홈택스 결과를 다시 불러오면
+        // 실제 승인금액을 보강한다. 기존 50,000원 판매가 반품상계 후 30,000원 발급된 경우도 여기서 교정된다.
+        if(existingIssuedAction&&amount>0){
+          const backfill={hometaxIssuedAmount:amount,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+          if(date&&!existingIssuedAction.issueDate)backfill.issueDate=date;
+          await userCol('generalReceiptActions').doc(existingIssuedAction.id).set(backfill,{merge:true});
+          existingIssuedAction.hometaxIssuedAmount=amount;if(date&&!existingIssuedAction.issueDate)existingIssuedAction.issueDate=date;
+        }
+        alreadyProcessed++;continue;
+      }
       const mm=memo.match(/AUTO:([^\s]+)/),memoId=mm?mm[1]:'';
       let action=memoId?generalActions.find(a=>a.id===memoId):null;
       if(/취소/.test(type))action=findPendingCancelForHometax(orig,amount,memoId)||action;
@@ -5007,7 +5048,7 @@ async function importHometaxResult(file){
       }
       if(!action){unmatched++;continue;}
       if(action.type==='issue'){
-        const info=issueInfoForAction(action);await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=date;action.approvalNo=approvalNo;matched++;continue;
+        const info=issueInfoForAction(action);await userCol('generalReceiptActions').doc(action.id).set({status:'issued',issueDate:date||dateInputToYmd(new Date().toISOString().slice(0,10)),approvalNo,issueMethod:info.issueMethod,issueNumber:info.issueNumber,hometaxIssuedAmount:amount,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});await markOpeningProcessedForAction(action);action.status='issued';action.issueDate=date;action.approvalNo=approvalNo;action.hometaxIssuedAmount=amount;matched++;continue;
       }
       if(action.type==='cancel'){
         const matches=[...(action.cancelImportMatches||[]),{originalApprovalNo:orig||'',cancelApprovalNo:approvalNo||'',amount,date:date||dateInputToYmd(new Date().toISOString().slice(0,10))}];
@@ -5019,7 +5060,7 @@ async function importHometaxResult(file){
       }
       unmatched++;
     }
-    hometaxLastImportStats={matched,autoCancelled,alreadyProcessed,sourceFile:file.name||''};
+    hometaxLastImportStats={matched,autoCancelled,alreadyProcessed,sourceFile:file.name||'',dates:[...importDates].filter(Boolean).sort()};
     await loadGeneralLedgerData();applyAllSalesMemos();finishRender();renderHometaxManualMatchPanel();updateHometaxImportStatus();
     const dupCount=hometaxPendingIssueMatches.filter(x=>x.kind==='duplicate').length,outsideCount=hometaxPendingIssueMatches.filter(x=>x.kind==='unmatched').length;
     await safeLogActivity('현금영수증','홈택스 발급결과 불러오기',`자동대조 ${matched}건${alreadyProcessed?` · 기존확정 ${alreadyProcessed}건`:''} · 취소완료 ${autoCancelled}건${dupCount?` · 중복확인 ${dupCount}건`:''}${outsideCount?` · 후보없음 ${outsideCount}건`:''}`,file.name||'');
