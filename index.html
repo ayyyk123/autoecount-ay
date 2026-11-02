@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.64</title>
+<title>아도라블 매출 자동화 v4.65</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
@@ -751,7 +751,7 @@ tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .arInlineCell{color:#2563eb 
       </div>
     </div>
     <div class="headRight">
-      <div class="badge">v4.64 · 반품 전액 다음판매 상계 선택 · 홈택스 실제 승인금액 반영 · 이번 불러오기 날짜만 적요 엑셀 · 출고X 빨간색 우선</div>
+      <div class="badge">v4.65 · 월요일 미수정리 최신입금일/판매반영 순서 보정 · 반품 전액 다음판매 상계 선택 · 홈택스 실제 승인금액 반영</div>
       <div id="autosaveStatus" class="autosaveStatus">최근 자동저장 확인 중…</div>
       <div id="firebaseSyncStatus" class="firebaseSyncStatus">Firebase 연결 대기</div>
       <div class="dataSafetyActions">
@@ -904,7 +904,7 @@ tr.arSyncResolvedTodayV460:not(.arShipBlocked) > td .arInlineCell{color:#2563eb 
       </div>
       <div class="arMiniCard">
         <h3>② 판매 거래내역</h3>
-        <div class="hint"><b>전체/과거 판매파일은 미수시작일·SAMPLE을 찾는 참조이력</b>으로 사용할 수 있습니다. 10/19 이후 주간정리가 시작된 뒤 동기화하는 <b>전날·당일 판매/반품 파일은 입금요일 지정 거래처에만 잔액 반영</b>합니다. 월요일 직전날은 반품이 잔액파일에 이미 들어 있으므로 <b>그날 판매(+)만 추가</b>하고 반품은 중복 차감하지 않습니다. 같은 날짜 파일을 다시 넣으면 그 날짜 판매이력은 최신 파일로 교체됩니다.</div>
+        <div class="hint"><b>전체/과거 판매파일은 미수시작일·SAMPLE을 찾는 참조이력</b>으로 사용할 수 있습니다. 10/19 이후 주간정리가 시작된 뒤 동기화하는 <b>판매(+)는 입금요일 지정 거래처만, 반품(-)은 전체 관리대상에 잔액 반영</b>합니다. 월요일 직전날은 반품이 잔액파일에 이미 들어 있으므로 <b>그날 판매(+)만 추가</b>하고 반품은 중복 차감하지 않습니다. 같은 날짜 파일을 다시 넣으면 그 날짜 판매이력은 최신 파일로 교체됩니다.</div>
         <input id="arSalesFiles" class="arFileInput" type="file" accept=".xlsx,.xls" multiple>
         <div id="arSalesFileNames" class="arFileNames">선택된 파일 없음</div>
       </div>
@@ -14354,7 +14354,7 @@ const _arExportRowObject459=arExportRowObject;
 arExportRowObject=function(r){const o=_arExportRowObject459(r);if(arIsSimpleRowV459(r)){o.periodSales=arDisplaySalesV459(r);o.periodReceipts=arDisplayReceipts(r);o.baseBalance=arDisplayCurrentBalance(r);o.adjustedBalance=arEffectiveBalance(r)}return o};
 
 const _runArMonday459=runArMonday;
-runArMonday=async function(){const runDate=arIsoToYmd($('arRunDate')?.value||'');await _runArMonday459();const d=arDateObj(runDate);if(runDate>=AR_SIMPLE_RULE_START_V459&&d&&d.getDay()===1&&$('arRunStatus')){const eligible=(arState.weekRows||[]).filter(r=>arIsSimpleRowV459(r)&&r.v459TrackingEligible===true).length;$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} v4.60 주간정리 완료 · 잔액파일을 기준잔액으로 고정 · 당일 입금 반영 후 관리대상 ${eligible.toLocaleString()}곳 · 이후 판매/반품은 입금요일 지정 거래처만, 입금은 전체 관리대상에 반영합니다.`}};
+runArMonday=async function(){const runDate=arIsoToYmd($('arRunDate')?.value||'');await _runArMonday459();const d=arDateObj(runDate);if(runDate>=AR_SIMPLE_RULE_START_V459&&d&&d.getDay()===1&&$('arRunStatus')){const eligible=(arState.weekRows||[]).filter(r=>arIsSimpleRowV459(r)&&r.v459TrackingEligible===true).length;$('arRunStatus').innerHTML=`✓ ${arYmdToIso(runDate)} v4.60 주간정리 완료 · 잔액파일을 기준잔액으로 고정 · 당일 입금 반영 후 관리대상 ${eligible.toLocaleString()}곳 · 이후 판매는 입금요일 지정 거래처만, 반품·입금은 전체 관리대상에 반영합니다.`}};
 
 
 // 입금요일을 새로 지정/해제하면 v4.59 판매반영 대상 여부도 즉시 다시 계산한다.
@@ -14371,7 +14371,7 @@ window.arEditPaymentDay=async function(code,value){
 
 const _setupArUI459=setupArUI;
 setupArUI=function(){
-  _setupArUI459();const btn=$('arSyncHistoryBtn');if(btn)btn.onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');const result=await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments),reg=await arV459RegisterSalesIntervals(result.salesIntervals||[]);refreshArWeekPayments();renderArAll();if(arState.weekMeta?.simpleWeeklyV459){const bits=[];if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);if(reg.registered.length)bits.push(`판매/반품 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 입금요일 지정 거래처만 반영`);if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);$('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'')}else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.60 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
+  _setupArUI459();const btn=$('arSyncHistoryBtn');if(btn)btn.onclick=async()=>{try{arSetLoading(true,'판매·입금 자료 동기화 중…');const result=await syncArHistoryFromSelected(arSelectedFiles.sales,arSelectedFiles.payments),reg=await arV459RegisterSalesIntervals(result.salesIntervals||[]);refreshArWeekPayments();renderArAll();if(arState.weekMeta?.simpleWeeklyV459){const bits=[];if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);if(reg.registered.length)bits.push(`판매자료 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 판매는 입금요일 지정 · 반품은 전체 관리대상 반영`);if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);$('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'')}else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.60 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.'}catch(e){alert(e.message||e)}finally{arSetLoading(false)}};
 };
 
 
@@ -14504,13 +14504,77 @@ setupArUI=function(){
       if(arState.weekMeta?.simpleWeeklyV459){
         const bits=[];
         if(result.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 · 전체 관리대상 반영`);
-        if(reg.registered.length)bits.push(`판매/반품 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 입금요일 지정 거래처만 반영`);
+        if(reg.registered.length)bits.push(`판매자료 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} · 판매는 입금요일 지정 · 반품은 전체 관리대상 반영`);
         if(reg.historyOnly.length)bits.push(`과거/전체 판매범위 ${reg.historyOnly.map(x=>`${arShortDate(x.min)}~${arShortDate(x.max)}`).join(', ')} · 미수시작일 참조용만 갱신`);
         if(newlyResolved.length)bits.push(`오늘 새로 해소 ${newlyResolved.length.toLocaleString()}곳 · 원래 목록 하단 유지/파란표시`);
         $('arRunStatus').textContent='✓ 자료 동기화 완료'+(bits.length?' · '+bits.join(' · '):'');
       }else $('arRunStatus').textContent='✓ 판매·입금 거래이력 동기화 완료 · 아직 v4.60 주간정리 전이므로 판매자료는 참조이력으로 저장했습니다.';
     }catch(e){alert(e.message||e)}finally{arSetLoading(false)}
   };
+};
+
+
+/* ===== v4.65 미수관리 안정화 =====
+   1) 마지막입금일은 거래처코드를 정규화해서 최신 양수 입금일을 다시 계산한다.
+   2) 월요일 '미수 자동정리'에서 먼저 동기화한 판매파일의 적용구간이 주간기준 저장 과정에서 초기화되던 문제를 보정한다.
+      자동정리 완료 직후 방금 동기화한 판매구간을 현재 주차에 다시 등록하고 즉시 재계산한다.
+   3) 단순 주간규칙: 입금요일 지정 거래처는 판매+반품 반영, 미지정 거래처는 양수 판매는 제외하되 cutoff 이후 반품은 반영한다.
+*/
+const _arLastPayment465=arLastPayment;
+arLastPayment=function(code,through='99999999'){
+  const c=norm(code),limit=ymd(through)||'99999999';
+  let best='';
+  for(const x of (arState.payments||[])){
+    const d=ymd(x.date);
+    if(!d||d>limit||norm(x.code)!==c||Number(x.amount||0)<=0)continue;
+    if(!best||d>best)best=d;
+  }
+  return best||_arLastPayment465(code,through)||'';
+};
+
+arV459SalesEvents=function(r,through='99999999'){
+  if(!arIsSimpleRowV459(r)||r.v459TrackingEligible!==true)return [];
+  const code=norm(r.code),cutoff=ymd(r.cutoff)||'00000000',scheduled=arHasScheduledPaymentDay(r.paymentDay),out=[];
+  for(const x of (arState.sales||[])){
+    if(norm(x.code)!==code||!x.date||x.date<cutoff||x.date>through||!arV459DateInSalesIntervals(x.date))continue;
+    const amount=Math.round(Number(x.amount||0));
+    if(!amount)continue;
+    // cutoff일 반품은 잔액파일에 이미 들어간 것으로 보고 중복 반영하지 않는다.
+    if(x.date===cutoff){
+      if(amount>0&&scheduled)out.push({date:x.date,key:String(x.key||''),kind:'sale',amount});
+      continue;
+    }
+    // cutoff 다음날부터는 양수 판매는 입금요일 지정 거래처만, 반품은 전체 관리대상에 반영.
+    if(amount>0){if(scheduled)out.push({date:x.date,key:String(x.key||''),kind:'sale',amount});}
+    else out.push({date:x.date,key:String(x.key||''),kind:'return',amount});
+  }
+  return out.sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key));
+};
+
+const _syncArHistoryFromSelected465=syncArHistoryFromSelected;
+syncArHistoryFromSelected=async function(salesFiles,paymentFiles){
+  const result=await _syncArHistoryFromSelected465(salesFiles,paymentFiles);
+  arState.__lastSyncResultV465=result||null;
+  return result;
+};
+
+const _runArMonday465=runArMonday;
+runArMonday=async function(){
+  arState.__lastSyncResultV465=null;
+  await _runArMonday465();
+  const runDate=arIsoToYmd($('arRunDate')?.value||''),d=arDateObj(runDate),result=arState.__lastSyncResultV465;
+  if(runDate>=AR_SIMPLE_RULE_START_V459&&d&&d.getDay()===1&&arState.weekMeta?.simpleWeeklyV459){
+    let reg={registered:[],historyOnly:[]};
+    if(result?.salesIntervals?.length)reg=await arV459RegisterSalesIntervals(result.salesIntervals);
+    refreshArWeekPayments();
+    renderArAll();
+    const latestPayment=(arState.payments||[]).map(x=>ymd(x.date)).filter(Boolean).sort().pop()||'';
+    const bits=[];
+    if(result?.paymentCount)bits.push(`입금 ${Number(result.paymentCount).toLocaleString()}건 반영${latestPayment?` · 최신 ${arShortDateWeekday(latestPayment)}`:''}`);
+    if(reg.registered.length)bits.push(`판매자료 ${reg.registered.map(x=>`${arShortDate(x.min)}${x.max!==x.min?'~'+arShortDate(x.max):''}`).join(', ')} 적용`);
+    bits.push('마지막입금일 최신 이력 재계산');
+    if($('arRunStatus'))$('arRunStatus').textContent=`✓ ${arYmdToIso(runDate)} 주간 미수정리 완료 · ${bits.join(' · ')}`;
+  }
 };
 
 setupArUI();
