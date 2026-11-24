@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>아도라블 매출 자동화 v4.68</title>
+<title>아도라블 매출 자동화 v4.69</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 /*!
@@ -5222,8 +5222,10 @@ function buildCashCloseFinalWorkbook(){
   if(!m)throw new Error('대상월을 먼저 선택해 주세요.');
 
   const year=Number(m[1]),mon=Number(m[2]),monText=`${mon}월`;
+  // v4.69: 최종 월정산 엑셀에 표시할 거래처에서 금액 0원만 제외한다.
+  // 원본 수금이력/월마감 합계는 변경하지 않으며, 음수 금액과 160건 초과 추가 시트는 유지한다.
   const rows=(cashCloseState.collectionRows||[])
-    .filter(r=>norm(r.name||r.code)&&Number.isFinite(Number(r.amount)));
+    .filter(r=>norm(r.name||r.code)&&Number.isFinite(Number(r.amount))&&Number(r.amount)!==0);
 
   const collectionTotal=Number.isFinite(cashCloseState.collectionTotalOverride)
     ?Number(cashCloseState.collectionTotalOverride)
